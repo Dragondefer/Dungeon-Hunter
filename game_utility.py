@@ -7,6 +7,111 @@ import traceback
 
 from colors import Colors
 
+# For Windows non-blocking key detection
+if os.name == 'nt':
+    import msvcrt
+else:
+    import select
+    import termios
+    import tty
+
+def timed_input_pattern(difficulty=1.0, return_type='bool', peak_int_min=0, peak_int_max=10):
+    """
+    Animates a pattern in the terminal and waits for the user to press Enter at the right moment.
+
+    Parameters:
+    - difficulty (float): Controls the speed and number of animation steps. Higher is faster and fewer steps.
+    - return_type (str): 'bool' to return True/False, 'int' to return a score based on timing.
+    - peak_int_min (int): Minimum integer score if return_type is 'int'.
+    - peak_int_max (int): Maximum integer score if return_type is 'int'.
+
+    Returns:
+    - bool or int: Depending on return_type.
+      If 'bool': True if Enter pressed at or before right moment, else False.
+      If 'int': Score proportional to timing, 0 if pressed after right moment or not pressed.
+    """
+    # Define the animation patterns from wide to narrow
+    base_pattern = "O"
+    max_padding = 5  # max spaces on each side at start
+    steps = max(1, int(max_padding / difficulty))  # number of animation steps
+
+    # Generate patterns list from widest to narrowest
+    patterns = []
+    for i in range(steps + 1):
+        left_padding = max_padding - i
+        right_padding = max_padding - i
+        pattern = ">" * i + " " * left_padding + base_pattern + " " * right_padding + "<" * i
+        patterns.append(pattern)
+
+    # The "right moment" is the last pattern (index = steps)
+    right_moment_index = steps
+
+    # Function to check for Enter key press with timeout
+    def check_enter(timeout):
+        if os.name == 'nt':
+            start_time = time.time()
+            while time.time() - start_time < timeout:
+                if msvcrt.kbhit():
+                    key = msvcrt.getch()
+                    if key == b'\r':  # Enter key
+                        return True
+                    else:
+                        # flush other keys
+                        continue
+                time.sleep(0.01)
+            return False
+        else:
+            # Unix-like system
+            fd = sys.stdin.fileno()
+            old_settings = termios.tcgetattr(fd)
+            try:
+                tty.setraw(fd)
+                rlist, _, _ = select.select([sys.stdin], [], [], timeout)
+                if rlist:
+                    char = sys.stdin.read(1)
+                    if char == '\n':
+                        return True
+                return False
+            finally:
+                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
+    # Animation loop
+    for idx, pattern in enumerate(patterns):
+        # Clear line and print pattern
+        sys.stdout.write('\r' + pattern + ' ' * 10)
+        sys.stdout.flush()
+
+        # Wait for a short time and check for Enter key press
+        # Total animation duration can be adjusted by difficulty
+        step_duration = max(0.1, 0.5 / difficulty)
+        if check_enter(step_duration):
+            # If pressed before right moment
+            if idx <= right_moment_index:
+                if return_type == 'bool':
+                    print()  # move to next line
+                    return True
+                else:
+                    # Calculate score proportional to closeness to right moment
+                    score_range = peak_int_max - peak_int_min
+                    score = peak_int_min + int(score_range * (idx / right_moment_index))
+                    print()
+                    return score
+            else:
+                # Pressed after right moment
+                if return_type == 'bool':
+                    print()
+                    return False
+                else:
+                    print()
+                    return 0
+
+    # If no key pressed during animation
+    print()
+    if return_type == 'bool':
+        return False
+    else:
+        return 0
+
 # Game utility functions
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -194,22 +299,29 @@ def collect_feedback(player=None, ask=True):
 
 
 if __name__ == '__main__':
-    print('clear_screen:')
-    time.sleep(0.5)
-    clear_screen()
-    time.sleep(0.5)
-    print('typewriter_effect:')
-    time.sleep(0.5)
-    typewriter_effect('typewriter_effect')
-    time.sleep(0.5)
-    print('\ndice_animation:')
-    time.sleep(0.5)
-    dice_animation()
-    time.sleep(0.5)
-    print('progress_bar')
-    time.sleep(0.5)
-    print(progress_bar(50, 100))
-    time.sleep(0.5)
-    game_over()
-    time.sleep(0.5)
-    print(glitch_text('Test'))
+    import inspect
+
+    wait_time = 0.5
+
+    # List of test functions to run
+    test_functions = [
+        ('clear_screen', clear_screen, []),
+        ('typewriter_effect', typewriter_effect, ['typewriter_effect']),
+        ('dice_animation', dice_animation, []),
+        ('progress_bar', progress_bar, [50, 100]),
+        ('game_over', game_over, []),
+        ('glitch_text', glitch_text, ['Test']),
+        ('timed_input_pattern', timed_input_pattern, [1.0, 'bool', 0, 10]),
+    ]
+
+    for name, func, args in test_functions:
+        print(f"\n--- Testing {name} ---")
+        # If function returns a value, print it
+        if inspect.isfunction(func):
+            result = func(*args)
+            # For functions that print internally and return None, skip printing result
+            if result is not None:
+                print(f"Result: {result}")
+        else:
+            print(f"{name} is not callable")
+        time.sleep(wait_time)
