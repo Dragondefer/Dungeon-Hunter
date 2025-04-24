@@ -636,8 +636,8 @@ class Player(Entity):
                 "Helmet": "helmet",
                 "Chestplate": "chest",
                 "Gauntlets": "gauntlets",
-                "Leggings": "legs",
-                "Boots": "feet",
+                "Leggings": "leggings",
+                "Boots": "boots",
                 "Shield": "shield",
                 "Ring": "ring",
                 "Amulet": "amulet",
@@ -1375,35 +1375,125 @@ class Player(Entity):
 
         filepath = os.path.join(save_dir, filename)
 
-        data = {
-            "name": self.name,
-            "level": self.level,
-            "xp": self.xp,
-            "max_xp": self.max_xp,
-            "gold": self.gold,
-            "stats": self.stats.__dict__,
-            "inventory": [item.to_dict() for item in self.inventory],
-            "equipment": {
-                slot: item.to_dict() if isinstance(item, Item) else None
-                for slot, item in self.equipment.__dict__.items()
-            },
-            "total_armor": self.total_armor,
-            "skills": [skill.to_dict() for skill in self.skills],
-            "class_name": self.class_name,
-            "dungeon_level": self.dungeon_level,
-            "profession": self.profession,
-            "quests": [quest.to_dict() for quest in self.quests],
-            "completed_quests": [quest.to_dict() for quest in self.completed_quests],
-            "kills": self.kills,
-            "difficulty": self.difficulty,
-            "unlocked_difficulties": self.unlocked_difficulties,
-            "finished_difficulties": self.finished_difficulties
-        }
+        data = self.to_dict()
 
         with open(filepath, "w") as file:
             json.dump(data, file, indent=4)
 
         print(f"{Colors.GREEN}Game saved successfully!{Colors.RESET}")
+
+    def to_dict(self):
+        """Convert the Player object to a dictionary for serialization using a generic serializer."""
+        def serialize_obj(obj):
+            if obj is None:
+                return None
+            elif isinstance(obj, (str, int, float, bool)):
+                return obj
+            elif isinstance(obj, list):
+                return [serialize_obj(item) for item in obj]
+            elif isinstance(obj, dict):
+                return {key: serialize_obj(value) for key, value in obj.items()}
+            elif hasattr(obj, "to_dict") and callable(getattr(obj, "to_dict")):
+                # Call to_dict once and serialize the resulting dict without recursion on to_dict again
+                dict_obj = obj.to_dict()
+                if dict_obj is obj:
+                    # Defensive: if to_dict returns self, avoid infinite recursion
+                    return str(obj)
+                return serialize_obj(dict_obj)
+            elif hasattr(obj, "__dict__"):
+                return {key: serialize_obj(value) for key, value in obj.__dict__.items()}
+            else:
+                return str(obj)  # fallback to string representation
+
+        return serialize_obj(self)
+
+    @classmethod
+    def from_dict(cls, data):
+        """Create a Player object from a dictionary."""
+        player = cls(data["name"], data.get("difficulty", "normal"))
+        player.level = data.get("level", 1)
+        player.xp = data.get("xp", 0)
+        player.max_xp = data.get("max_xp", 100)
+        player.gold = data.get("gold", 0)
+
+        # Load stats
+        player.stats.__dict__.update(data.get("stats", {}))
+
+        # Load inventory
+        player.inventory = [Item.from_dict(item) for item in data.get("inventory", [])]
+
+        # Load equipment
+        eq_data = data.get("equipment", {})
+        if eq_data:
+            from items import Equipment
+            player.equipment = Equipment.from_dict(eq_data)
+        else:
+            player.equipment = None
+
+        player.total_armor = data.get("total_armor", 0)
+
+        # Load skills
+        from entity import Skill
+        player.skills = [Skill(**skill) for skill in data.get("skills", [])]
+
+        player.class_name = data.get("class_name", "Novice")
+        player.dungeon_level = data.get("dungeon_level", 1)
+        player.profession = data.get("profession", None)
+
+        # Load quests
+        from quests import Quest
+        player.quests = [Quest.from_dict(quest) for quest in data.get("quests", [])]
+        player.completed_quests = [Quest.from_dict(quest) for quest in data.get("completed_quests", [])]
+
+        player.kills = data.get("kills", 0)
+        player.difficulty = data.get("difficulty", "normal")
+        player.unlocked_difficulties = data.get("unlocked_difficulties", {"normal": True, "soul_enjoyer": False, "realistic": False})
+        player.finished_difficulties = data.get("finished_difficulties", {"normal": False, "soul_enjoyer": False, "realistic": False})
+
+        return player
+
+
+def load_player(filename=None):
+    """Loads the player's data from a JSON file and reconstructs objects."""
+    global debug
+    debug = 0
+
+    if filename is None:
+        filename = "player_save.json"
+        if debug >= 1:
+            print(f"{Colors.BLUE}INFO: default filename set: {filename}{Colors.RESET}")
+
+    # Ensure filename is in saves directory
+    save_dir = "saves"
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+    filename = os.path.join(save_dir, filename)
+
+    if debug >= 1:
+        print(f"{Colors.BLUE}INFO: filename: {filename}{Colors.RESET}")
+
+    try:
+        with open(filename, "r") as file:
+            data = json.load(file)
+            if debug >= 1:
+                print(f"{Colors.BLUE}INFO: loaded data: {data}{Colors.RESET}")
+
+        # Use from_dict to create player
+        from entity import Player
+        player = Player.from_dict(data)
+
+        print(f"{Colors.GREEN}Game loaded successfully!{Colors.RESET}")
+        return player
+
+    except FileNotFoundError:
+        print(f"{Colors.RED}No save file found! Starting a new game...{Colors.RESET}")
+        handle_error()
+        return Player()
+
+    except KeyError as e:
+        print(f"{Colors.RED}Error loading save file: Missing key{Colors.RESET}")
+        handle_error()
+        return Player()
 
 
 def load_player(filename=None):
