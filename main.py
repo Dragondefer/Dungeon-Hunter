@@ -1,4 +1,3 @@
-
 import time
 import os
 
@@ -81,6 +80,8 @@ def main(continue_game=False, loaded_player=None, debug=0):
                 rooms_explored = 0
                 
                 # Reward player for clearing a dungeon level
+                player.rest_stamina(100)
+                player.regen_mana(25)
                 level_reward = player.dungeon_level * 50
                 print(f"{Colors.YELLOW}You receive {level_reward} gold for clearing the dungeon!{Colors.RESET}")
                 player.gold += level_reward
