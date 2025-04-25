@@ -607,10 +607,10 @@ class Player(Entity):
 
             # Vérifier si une main est libre pour équiper l'arme
             if not self.equipment.main_hand:
-                self.equipment.main_hand = item
+                self.equipment.equip(slot="main_hand", item=item, player=self)
                 print(f"\n{Colors.GREEN}You equipped {item.name} in your main hand!{Colors.RESET}")
             elif not self.equipment.off_hand:
-                self.equipment.off_hand = item
+                self.equipment.equip(slot="off_hand", item=item, player=self)
                 print(f"\n{Colors.GREEN}You equipped {item.name} in your off-hand!{Colors.RESET}")
             else:
                 print(f"\n{Colors.RED}Both hands are occupied! Do you want to unequip an item first? (y/n){Colors.RESET}")
@@ -788,8 +788,12 @@ class Player(Entity):
     def level_up(self):
         self.level += 1
         self.stats.max_hp += 10
+        self.stats.max_mana += 10
+        self.stats.max_stamina += 10
         self.stats.update_total_stats()
         self.stats.hp = self.stats.max_hp
+        self.stats.mana = self.stats.max_mana
+        self.stats.stamina = self.stats.max_stamina
         self.stats.attack += 2
         self.stats.defense += 1
         self.max_xp = int(self.max_xp * 1.5)
