@@ -87,10 +87,10 @@ class Room:
                 stat = self.trap["stat"]
                 value = self.trap["value"]
                 if stat == "attack":
-                    player.stats.attack = self.stats.temporary_stats["attack"] - value
+                    player.stats.attack = player.stats.temporary_stats["attack"] - value
                     print(f"{Colors.RED}Your attack is temporary reduced by {value}!{Colors.RESET}")
                 elif stat == "defense":
-                    player.stats.defense = self.stats.temporary_stats["defense"] - value
+                    player.stats.defense = player.stats.temporary_stats["defense"] - value
                     print(f"{Colors.RED}Your defense is temporary reduced by {value}!{Colors.RESET}")
         
         self.trap["triggered"] = True
