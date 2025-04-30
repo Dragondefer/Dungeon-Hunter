@@ -1,3 +1,6 @@
+__version__ = "262.0"
+__creation__ = "9-03-2025"
+
 import random
 
 from colors import Colors
@@ -125,7 +128,19 @@ class Equipment:
 
     def to_dict(self):
         """Convertit l'équipement en dictionnaire pour la sauvegarde."""
-        return {slot: item.to_dict() if item else None for slot, item in self.__dict__.items()}
+        return {slot: item.to_dict() if item else None for slot, item in self.slots.items()}
+
+    @classmethod
+    def from_dict(cls, data):
+        """Reconstruct Equipment object from dictionary."""
+        eq = cls()
+        for slot, item_data in data.items():
+            if item_data is not None:
+                from items import Item
+                eq.slots[slot] = Item.from_dict(item_data)
+            else:
+                eq.slots[slot] = None
+        return eq
 
     def __str__(self):
         """Affiche l'équipement sous forme lisible."""
@@ -184,7 +199,7 @@ class Weapon(Gear):
     Hérite de Gear pour être compatible avec le système d'équipement.
     """
     def __init__(self, name, description, value, damage):
-        super().__init__(name, description, value, {"damage": damage})
+        super().__init__(name, description, value, {"attack": damage})
         self.damage = damage
     
     def __str__(self):
@@ -212,7 +227,7 @@ class Armor(Gear):
     """Represents an equippable armor piece that enhances defense."""
     def __init__(self, name, description, value, defense, armor_type):
         super().__init__(name, description, value, {"defense": defense})
-        self.armor_type = armor_type  # "helmet", "chest", "legs", etc.
+        self.armor_type = armor_type  # "helmet", "chestplate", "leggings", etc.
 
     def to_dict(self):
         data = super().to_dict()
