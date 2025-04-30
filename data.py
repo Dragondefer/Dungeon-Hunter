@@ -1,3 +1,6 @@
+__version__ = "148.0"
+__creation__ = "16-03-2025"
+
 import random
 
 # Rooms
@@ -81,6 +84,84 @@ puzzle_choices = [
 
 # Player
 
+# Player's quests
+def get_quests_dict():
+    from quests import Quest
+    quests_dict = {
+        "Dungeon Master": Quest(
+            title="Dungeon Master",
+            description="Complete 10 dungeon levels.",
+            objective_type="complete_dungeon_levels",
+            objective_amount=10,
+            reward_gold=500,
+            reward_xp=1000,
+            reward_item=None
+        ),
+        "Dungeon Explorer": Quest(
+            title="Dungeon Explorer",
+            description="Explore 5 rooms in the dungeon",
+            objective_type="explore_rooms",
+            objective_amount=5,
+            reward_gold=50,
+            reward_xp=30,
+            reward_item=None
+        ),
+        "Treasure Hunter": Quest(
+            title="Treasure Hunter",
+            description="Find 10 items in the dungeon.",
+            objective_type="find_items",
+            objective_amount=10,
+            reward_gold=100,
+            reward_xp=60,
+            reward_item=None
+        ),
+        "Slayer": Quest(
+            title="Slayer",
+            description="Kill 20 enemies in the dungeon.",
+            objective_type="kill_enemies",
+            objective_amount=20,
+            reward_gold=150,
+            reward_xp=80,
+            reward_item=None
+        ),
+        "Gold Collector": Quest(
+            title="Gold Collector",
+            description="Collect 500 gold.",
+            objective_type="collect_gold",
+            objective_amount=500,
+            reward_gold=200,
+            reward_xp=100,
+            reward_item=None
+        ),
+        "Potion Master": Quest(
+            title="Potion Master",
+            description="Use 5 healing potions.",
+            objective_type="use_potions",
+            objective_amount=5,
+            reward_gold=120,
+            reward_xp=70,
+            reward_item=None
+        ),
+        "Puzzle Solver": Quest(
+            title="Puzzle Solver",
+            description="Complete 3 puzzles.",
+            objective_type="complete_puzzles",
+            objective_amount=3,
+            reward_gold=130,
+            reward_xp=90,
+            reward_item=None
+        ),
+        "Dungeon Conqueror": Quest(
+            title="Dungeon Conqueror",
+            description="Defeat the final boss of the dungeon.",
+            objective_type="defeat_final_boss",
+            objective_amount=1,
+            reward_gold=1000,
+            reward_xp=2000,
+            reward_item=None
+        ),
+    }
+    return quests_dict
 
 # Enemies
 enemy_types = [
@@ -116,18 +197,18 @@ boss_types = [
 # Sets
 
 enemy_sets = {
-    "Goblin": {"armor": "Brigand", "weapon": "Goblin Dagger"},
-    "Skeleton": {"armor": "Cursed Bone", "weapon": "Undead Blade"},
-    "Wolf": {"armor": "Hunter", "weapon": "Wolf Claws"},
-    "Orc": {"armor": "Warrior", "weapon": "Orcish Battle Axe"},
-    "Troll": {"armor": "Trollhide", "weapon": "Bone Crusher"},
-    "Ghost": {"armor": "Spectral", "weapon": "Phantom Scythe"},
-    "Dark Elf": {"armor": "Shadow", "weapon": "Twin Shadow Blades"},
-    "Wraith": {"armor": "Fallen King", "weapon": "Wraithblade"},
-    "Golem": {"armor": "Stonebound", "weapon": "Earthshatter Maul"},
-    "Demon": {"armor": "Infernal", "weapon": "Hellfire Sword"},
-    "Dragon": {"armor": "Draconic", "weapon": "Dragon Slayer"},
-    "Dark Shape": {"armor": "Voidwalker", "weapon": "Void Staff"},
+    "Goblin":     {"armor": "Brigand",     "weapon": "Goblin Dagger"},
+    "Skeleton":   {"armor": "Cursed Bone", "weapon": "Undead Blade"},
+    "Wolf":       {"armor": "Hunter",      "weapon": "Wolf Claws"},
+    "Orc":        {"armor": "Warrior",     "weapon": "Orcish Battle Axe"},
+    "Troll":      {"armor": "Trollhide",   "weapon": "Bone Crusher"},
+    "Ghost":      {"armor": "Spectral",    "weapon": "Phantom Scythe"},
+    "Dark Elf":   {"armor": "Shadow",      "weapon": "Twin Shadow Blades"},
+    "Wraith":     {"armor": "Fallen King", "weapon": "Wraithblade"},
+    "Golem":      {"armor": "Stonebound",  "weapon": "Earthshatter Maul"},
+    "Demon":      {"armor": "Infernal",    "weapon": "Hellfire Sword"},
+    "Dragon":     {"armor": "Draconic",    "weapon": "Dragon Slayer"},
+    "Dark Shape": {"armor": "Voidwalker",  "weapon": "Void Staff"},
 }
 
 armor_sets = {
