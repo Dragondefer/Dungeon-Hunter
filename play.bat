@@ -1,6 +1,6 @@
 @echo off
-REM Pull latest changes from the GitHub repository
-git pull
+REM Try to update via Git (if available)
+where git >nul 2>nul && git pull
 
 REM Run the game
 python main.py
