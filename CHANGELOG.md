@@ -1,10 +1,12 @@
 # Changelog
+__version__ = "432.0"
+__creation__ = "23-04-2025"
 
 All notable changes to this project will be documented in this file.
+So log doesn't include every changes but only the main one as there is a huge amout of work, changes, fix and so on.
 
 Note: Every logs before version [4.x.x] was made based on the files merges and might include mistakes and oversights
 
-Also log doesn't include every changes but only the main one as there is a huge amout of work, changes, fix and so on.
 
 ## [Unreleased]
 ### Upcomming features
@@ -14,15 +16,15 @@ Also log doesn't include every changes but only the main one as there is a huge 
 - **Player's features**
   - Planned: Improve quests such as using them more
   - Planned: Fixing save system
-  - Difficulty-based inventory limits (Normal:7/Soul:5/Realistic:3) may be scale on a stat or level
+  - Difficulty-based inventory limits may be scale on a stat or level
 
 
 - **Combat improvement**
   - Planned: Improve combat balancing
-  - Boss special attack system with 5 unique abilities
-  - Critical hit visualization with rainbow text effects
+  - Boss special attack system with unique abilities
+  - Critical hit visualization ?
 
-- "Final" boss encounter at Depth X̵̩̀1̸̘̓0̴̙͝?̶̢͌  
+- "Final" boss encounter at Depth X̵̩̀1̸̘̓0̴̙͝?̶̢͌ 
 - New achievement: *"Ten Steps Forward... or is it?"*  
 
 ### Later features
@@ -357,7 +359,7 @@ Tally of tunable parameters like:
 This update represents 85+ hours of additional development across 1,200+ changed lines, introducing 30+ new interactive elements and refining 50+ core gameplay systems. The semantic version increment to 1.1.0 reflects significant feature additions while maintaining backward compatibility with save files.
 
 
-## [3.2.x] - 01-04-2025
+## [3.x.x] - 01-04-2025
 ### Added
 - **Complex Stat System**:
   - StatContainer class with permanent/temporary stat separation
@@ -435,14 +437,37 @@ This update represents 85+ hours of additional development across 1,200+ changed
 This 2,800+ line update introduces 40+ new mechanical systems and refines 75+ core algorithms. The semantic version increment to 1.2.x reflects major subsystem overhauls while maintaining save compatibility through enhanced serialization. Total development time exceeds 120 hours across 7 files.
 
 
-Note: version [4.x.x] will be logged soon
 
 ## [4.x.x] - 15-03-2025
 ### Added
-- **File organisation**
+- **File organisation**:
   - Added story.py to put all the story text and functions
   - Added data.py to store all the dictionnary in one place for a better managment
+  - Added __version__ to py files who is the number of edits of each files i think.. Note: i might forget to update the version each fix and stuff..
+  - Added __creation__ to py file who is the creation date of each files
+  - Now you can start the game with `play.bat` which will automatically update the game's files with GIT if installed
+
+- **Quests**:
+  - Added dictionnary for quests in data.py
+  - Added new quest type (complete rooms/levels, collecting items/gold, get kills, use potions...)
+
+- **Combat**:
+  - New UI for combat (now it look better and the enemy doesn't display in a chain but in a clean ui)
+
+- **Dungeon**:
+  - Added inter-level rooms
+  - Improved the menu with a proper one with: continue, new game, quit
+  - Added New Game + increasing the difficulty each time for each difficulty : player.ng_plus = {"normal": 0, "soul_enjoyer": 0, ...}
+  - Added dice puzzle type because i forgot to add it to the list..
+
 
 ### Fixed
+- **Stats**:
+  - Removed an error when using the update_total_armor() by putting a # in front of it
+  - Now, weapons dispaly their stats in the player status such as: "attack: int (+ int)"
+  - Correct a bug where your choice in the rest room returned False instead of the user input
 
 ### Changed
+- **Items**:
+  - Changed weapons stats so it modify the attack equipment stats instead of having their own damage stat
+  - Huge updated in the README.md file with a big dev part, all the install part, with git, python or even nothing (+250 lines, now ~350 lines)
