@@ -1,9 +1,12 @@
-__version__ = "176.0"
+__version__ = "236.0"
 __creation__ = "23-04-2025"
 
 # Dungeon Hunter
 
 Dungeon Hunter is a text-based dungeon exploration RPG game where you play as a brave adventurer exploring dangerous dungeons, battling enemies, completing quests, collecting loot, and leveling up your character.
+
+Made by Dragondefer,
+You can contact me on discord : https://discord.gg/3V7xGCvxEP
 
 ## Features
 
@@ -46,16 +49,23 @@ Why is this the best option:
 1. **Download the `main.exe` file**
 
 2. **Verify its authenticity using the published SHA-256 hash** (see below):
-   ```bash
-   CertUtil -hashfile main.exe SHA256  # Windows
-   sha256sum main.exe                  # Linux
-   shasum -a 256 main.exe              # macOS
-   ```
+   - Windows users can use the built-in `CertUtil` command:
+```bash
+CertUtil -hashfile main.exe SHA256
+```
+   - Linux users can use `sha256sum`:
+```bash
+sha256sum main.exe
+```
+   - MacOS users can use `shasum`:
+```bash
+shasum -a 256 main.exe
+```
 
    Compare the result with the official hash:
-   ```
-   dcae891d28a7aae3c0986d9a59ac0449cd7f915a86bdc2c22b1f6b8030947b40
-   ```
+```
+df333dd96319a620199a4e4aa130537ef89078f9dbf9c7d6f1f00a6b99494c83
+```
 
    If it doesn't match, **do not run the file** — it may have been tampered with.
 
@@ -75,7 +85,7 @@ CertUtil -hashfile main.exe SHA256
 The output shouls look like this:
 ```
 SHA256 hash of main.exe:
-dcae891d28a7aae3c0986d9a59ac0449cd7f915a86bdc2c22b1f6b8030947b40
+df333dd96319a620199a4e4aa130537ef89078f9dbf9c7d6f1f00a6b99494c83
 CertUtil: -hashfile command completed successfully.
 ```
 And now your main.exe file is marked with the given hash
@@ -325,8 +335,9 @@ I welcome contributions, suggestions, and bug reports from everyone, whatever it
 
 If you want to contact me, ask question / help, or just talk / play don't hesitate
 - **Email**: For direct inquiries or if you prefer email, reach out to `dragondefer7@proton.com`.
-- You can also contact me with discord : `dragondefer`
+- You can also contact me with discord :
    My discord is open to everyone, supporded language : fr/en, comming not so soon: jp/de and maybe ru
+   invite link : https://discord.gg/3V7xGCvxEP
 
 ## For Beginners
 
