@@ -1,7 +1,7 @@
 __version__ = "236.0"
 __creation__ = "23-04-2025"
 
-# Dungeon Hunter
+# Dungeon Hunter - Version 4.5.3
 
 Dungeon Hunter is a text-based dungeon exploration RPG game where you play as a brave adventurer exploring dangerous dungeons, battling enemies, completing quests, collecting loot, and leveling up your character.
 
