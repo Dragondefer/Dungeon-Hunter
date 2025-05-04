@@ -1,4 +1,4 @@
-__version__ = "148.0"
+__version__ = "155.0"
 __creation__ = "16-03-2025"
 
 import random
@@ -166,7 +166,7 @@ def get_quests_dict():
 # Enemies
 enemy_types = [
     {"name": "Goblin",       "type": "Goblin",     "hp_mod": 0.8, "atk_mod": 0.9, "def_mod": 0.7, "min_level": 1},
-    {"name": "Skeleton",     "type": "Skeleton",   "hp_mod": 0.7, "atk_mod": 1.0, "def_mod": 0.8, "min_level": 1},
+    {"name": "Skeleton",     "type": "Skeleton",   "hp_mod": 0.7, "atk_mod": 1.0, "def_mod": 0.5, "min_level": 1},
     {"name": "Wolf",         "type": "Wolf",       "hp_mod": 0.6, "atk_mod": 1.2, "def_mod": 0.6, "min_level": 1},
     {"name": "Orc",          "type": "Orc",        "hp_mod": 1.2, "atk_mod": 1.1, "def_mod": 0.9, "min_level": 2},
     {"name": "Troll",        "type": "Troll",      "hp_mod": 1.5, "atk_mod": 1.3, "def_mod": 0.8, "min_level": 3},
@@ -195,7 +195,6 @@ boss_types = [
 ]
 
 # Sets
-
 enemy_sets = {
     "Goblin":     {"armor": "Brigand",     "weapon": "Goblin Dagger"},
     "Skeleton":   {"armor": "Cursed Bone", "weapon": "Undead Blade"},

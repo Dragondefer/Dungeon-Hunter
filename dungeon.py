@@ -1,14 +1,20 @@
+__version__ = "893.0"
+__creation__ = "9-03-2025"
+
 import time
 import random
 
-from game_utility import clear_screen, typewriter_effect, dice_animation, handle_error
+from game_utility import (clear_screen, typewriter_effect,
+                          dice_animation, handle_error,
+                          timed_input_pattern)
 from colors import Colors
-from entity import generate_enemy, load_player
+from entity import Player, generate_enemy, load_player
 from items import Armor, Weapon, Potion, generate_random_item
 from data import room_descriptions, puzzle_choices, rest_events
 
 debug = 0
 
+# Beware: Rooms may hide secrets that trap your soul forever.
 class Room:
     """
     Represents a room in the dungeon with different gameplay elements.
@@ -53,6 +59,9 @@ class Room:
         self.visited = False
     
     def enter(self, player):
+        global debug
+        if debug >= 1:
+            print(f"{Colors.YELLOW}DEBUG: Entering room of type '{self.room_type}' with description: {self.description}{Colors.RESET}")
         if not self.visited:
             
             splited_desc = self.description.split('\n') if '\n' in self.description else [self.description]
@@ -70,7 +79,7 @@ class Room:
             
         return self.handle_room(player)
     
-    def trigger_trap(self, player):
+    def trigger_trap(self, player : Player):
         print(f"\n{Colors.RED}{Colors.BOLD}*CLICK*{Colors.RESET}")
         time.sleep(0.5)
         print(f"{Colors.RED}It's a trap! {self.trap['description']}{Colors.RESET}")
@@ -81,16 +90,17 @@ class Room:
         else:
             if self.trap["type"] == "damage":
                 damage = self.trap["value"]
-                player.stats.hp = max(0, player.stats.hp - damage)
+                player.stats.modify_stat(stat_name="hp", value=-damage)
+                #player.stats.hp = max(0, player.stats.hp - damage)
                 print(f"{Colors.RED}You take {damage} damage from the trap!{Colors.RESET}")
             elif self.trap["type"] == "stat_reduction":
                 stat = self.trap["stat"]
                 value = self.trap["value"]
                 if stat == "attack":
-                    player.stats.attack = player.stats.temporary_stats["attack"] - value
+                    player.stats.modify_stat(stat_name="attack", value=-value, permanent=False)
                     print(f"{Colors.RED}Your attack is temporary reduced by {value}!{Colors.RESET}")
                 elif stat == "defense":
-                    player.stats.defense = player.stats.temporary_stats["defense"] - value
+                    player.stats.modify_stat(stat_name="defense", value=-value, permanent=False)
                     print(f"{Colors.RED}Your defense is temporary reduced by {value}!{Colors.RESET}")
         
         self.trap["triggered"] = True
@@ -99,7 +109,7 @@ class Room:
         global debug
 
         if debug >= 1:
-            print(f"{Colors.YELLOW}DEBUG: Entering handle_room() for \"{self.room_type}\"{Colors.RESET}")
+            print(f"\n{Colors.YELLOW}DEBUG: Entering handle_room() for \"{self.room_type}\"{Colors.RESET}")
         
         if self.room_type == "combat":
             if debug >= 1:
@@ -130,25 +140,32 @@ class Room:
             print(f"{Colors.YELLOW}DEBUG: Room type not triggering any event.{Colors.RESET}")
         return True  # Continue exploration si rien ne se passe
 
+
     
     def handle_puzzle(self, player):
-        puzzle_types = ["riddle", "number", "sequence", "choice"]
+        puzzle_types = ["riddle", "number", "sequence", "choice", "dice"]
         puzzle_type = random.choice(puzzle_types)
         
         print(f"\n{Colors.CYAN}You encounter a puzzle.{Colors.RESET}")
         
+        result = False
         if puzzle_type == "riddle":
-            return self.handle_riddle(player)
+            result = self.handle_riddle(player)
         elif puzzle_type == "number":
-            return self.handle_number_puzzle(player)
+            result = self.handle_number_puzzle(player)
         elif puzzle_type == "sequence":
-            return self.handle_sequence_puzzle(player)
+            result = self.handle_sequence_puzzle(player)
         elif puzzle_type == "choice":
-            return self.handle_choice_puzzle(player)
+            result = self.handle_choice_puzzle(player)
         elif puzzle_type == "dice":
-            return self.handle_dice_puzzle(player)
+            result = self.handle_dice_puzzle(player)
         
-        return True
+        if result:
+            for quest in player.quests:
+                if quest.objective_type == "complete_puzzles" and not quest.completed:
+                    if quest.update_progress():
+                        print(f"\n{Colors.BRIGHT_GREEN}{Colors.BOLD}Quest Completed: {quest.title}!{Colors.RESET}")
+        return result
     
     def handle_number_puzzle(self, player):
         target = random.randint(1, 20)
@@ -226,7 +243,12 @@ class Room:
         print(f"{Colors.YELLOW}It costs 10 gold to play.{Colors.RESET}")
         
         while True:
-            play = input(f"\n{Colors.CYAN}Do you want to play? (10 gold) [y/n]: {Colors.RESET}").lower()
+            while True:
+                play = input(f"\n{Colors.CYAN}Do you want to play? (10 gold) [y/n]: {Colors.RESET}").lower()
+                if play not in ['y', 'n']:
+                    print(f"{Colors.RED}Invalid choice. Please enter 'y' or 'n'.{Colors.RESET}")
+                    continue
+                break
             if play == 'y':
                 if player.gold < 10:
                     print(f"{Colors.RED}You don't have enough gold!{Colors.RESET}")
@@ -378,19 +400,92 @@ class Room:
         return True
 
     def handle_combat(self, player, is_boss_room=False):
-        """Gère un combat, normal ou contre un boss, de manière optimisée."""
+        """Gère un combat, normal ou contre un boss, de manière optimisée avec timing-based mechanic et UI améliorée."""
         
+        import math
+
+        def display_combat_status():
+            clear_screen()
+            # Display player status box similar to player.display_status with fixed box template and colored bars
+            box_len = 48
+            def create_bar(current, maximum, length=30, color=Colors.WHITE):
+                ratio = current / maximum if maximum > 0 else 0
+                filled = int(length * ratio)
+                bar = color + "█" * filled + Colors.RESET + "░" * (length - filled)
+                return bar
+
+            # Print fixed box template with yellow outlines
+            print(f"\n{Colors.YELLOW}╔═════════════════ {Colors.BOLD}COMBAT STATUS{Colors.RESET}{Colors.YELLOW} ═════════════════╗{Colors.RESET}")
+            print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # Player Name Placeholder
+            print(f"{Colors.YELLOW}╠{'═' * (box_len + 1)}╣{Colors.RESET}")
+            print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # HP Text Placeholder
+            print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # HP Bar Placeholder
+            print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # Stamina Text Placeholder
+            print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # Stamina Bar Placeholder
+            print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # Mana Text Placeholder
+            print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # Mana Bar Placeholder
+            print(f"{Colors.YELLOW}╠{'═' * (box_len + 1)}╣{Colors.RESET}")
+            print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # Enemy Name Placeholder
+            print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # Enemy HP Text Placeholder
+            print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # Enemy HP Bar Placeholder
+            print(f"{Colors.YELLOW}╚{'═' * (box_len + 1)}╝{Colors.RESET}")
+
+            # Move cursor back up to fill in the details (number of lines + 1)
+            print("\033[14A")
+
+            # Player Name
+            name_line = f"{player.name} the {player.class_name}"
+            print(f"\r{Colors.YELLOW}║ {Colors.BRIGHT_WHITE}{name_line.ljust(box_len)}{Colors.RESET}")
+
+            # Skip separator line
+            print("\033[1B", end="")
+
+            # HP
+            hp_text = f"HP: {player.stats.hp}/{player.stats.max_hp}"
+            hp_bar = create_bar(player.stats.hp, player.stats.max_hp, color=Colors.RED)
+            print(f"\r{Colors.YELLOW}║ {Colors.RED}{hp_text.ljust(box_len)}{Colors.RESET}")
+            print(f"\r{Colors.YELLOW}║ {hp_bar.ljust(box_len)}{Colors.RESET}")
+
+            # Stamina
+            stamina_text = f"Stamina: {player.stats.stamina}/{player.stats.max_stamina}"
+            stamina_bar = create_bar(player.stats.stamina, player.stats.max_stamina, color=Colors.YELLOW)
+            print(f"\r{Colors.YELLOW}║ {Colors.YELLOW}{stamina_text.ljust(box_len)}{Colors.RESET}")
+            print(f"\r{Colors.YELLOW}║ {stamina_bar.ljust(box_len)}{Colors.RESET}")
+
+            # Mana
+            mana_text = f"Mana: {player.stats.mana}/{player.stats.max_mana}"
+            mana_bar = create_bar(player.stats.mana, player.stats.max_mana, color=Colors.BRIGHT_BLUE)
+            print(f"\r{Colors.YELLOW}║ {Colors.BRIGHT_BLUE}{mana_text.ljust(box_len)}{Colors.RESET}")
+            print(f"\r{Colors.YELLOW}║ {mana_bar.ljust(box_len)}{Colors.RESET}")
+
+            # Skip separator line
+            print("\033[1B", end="")
+
+            # Enemy Name
+            enemy_name_line = f"Enemy: {enemy.name}"
+            print(f"\r{Colors.YELLOW}║ {Colors.BRIGHT_WHITE}{enemy_name_line.ljust(box_len)}{Colors.RESET}")
+
+            # Enemy HP
+            enemy_hp_text = f"HP: {enemy.stats.hp}/{enemy.stats.max_hp}"
+            enemy_hp_bar = create_bar(enemy.stats.hp, enemy.stats.max_hp, color=Colors.RED)
+            print(f"\r{Colors.YELLOW}║ {Colors.RED}{enemy_hp_text.ljust(box_len)}{Colors.RESET}")
+            print(f"\r{Colors.YELLOW}║ {enemy_hp_bar.ljust(box_len)}{Colors.RESET}")
+
+            # Bottom border
+            print(f"{Colors.YELLOW}╚{'═' * (box_len + 1)}╝{Colors.RESET}")
+
         if not self.enemies:
             print(f"{Colors.GREEN}The room is empty.{Colors.RESET}")
             return True
 
         enemy = self.enemies[0]
         input(f'\n{Colors.BOLD}{Colors.RED}Press enter to begin the combat{Colors.RESET}')
+        time.sleep(0.3)
         clear_screen()
 
         if is_boss_room:
             print(f"\n{Colors.RED}{Colors.BOLD}╔══════════════════════════════════════════╗")
-            print(f"║             BOSS ENCOUNTER             ║")
+            print(f"║              BOSS ENCOUNTER              ║")
             print(f"╚══════════════════════════════════════════╝{Colors.RESET}")
             typewriter_effect(f"\n{Colors.RED}{Colors.BOLD}The {enemy.name} emerges from the shadows!{Colors.RESET}", 0.03)
             time.sleep(1)
@@ -399,11 +494,9 @@ class Room:
             time.sleep(0.5)
 
         while enemy.is_alive() and player.is_alive():
-            # Affichage du statut
-            print(f"\n{Colors.YELLOW}Your HP : {Colors.RED}{player.stats.hp}/{player.stats.max_hp}{Colors.RESET}")
-            print(f"{Colors.YELLOW}{enemy.name} HP : {Colors.RED}{enemy.stats.hp}/{enemy.stats.max_hp}{Colors.RESET}")
+            display_combat_status()
 
-            # Tour du joueur
+            # Player turn
             print(f"\n{Colors.CYAN}Your turn :{Colors.RESET}")
             print(f"{Colors.YELLOW}1. Attack{Colors.RESET}")
             if player.skills:
@@ -414,16 +507,16 @@ class Room:
 
             choice = input(f"\n{Colors.CYAN}What will you do? {Colors.RESET}")
 
-            if choice == "1":  # Attaque normale
+            if choice == "1":  # Normal attack without timing mechanic (simpler)
                 base_damage = player.total_domage()
 
-                # Chance de coup critique
+                # Critical hit chance
                 critical = random.random() < (0.025 + player.stats.luck * 0.01 + player.stats.critical_chance * 0.02)
                 if critical:
                     base_damage *= 2
                     print(f"{Colors.BRIGHT_YELLOW}{Colors.BOLD}CRITICAL HIT!{Colors.RESET}")
 
-                # Déterminer le coût en stamina
+                # Stamina cost
                 if player.equipment.main_hand:
                     stamina_cost = 5
                 elif player.equipment.off_hand:
@@ -435,16 +528,26 @@ class Room:
                     player.use_stamina(stamina_cost)
                 else:
                     print(f"{Colors.RED}You're exhausted! Your attack is weaker...{Colors.RESET}")
-                    base_damage /= 2  # Réduction des dégâts si pas assez de stamina
+                    base_damage /= 2
 
-                damage, aborbed_damage = enemy.stats.take_damage(base_damage)
-                actual_damage = damage + aborbed_damage
-                print(f"You deal {Colors.RED}{actual_damage}{Colors.RESET} damage to {enemy.name}!")
+                damage, absorbed_damage = enemy.stats.take_damage(base_damage)
+                actual_damage = damage + absorbed_damage
+                print(f"You deal {Colors.RED}{math.ceil(actual_damage)}{Colors.RESET} damage to {enemy.name}!")
 
-            elif choice == "2" and player.skills:  # Utilisation d'une compétence
-                player.use_skill(enemy)
+            elif choice == "2" and player.skills:  # Use skill with timing mechanic
+                print(f"\n{Colors.YELLOW}Timing skill activation! Press Enter at the right moment to increase skill effect.{Colors.RESET}")
+                timing_success = timed_input_pattern(difficulty=1.0, return_type='bool')
 
-            elif choice == "3":  # Utilisation d'un objet
+                if timing_success:
+                    print(f"{Colors.GREEN}Perfect timing! Skill damage increased by 50%.{Colors.RESET}")
+                    multiplier = player.use_skill(enemy)
+                    multiplier *= 1.5
+                else:
+                    print(f"{Colors.RED}Poor timing! Skill damage reduced by 25%.{Colors.RESET}")
+                    multiplier = player.use_skill(enemy)
+                    multiplier *= 0.75
+
+            elif choice == "3":  # Use item
                 potions = [item for item in player.inventory if isinstance(item, Potion)]
                 if not potions:
                     print(f"{Colors.RED}You don't have any usable items in combat!{Colors.RESET}")
@@ -464,7 +567,7 @@ class Room:
                     print(f"{Colors.RED}Please enter a number.{Colors.RESET}")
                     continue
 
-            elif choice == "4" and not is_boss_room:  # Fuite (impossible contre un boss)
+            elif choice == "4" and not is_boss_room:  # Try to run
                 if random.random() < (0.3 + player.stats.luck * 0.03):
                     print(f"{Colors.GREEN}You successfully escape!{Colors.RESET}")
                     return True
@@ -475,13 +578,13 @@ class Room:
                 print(f"{Colors.RED}Invalid choice. Please try again.{Colors.RESET}")
                 continue
 
-            # Vérifier si l'ennemi est vaincu
+            # Check if enemy defeated
             if not enemy.is_alive():
                 print(f"\n{Colors.GREEN}You defeated the {enemy.name}!{Colors.RESET}")
                 print(f"{Colors.YELLOW}You gain {enemy.gold_reward} gold!{Colors.RESET}")
                 player.gold += enemy.gold_reward
 
-                # Drop d'objet
+                # Item drop
                 if is_boss_room:
                     dropped_item = generate_random_item(player=player, enemy=enemy, rarity_boost=1.5)
 
@@ -489,11 +592,12 @@ class Room:
                     dropped_item = generate_random_item(player=player, enemy=enemy)
                     player.inventory.append(dropped_item)
                     print(f"{Colors.GREEN}The {enemy.name} dropped: {dropped_item.name}!{Colors.RESET}")
+                    input(f"{Colors.YELLOW}Press enter to continue...{Colors.RESET}")
 
                 player.gain_xp(enemy.xp_reward)
                 self.enemies.remove(enemy)
 
-                # Progression des quêtes
+                # Quest progress
                 for quest in player.quests:
                     if quest.objective_type == "kill_enemies" and not quest.completed:
                         if quest.update_progress():
@@ -506,15 +610,15 @@ class Room:
                 else:
                     return True
 
-            # Tour de l'ennemi
+            # Enemy turn
             if enemy.is_alive():
                 print(f"\n{Colors.RED}{enemy.name} attacks!{Colors.RESET}")
-                time.sleep(1)
+                time.sleep(0.5)
                 if random.random() < (player.stats.luck * 0.01 + player.stats.agility * 0.02):
                     print(f"{Colors.GREEN}You dodged the attack!{Colors.RESET}")
                 else:
                     enemy.attack_player(player)
-
+                time.sleep(0.5)
         return player.is_alive()
 
     
@@ -524,6 +628,8 @@ class Room:
             return True
         
         print(f"\n{Colors.GREEN}You found a treasure!{Colors.RESET}")
+
+        time.sleep(0.5)
         
         for item in self.items[:]:
             player.inventory.append(item)
@@ -540,12 +646,57 @@ class Room:
         
         return True
     
-    def handle_shop(self, player):
+    def handle_shop(self, player, box=False):
+        def print_box(title, lines, color_title=Colors.BRIGHT_CYAN, color_border=Colors.BRIGHT_CYAN, color_text=Colors.RESET):
+            width = max(len(line) for line in lines + [title]) + 2
+            print(f"{color_border}╔{'═' * width}╗{Colors.RESET}")
+            print(f"{color_border}╠{'═' * width}╣{Colors.RESET}")
+            print(f"{color_border}║ {color_title}{title.center(width - 2)} {color_border}║{Colors.RESET}")
+            print(f"{color_border}╠{'═' * width}╣{Colors.RESET}")
+            for line in lines:
+                print(f"{color_border}║ {color_text}{line.ljust(width - 2)} {color_border}║{Colors.RESET}")
+            print(f"{color_border}╚{'═' * width}╝{Colors.RESET}")
+
+        def print_merchant_dialogue_box(name, dialogue):
+            name_width = max(len(name) + 4, 10)
+            dialogue_width = max(len(dialogue) + 4, 30)
+            total_width = name_width + dialogue_width
+
+            # Top border of name box and dialogue box
+            print(f"{Colors.BRIGHT_CYAN}╔{'═' * name_width}╗{Colors.RESET}")
+            # Name line
+            print(f"{Colors.BRIGHT_CYAN}║{Colors.YELLOW} {name.ljust(name_width - 1)}{Colors.BRIGHT_CYAN}║{Colors.RESET}")
+            # Separator line between name box and dialogue box
+            print(f"{Colors.BRIGHT_CYAN}╠{'═' * name_width}╩{'═' * (dialogue_width - name_width - 1)}╗{Colors.RESET}")
+            # Dialogue lines box (top border)
+            print(f"{Colors.BRIGHT_CYAN}║{Colors.YELLOW} {dialogue.ljust(dialogue_width - 2)} {Colors.BRIGHT_CYAN}║{Colors.RESET}")
+            # Bottom border of dialogue box
+            print(f"{Colors.BRIGHT_CYAN}╚{'═' * dialogue_width}╝{Colors.RESET}")
+
+        def print_shop_box(gold_line, items_lines):
+            width = max(len(gold_line), max((len(line) for line in items_lines), default=0)) + 2
+            # Top border
+            print(f"{Colors.BRIGHT_YELLOW}╔{'═' * width}╗{Colors.RESET}")
+            # Gold line
+            print(f"{Colors.BRIGHT_YELLOW}║ {Colors.GREEN}{gold_line.ljust(width - 2)} {Colors.BRIGHT_YELLOW}║{Colors.RESET}")
+            # Separator
+            print(f"{Colors.BRIGHT_YELLOW}╠{'═' * width}╣{Colors.RESET}")
+            # Items lines
+            for line in items_lines:
+                print(f"{Colors.BRIGHT_YELLOW}║ {Colors.YELLOW}{line.ljust(width - 2)} {Colors.BRIGHT_YELLOW}║{Colors.RESET}")
+            # Bottom border
+            print(f"{Colors.BRIGHT_YELLOW}╚{'═' * width}╝{Colors.RESET}")
+
         shopkeeper_names = ["Grimble", "Zara", "Old Finn", "Mysteria", "Drogon"]
         shopkeeper = random.choice(shopkeeper_names)
-        
-        print(f"\n{Colors.BRIGHT_CYAN}{shopkeeper}: Welcome to my shop, traveler! What can I interest you in today?{Colors.RESET}")
-        
+
+        clear_screen()
+
+        # Merchant dialogue box with two horizontally adjacent boxes
+        merchant_name = f"{shopkeeper}"
+        merchant_dialogue = "Welcome to my shop, traveler! What can I interest you in today?"
+        print_merchant_dialogue_box(merchant_name, merchant_dialogue)
+
         # Generate shop inventory
         shop_inventory = []
         diff = player.difficulty
@@ -555,7 +706,7 @@ class Room:
         elif diff == "soul_enjoyer":
             for _ in range(random.randint(3, 6)):
                 shop_inventory.append(generate_random_item(player=player))
-        elif diff  == "realistic":
+        elif diff == "realistic":
             for _ in range(random.randint(2, 5)):
                 shop_inventory.append(generate_random_item(player=player))
 
@@ -563,19 +714,24 @@ class Room:
 
         shopping = True
         while shopping:
-            print(f"\n{Colors.YELLOW}Your gold: {player.gold}{Colors.RESET}")
-            print(f"\n{Colors.BRIGHT_CYAN}Shop Items:{Colors.RESET}")
-            
-            for i, item in enumerate(shop_inventory, 1):
-                print(f"{Colors.YELLOW}{i}. {item} - {Colors.BRIGHT_YELLOW}{item.value} gold{Colors.RESET}")
-            
+            # Player gold and shop items box with colors and horizontal separator
+            gold_line = f"{Colors.YELLOW}Your gold: {player.gold}{Colors.RESET}"
+            items_lines = [f"{Colors.YELLOW}{i}. {item} - {Colors.BRIGHT_YELLOW}{item.value} gold{Colors.RESET}" for i, item in enumerate(shop_inventory, 1)]
+
+            if box:
+                print_shop_box(gold_line, items_lines)
+            else:
+                print(gold_line)
+                for line in items_lines:
+                    print(line)
+
             print(f"\n{Colors.BRIGHT_CYAN}What would you like to do?{Colors.RESET}")
             print(f"{Colors.YELLOW}1-{len(shop_inventory)}. Buy item{Colors.RESET}")
             print(f"{Colors.GREEN}S. Sell items{Colors.RESET}")
             print(f"{Colors.RED}L. Leave shop{Colors.RESET}")
-            
+
             choice = input(f"\n{Colors.CYAN}Your choice: {Colors.RESET}").upper()
-            
+
             if choice == "S":
                 self.sell_items(player, shopkeeper)
             elif choice == "L":
@@ -597,7 +753,7 @@ class Room:
                         print(f"\n{Colors.RED}Invalid choice.{Colors.RESET}")
                 except ValueError:
                     print(f"\n{Colors.RED}Please enter a valid option.{Colors.RESET}")
-        
+
         return True
 
     def sell_items(self, player, shopkeeper):
@@ -647,12 +803,16 @@ class Room:
             "Rest and recover HP, stamina and some mana",
             "Meditate and recover a small amount of HP while training",
             "Examine your inventory"
+            "Continue"
         ]
         
         for i, option in enumerate(options, 1):
             print(f"{Colors.YELLOW}{i}. {option}{Colors.RESET}")
         
         choice = input(f"\n{Colors.CYAN}What would you like to do? {Colors.RESET}")
+        if choice not in ["1", "2", "3", "4"]:
+            print(f"\n{Colors.RED}Invalid choice. It's your last change.{Colors.RESET}")
+            choice = input(f"{Colors.YELLOW}your choice: {Colors.RESET}")
         
         if choice == "1":
             # Rest and recover 30-50% of max HP
@@ -721,13 +881,14 @@ class Room:
                 player.stats.modify_stat(stat_boost, 1, permanent=True)
             
             print(f"{color}{message}{Colors.RESET}")
-            
-                
+
+
         elif choice == "3":
             player.manage_inventory(player)
             
         else:
-            print(f"{Colors.RED}Invalid choice.{Colors.RESET}")
+            print(f"{Colors.RED}Your choice:{Colors.RESET}", choice)
+            print(f"{Colors.BLUE}You decided to keep going.{Colors.RESET}")
         
         return True
     
@@ -777,6 +938,8 @@ def generate_random_room(player, room_type=None, is_boss_room=False):
         weights = [0.5, 0.2, 0.1, 0.15, 0.05]
         room_type = random.choices(["combat", "treasure", "shop", "rest", "puzzle"], weights=weights)[0]
     
+    if debug >= 1:
+        print(f"{Colors.YELLOW}DEBUG: Generating random room of type '{room_type}' for level {level}{Colors.RESET}")
     
     if is_boss_room:
         room_type = "boss"
@@ -793,15 +956,17 @@ def generate_random_room(player, room_type=None, is_boss_room=False):
         for _ in range(num_enemies):
             enemies.append(generate_enemy(level, is_boss_room))
     if debug >= 1:
-        print(f"Enemies: {enemies}")
+        print(f"{Colors.YELLOW}DEBUG: Enemies generated: {enemies}{Colors.RESET}")
     # Generate items for treasure rooms
     if room_type == "treasure":
         num_items = random.randint(1, 2)
         for _ in range(num_items):
             items.append(generate_random_item(player=player))
+    if debug >= 1:
+        print(f"{Colors.YELLOW}DEBUG: Items generated: {items}{Colors.RESET}")
     
-    # Generate trap (30% chance in non-rest rooms)
-    if room_type != "rest" and random.random() < 0.3:
+    # Generate trap (30% chance) for all rooms except rest, shop, and inter_level
+    if room_type not in ("rest", "shop", "inter_level") and random.random() < 0.3:
         trap_types = [
             {"type": "damage", "value": 5 + level * 2, "description": "A poisoned dart shoots from the wall!"},
             {"type": "damage", "value": 3 + level * 3, "description": "The floor opens up to reveal spikes!"},
@@ -810,14 +975,19 @@ def generate_random_room(player, room_type=None, is_boss_room=False):
         ]
         trap = random.choice(trap_types)
         trap["triggered"] = False
+    if debug >= 1:
+        print(f"{Colors.YELLOW}DEBUG: Trap generated: {trap}{Colors.RESET}")
     
     return Room(room_type, description, enemies, items, trap)
 
 def generate_dungeon(player):
     """Generates a dungeon with rooms based on the level and difficulty."""
+    global debug
     dungeon_level = player.dungeon_level
     difficulty = player.difficulty
     rooms = []
+    if debug >= 1:
+        print(f"{Colors.YELLOW}DEBUG: Generating dungeon level {dungeon_level} with difficulty {difficulty}{Colors.RESET}")
     
     # Définition du nombre de salles selon la difficulté
     if difficulty == "normal":
@@ -832,145 +1002,39 @@ def generate_dungeon(player):
         num_rooms = random.randint(5, 8)
         input()
     
+    if debug >= 1:
+        print(f"{Colors.YELLOW}DEBUG: Number of rooms: {num_rooms}{Colors.RESET}")
+    
     # Starting room
     if dungeon_level == 1:
         rooms.append(Room("start", f"You noticed the entrance to the dungeon.\nYou finaly decided to open the door and step in.\nTorches flicker on the damp walls, and the air is heavy with anticipation.", [], [], None))
+        if debug >= 1:
+            print(f"{Colors.YELLOW}DEBUG: Starting room added{Colors.RESET}")
+    else:
+        # Inter-level room:
+        rooms.append(Room("inter_level", f"You find a small room with a few torches and a table.\nIt seems like a resting place for adventurers.", [], [], None))
+        if debug >= 1:
+            print(f"{Colors.YELLOW}DEBUG: Inter-level room added{Colors.RESET}")
 
     for i in range(1, num_rooms):
         rooms.append(generate_random_room(player=player))
     
+    if debug >= 1:
+        print(f"{Colors.YELLOW}DEBUG: Generated {len(rooms)} rooms :{Colors.RESET}")
+        for room in rooms:
+            print(f"{Colors.YELLOW}DEBUG: Room type: {room.room_type}, Description: {room.description}, Enemies: {room.enemies}, Items: {room.items}, Trap: {room.trap}{Colors.RESET}")
+
     rooms.append(generate_random_room(player=player, is_boss_room=True))
+    
+    if debug >= 1:
+        print(f"{Colors.YELLOW}DEBUG: Boss room added{Colors.RESET}")
+
+    if debug >= 1:
+        print(f"{Colors.YELLOW}DEBUG: Dungeon generation complete:{Colors.RESET}")
+        print(f"{Colors.YELLOW}DEBUG: Rooms: {rooms}{Colors.RESET}")
 
     return rooms
 
-"""
-def display_shop(player, shop_level):
-    # Display a shop where the player can buy and sell items
-    clear_screen()
-    
-    # Generate shop inventory
-    shop_inventory = []
-    num_items = random.randint(4, 6)
-    
-    for _ in range(num_items):
-        shop_inventory.append(generate_random_item(shop_level))
-    
-    while True:
-        clear_screen()
-        print(f"\n{Colors.YELLOW}{Colors.BOLD}╔═══════════════════════ SHOP ═══════════════════════╗{Colors.RESET}")
-        print(f"{Colors.YELLOW}║ Your Gold: {player.gold}{' ' * (42 - len(str(player.gold)) - 12)}║{Colors.RESET}")
-        print(f"{Colors.YELLOW}╠═══════════════════════════════════════════════════╣{Colors.RESET}")
-        
-        print(f"{Colors.YELLOW}║ {Colors.CYAN}Items for Sale:{' ' * 30}║{Colors.RESET}")
-        
-        for i, item in enumerate(shop_inventory, 1):
-            # Truncate item name if too long
-            item_str = str(item)
-            if len(item_str) > 45:
-                item_str = item_str[:42] + "..."
-            
-            print(f"{Colors.YELLOW}║ {Colors.CYAN}{i}. {item_str}{' ' * (43 - len(str(i)) - len(item_str))}║{Colors.RESET}")
-        
-        print(f"{Colors.YELLOW}╠═══════════════════════════════════════════════════╣{Colors.RESET}")
-        print(f"{Colors.YELLOW}║ {Colors.GREEN}B. Buy Item{' ' * 33}║{Colors.RESET}")
-        print(f"{Colors.YELLOW}║ {Colors.MAGENTA}S. Sell Item{' ' * 32}║{Colors.RESET}")
-        print(f"{Colors.YELLOW}║ {Colors.BRIGHT_RED}X. Exit Shop{' ' * 32}║{Colors.RESET}")
-        print(f"{Colors.YELLOW}╚═══════════════════════════════════════════════════╝{Colors.RESET}")
-        
-        choice = input(f"\n{Colors.CYAN}What would you like to do? {Colors.RESET}").lower()
-        
-        if choice == "x":
-            break
-        
-        elif choice == "b":
-            try:
-                item_num = int(input(f"{Colors.YELLOW}Enter item number to buy (0 to cancel): {Colors.RESET}"))
-                if 1 <= item_num <= len(shop_inventory):
-                    item = shop_inventory[item_num - 1]
-                    
-                    if player.gold >= item.value:
-                        confirm = input(f"{Colors.GREEN}Buy {item.name} for {item.value} gold? (y/n): {Colors.RESET}")
-                        
-                        if confirm.lower() == "y":
-                            player.gold -= item.value
-                            player.inventory.append(item)
-                            shop_inventory.remove(item)
-                            print(f"{Colors.GREEN}You bought the {item.name}!{Colors.RESET}")
-                    else:
-                        print(f"{Colors.RED}You don't have enough gold!{Colors.RESET}")
-                    
-                    input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
-            
-            except ValueError:
-                print(f"{Colors.RED}Please enter a valid number.{Colors.RESET}")
-                input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
-        
-        elif choice == "s" and player.inventory:
-            # Display player's inventory
-            print(f"\n{Colors.MAGENTA}Your Inventory:{Colors.RESET}")
-            for i, item in enumerate(player.inventory, 1):
-                print(f"{Colors.CYAN}{i}. {item} (Sell value: {int(item.value * 0.6)} gold){Colors.RESET}")
-            
-            try:
-                item_num = int(input(f"{Colors.YELLOW}Enter item number to sell (0 to cancel): {Colors.RESET}"))
-                if 1 <= item_num <= len(player.inventory):
-                    item = player.inventory[item_num - 1]
-                    sell_value = int(item.value * 0.6)  # Sell for 60% of buy value
-                    
-                    confirm = input(f"{Colors.MAGENTA}Sell {item.name} for {sell_value} gold? (y/n): {Colors.RESET}")
-                    
-                    if confirm.lower() == "y":
-                        player.gold += sell_value
-                        player.inventory.remove(item)
-                        print(f"{Colors.GREEN}You sold the {item.name} for {sell_value} gold!{Colors.RESET}")
-                    
-                    input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
-            
-            except ValueError:
-                print(f"{Colors.RED}Please enter a valid number.{Colors.RESET}")
-                input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
-        
-        elif choice == "s" and not player.inventory:
-            print(f"{Colors.RED}Your inventory is empty!{Colors.RESET}")
-            input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
-
-    
-    def character_menu(self, player):
-        while True:
-            clear_screen()
-            print(f"\n{Colors.MAGENTA}{Colors.BOLD}╔══════════════════════════════════╗")
-            print(f"║         CHARACTER MENU         ║")
-            print(f"╚══════════════════════════════════╝{Colors.RESET}")
-            
-            print(f"1. {Colors.CYAN}View status{Colors.RESET}")
-            print(f"2. {Colors.GREEN}Inventory{Colors.RESET}")
-            print(f"3. {Colors.YELLOW}Quests{Colors.RESET}")
-            print(f"4. {Colors.BLUE}Save game{Colors.RESET}")
-            print(f"5. {Colors.RED}Return to dungeon{Colors.RESET}")
-            
-            choice = input(f"\n{Colors.CYAN}Enter your choice: {Colors.RESET}")
-            
-            if choice == "1":  # Status
-                self.player.display_status()
-                input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
-            
-            elif choice == "2":  # Inventory
-                self.inventory_menu()
-            
-            elif choice == "3":  # Quests
-                self.quest_menu()
-            
-            elif choice == "4":  # Save game
-                save_name = input(f"{Colors.YELLOW}Enter save name: {Colors.RESET}")
-                player.save_player(save_name)
-                input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
-            
-            elif choice == "5":  # Back
-                return
-            
-            else:
-                print(f"{Colors.RED}Invalid choice. Try again.{Colors.RESET}")
-"""
 """
     def choose_next_room(self, player):
         print(f"\n{Colors.YELLOW}Where would you like to go next?{Colors.RESET}")
@@ -1303,6 +1367,18 @@ def debug_menu(player, dungeon):
     Parameters:
         player (Player): The current player instance.
         dungeon (Dungeon): The current dungeon instance.
+    
+    Options:
+        1. Give Item
+        2. Modify Player Stats
+        3. Set Dungeon Level
+        4. Teleport to Room
+        5. Spawn Enemies in Current Room
+        6. Instantly Complete a Quest
+        7. Heal Player
+        8. Save Game
+        9. Load Game
+        0. Exit Debug Menu
     """
 
     while True:
@@ -1390,10 +1466,11 @@ def debug_menu(player, dungeon):
                     isboss = True
                 else:
                     isboss = False
-                dungeon.rooms.insert(generate_random_room(lvl, rtype, isboss))
+                dungeon.rooms.insert(generate_random_room(player=player, room_type=rtype, is_boss_room=isboss))
             # Teleport to a Room
-            room_type = input(f"{Colors.CYAN}Enter room type (combat/shop/treasure/boss/puzzle/trap): {Colors.RESET}")
             room = dungeon.rooms
+            print("rooms:", room)
+            room_type = input(f"{Colors.CYAN}Enter room type (combat/shop/treasure/boss/puzzle/trap): {Colors.RESET}")
             if room:
                 dungeon.current_room_index
                 print(f"{Colors.GREEN}Teleported to {room_type} room.{Colors.RESET}")

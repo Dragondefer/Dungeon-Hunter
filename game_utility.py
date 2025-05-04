@@ -1,3 +1,6 @@
+__version__ = "257.0"
+__creation__ = "9-03-2025"
+
 import os
 import sys
 import time
@@ -42,7 +45,7 @@ def timed_input_pattern(difficulty=1.0, return_type='bool', peak_int_min=0, peak
         right_padding = max_padding - i
         pattern = ">" * i + " " * left_padding + base_pattern + " " * right_padding + "<" * i
         patterns.append(pattern)
-
+     
     # The "right moment" is the last pattern (index = steps)
     right_moment_index = steps
 
@@ -150,10 +153,42 @@ corruption_map = {
     "®": "®", "™": "™", "✓": "✓", "[": "[", "]": "]", "<": "<", ">": ">"
 }
 
+ancient_map = {
+    "A": "A̷̛͠", "B": "B̵̕͜", "C": "C̸̙̀", "D": "D̴̘͝", "E": "E̶͍̚", "F": "F̷̢̈́",
+    "G": "G̵̨̽", "H": "H̸͇͊", "I": "I̴̡̛", "J": "J̶̧̈́", "K": "K̵̞͠", "L": "L̷̻̎",
+    "M": "M̴̱̾", "N": "N̸̼̆", "O": "O̵͓͛", "P": "P̶̺̒", "Q": "Q̴̹̿", "R": "R̷̞͝",
+    "S": "S̶̤̕", "T": "T̸̻̈́", "U": "U̴̲̚", "V": "V̵̰͊", "W": "W̸͕̆", "X": "X̵̩̀",
+    "Y": "Y̴̙͝", "Z": "Z̶̢͌",
+    "a": "ä̷̪́", "b": "b̸̼̅", "c": "c̴̱͝", "d": "ď̶̙", "e": "ë̵͕́", "f": "f̷̠͑",
+    "g": "g̸̻̿", "h": "h̵̤͒", "i": "i̴̊͜", "j": "j̶̩̈́", "k": "k̵̢͝", "l": "l̷̫̈́",
+    "m": "m̴̛̠", "n": "n̸̻̈́", "o": "o̶͙͝", "p": "p̵̦̆", "q": "q̴̨͝", "r": "r̷͍̈́",
+    "s": "s̸̱̅", "t": "ẗ̴̗́", "u": "ŭ̵͇", "v": "v̶̼͝", "w": "ẅ̷̙́", "x": "x̵̛̠",
+    "y": "ÿ̸̡́", "z": "z̴͝ͅ",
+    "0": "0̵̢̈́", "1": "1̸̘̓", "2": "2̴̙͝", "3": "3̶̢͌", "4": "4̷̫̈́", "5": "5̸̱̅",
+    "6": "6̴̨͝", "7": "7̷͍̈́", "8": "8̸̱̅", "9": "9̴̗̈́",
+    "@": "@̵͇̆", "#": "#̶̼͝", "€": "€̷̙̈́", "_": " ", "&": "&̵̛̠", "-": "-̸̡̈́",
+    "+": "+̴͝ͅ", "(": "(̵̢̈́", ")": ")̸̘̓", "/": "/̴̙͝", "*": "*̶̢͌", "\"": "\"̷̫̈́",
+    "\'": "\'̸̱̅", ":": ":̴̨͝", ";": ";̷͍̈́", "!": "!̸̱̅", "?": "?̴̗̈́",
+    " ": " ", ".": ".̵͇̆", ",": ",̶̼͝",
+    "~": "~̷̙̈́", "`": "`̵̛̠", "|": "|̸̡̈́", "•": "•̴͝ͅ", "√": "√̵̢̈́", "π": "π̸̘̓", 
+    "÷": "÷̴̙͝", "×": "×̶̢͌", "§": "§̷̫̈́", "∆": "∆̸̱̅", "£": "£̴̨͝", "¥": "¥̷͍̈́", 
+    "$": "$̸̱̅", "¢": "¢̴̗̈́", "^": "^̵͇̆", "°": "°̶̼͝", "=": "=̷̙̈́", "{": "{̵̛̠", 
+    "}": "}̸̡̈́", "%": "%̴͝ͅ", "©": "©̵̢̈́", "®": "®̸̘̓", "™": "™̴̙͝", "✓": "✓̶̢͌",
+    "[": "[̷̫̈́", "]": "]̸̱̅", "<": "<̴̨͝", ">": ">̷͍̈́"
+}
+
 def glitch_text(text):
     """Convertit un texte normal en version corrompue selon une table fixe."""
     return "".join(corruption_map.get(char, char) for char in text)
 
+def ancient_text(text):
+    """Converti un texte normal en une version lisible mais toujours corrompue"""
+    return "".join(ancient_map.get(char, char) for char in text)
+
+# random mix of glitch and ancient text
+def random_glitch_text(text):
+    """Convertit un texte normal en une version corrompue aléatoirement selon une table fixe."""
+    return "".join(random.choice([corruption_map.get(char, char), ancient_map.get(char, char)]) for char in text)
 
 def dice_animation(sides=6, rolls=10, delay=0.1):
     for i in range(rolls):
@@ -296,11 +331,104 @@ def collect_feedback(player=None, ask=True):
         if feedback['comments']:
             f.write(f"Comments: {feedback['comments']}\n")
         f.write("------------------------\n")
+    print(f"{Colors.GREEN}Feedback file created successfully!{Colors.RESET}")
+    print(f"{Colors.YELLOW}Please consider providing the created file \"feedback.txt\" in the game file to the {Colors.BOLD}discord channel: feedback (link in readme.md){Colors.RESET}")
+    
+
+
+def interactive_bar(min_value=0, max_value=100, default_value=50, allow_beyond=False, step=1, color=Colors.GREEN, length=40):
+    """
+    Display an interactive bar in the terminal that the user can adjust with arrow keys.
+
+    Parameters:
+    - min_value (int): Minimum boundary of the bar.
+    - max_value (int): Maximum boundary of the bar.
+    - default_value (int): Starting value of the bar.
+    - allow_beyond (bool): If True, user can go beyond boundaries.
+    - step (int): Step size for each arrow key press.
+    - color (str): Color code for the bar display.
+    - length (int): Length of the bar in characters.
+
+    Returns:
+    - int: The value selected by the user when Enter is pressed.
+    """
+    current_value = default_value
+
+    def get_key():
+        if os.name == 'nt':
+            if msvcrt.kbhit():
+                key = msvcrt.getch()
+                if key == b'\xe0':  # Special keys (arrows, f keys, ins, del, etc.)
+                    key = msvcrt.getch()
+                    return key
+                else:
+                    return key
+            return None
+        else:
+            fd = sys.stdin.fileno()
+            old_settings = termios.tcgetattr(fd)
+            try:
+                tty.setraw(fd)
+                rlist, _, _ = select.select([sys.stdin], [], [], 0.1)
+                if rlist:
+                    key = sys.stdin.read(3)
+                    return key
+                return None
+            finally:
+                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
+    while True:
+        # Calculate percentage for bar display
+        if max_value != min_value:
+            percent = (current_value - min_value) / (max_value - min_value)
+        else:
+            percent = 0
+        filled_length = int(length * percent)
+        empty_length = length - filled_length
+        bar_str = color + ('█' * filled_length) + Colors.RESET + ('░' * empty_length)
+        # Display bar with current value
+        sys.stdout.write(f"\r[{bar_str}] {current_value}   ")
+        sys.stdout.flush()
+
+        key = get_key()
+        if key is None:
+            continue
+
+        # Windows arrow keys
+        if os.name == 'nt':
+            if key == b'M':  # Right arrow
+                new_value = current_value + step
+                if not allow_beyond:
+                    new_value = min(new_value, max_value)
+                current_value = new_value
+            elif key == b'K':  # Left arrow
+                new_value = current_value - step
+                if not allow_beyond:
+                    new_value = max(new_value, min_value)
+                current_value = new_value
+            elif key == b'\r':  # Enter key
+                print()
+                return current_value
+        else:
+            # Unix arrow keys are escape sequences
+            if key == '\x1b[C':  # Right arrow
+                new_value = current_value + step
+                if not allow_beyond:
+                    new_value = min(new_value, max_value)
+                current_value = new_value
+            elif key == '\x1b[D':  # Left arrow
+                new_value = current_value - step
+                if not allow_beyond:
+                    new_value = max(new_value, min_value)
+                current_value = new_value
+            elif key == '\r' or key == '\n':  # Enter key
+                print()
+                return current_value
+
 
 
 if __name__ == '__main__':
     import inspect
-
     wait_time = 0.5
 
     # List of test functions to run
@@ -310,8 +438,10 @@ if __name__ == '__main__':
         ('dice_animation', dice_animation, []),
         ('progress_bar', progress_bar, [50, 100]),
         ('game_over', game_over, []),
-        ('glitch_text', glitch_text, ['Test']),
+        ('glitch_text', glitch_text, ['This is a test 123 ABC ù^*/']),
+        ('ancient_text', ancient_text, ['This is a test 123 ABC ù^*/']),
         ('timed_input_pattern', timed_input_pattern, [1.0, 'bool', 0, 10]),
+        ('interactive_bar', interactive_bar, [0, 100, 50, True, 1, Colors.GREEN, 40]),
     ]
 
     for name, func, args in test_functions:
@@ -324,4 +454,5 @@ if __name__ == '__main__':
                 print(f"Result: {result}")
         else:
             print(f"{name} is not callable")
+        # Add a small delay between tests
         time.sleep(wait_time)

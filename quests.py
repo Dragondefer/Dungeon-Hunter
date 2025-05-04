@@ -1,7 +1,8 @@
+__version__ = "17.0"
+__creation__ = "9-03-2025"
+
 from colors import Colors
 from game_utility import clear_screen
-from items import Item
-
 class Quest:
     """
     Represents a quest that the player can complete for rewards.
@@ -63,6 +64,7 @@ class Quest:
     @classmethod
     def from_dict(cls, data):
         """Creates a quest from a dictionary."""
+        from items import Item
         quest = cls(
             data["title"],
             data["description"],

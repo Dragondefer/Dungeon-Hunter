@@ -1,4 +1,4 @@
-__version__ = "262.0"
+__version__ = "581.0"
 __creation__ = "9-03-2025"
 
 import random
@@ -9,6 +9,7 @@ from data import enemy_sets
 
 debug = 0
 
+# Beware: Items may hold hidden curses that drain your soul slowly.
 class Item:
     """
     Represents any usable or equippable item in the game.
@@ -73,6 +74,7 @@ class Item:
         # Pour les autres types d'items (ex : consommables spéciaux)
         return item_type(data["name"], data["description"], data["value"], **extras)
 
+# Beware: Gear may bind you to a fate worse than death.
 class Gear(Item):
     """Gère les objets équipables (armes, armures, anneaux, etc.)."""
     def __init__(self, name, description, value, effects=None):
@@ -105,6 +107,7 @@ class Gear(Item):
         return item_type(data["name"], data["description"], data["value"], **extras)
 
 
+# Beware: Equipment may carry the whispers of fallen heroes.
 class Equipment:
     """Gère l'équipement du joueur (slots et bonus appliqués)."""
     def __init__(self, **kwargs):
@@ -193,6 +196,7 @@ class Equipment:
         return {slot: item for slot, item in self.slots.items() if item}
 
 
+# Beware: Weapons may thirst for blood beyond the wielder's control.
 class Weapon(Gear):
     """
     Représente une arme équipable qui augmente les dégâts d'attaque.
@@ -223,6 +227,7 @@ class Weapon(Gear):
         )
 
 
+# Beware: Armor may trap the wearer in eternal torment.
 class Armor(Gear):
     """Represents an equippable armor piece that enhances defense."""
     def __init__(self, name, description, value, defense, armor_type):
@@ -235,6 +240,7 @@ class Armor(Gear):
         return data
 
 
+# Beware: Shields may block more than just attacks.
 class Shield(Gear):
     """Represents an equippable shield that provides high defense and blocking."""
     def __init__(self, name, description, value, defense, block_chance):
@@ -247,6 +253,7 @@ class Shield(Gear):
         return data
 
 
+# Beware: Gauntlets may bind the wearer's soul to dark forces.
 class Gauntlets(Gear):
     """Represents an equippable gauntlet that increases strength and defense."""
     def __init__(self, name, description, value, defense, strength_boost):
@@ -264,22 +271,26 @@ class Gauntlets(Gear):
         return super().to_dict()
 
 
+# Beware: Amulets may whisper secrets of forgotten realms.
 class Amulet(Gear):
     """Represents an equippable amulet with magical bonuses."""
     def __init__(self, name, description, value, effects):
         super().__init__(name, description, value, effects)
 
+# Beware: Rings may carry curses that twist fate.
 class Ring(Gear):
     """Represents an equippable ring that grants magical or stat bonuses."""
     def __init__(self, name, description, value, effects):
         super().__init__(name, description, value, effects)
 
+# Beware: Belts may tighten with a will of their own.
 class Belt(Gear):
     """Represents an equippable belt that boosts stamina or defense."""
     def __init__(self, name, description, value, effects):
         super().__init__(name, description, value, effects)
 
 
+# Beware: Potions may have side effects beyond healing.
 class Potion(Item):
     """
     Represents a consumable potion with temporary effects.
@@ -475,7 +486,7 @@ def generate_random_item(player=None, enemy=None, item_type=None, rarity=None, i
             print(available_rarities)
 
         # Adapte les rareté au niveaux (niv 1 on ne peut avoir mieux : rare, niv 2: rareté max = epic...)
-        if level <= len(available_rarities):  
+        if level <= len(available_rarities) and not rarity:  
             available_rarities = available_rarities[:level + 2]  # Assure que la liste ne devient pas vide
             if debug >= 1:
                 print("rarity penality due to low dungenon level. Available rarity for your dungenon level: ", available_rarities)
@@ -685,12 +696,12 @@ def generate_random_item(player=None, enemy=None, item_type=None, rarity=None, i
     elif item_type == "potion":
         # Default potion choices
         potion_types = {
-            "Healing Potion": {"effect_type": "heal", "effect_value": int(20 * level * rarity_multiplier[rarity])},
-            "Strength Elixir": {"effect_type": "attack_boost", "effect_value": int(2 * rarity_multiplier[rarity])},
-            "Iron Skin Tonic": {"effect_type": "defense_boost", "effect_value": int(2 * rarity_multiplier[rarity])},
-            "Lucky Charm Brew": {"effect_type": "luck_boost", "effect_value": int(1 * rarity_multiplier[rarity])},
-            "Healing Spring Potion": {"effect_type": "heal", "effect_value": int(10 * rarity_multiplier[rarity])},
-            "Dragon's Breath Potion": {"effect_type": "fire_damage", "effect_value": int(1 * rarity_multiplier[rarity])}
+            "Healing Potion":         {"effect_type": "heal",          "effect_value": int(20 * level * rarity_multiplier[rarity])},
+            "Strength Elixir":        {"effect_type": "attack_boost",  "effect_value": int(2 * rarity_multiplier[rarity])},
+            "Iron Skin Tonic":        {"effect_type": "defense_boost", "effect_value": int(2 * rarity_multiplier[rarity])},
+            "Lucky Charm Brew":       {"effect_type": "luck_boost",    "effect_value": int(1 * rarity_multiplier[rarity])},
+            "Healing Spring Potion":  {"effect_type": "heal",          "effect_value": int(10 * rarity_multiplier[rarity])},
+            "Dragon's Breath Potion": {"effect_type": "fire_damage",   "effect_value": int(1 * rarity_multiplier[rarity])}
         }
 
         # Choose specific potion or random one

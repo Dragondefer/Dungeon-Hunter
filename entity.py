@@ -1,9 +1,19 @@
+__version__ = "1465.0"
+__creation__ = "9-03-2025"
+
+# This file contains the core entity classes for the Dungeon Hunter game.
+# Entities include players, enemies, and their stats, skills, and interactions.
+
+# Modifications here affect gameplay mechanics deeply. Proceed with caution.
+# Note: If you want to add things, try to copy what's already there and adapt it.
+
 import random
+import time
 import json
 import os
 
 from colors import Colors
-from game_utility import clear_screen, handle_error
+from game_utility import clear_screen, handle_error, typewriter_effect
 from items import Item, Equipment, Gear, Weapon, Armor, Ring, Amulet, Belt, Potion
 from data import armor_sets, enemy_types, boss_types
 from quests import Quest
@@ -24,6 +34,7 @@ class StatContainer: # Pas encore utilsé
     def __repr__(self):
         return str(self.__dict__)
 
+# The shadows manipulate your very essence...
 class Stats:
     """Gère les stats du joueur avec des effets permanents et temporaires."""
     def __init__(self, equipment=None, **kwargs):
@@ -101,7 +112,6 @@ class Stats:
     def update_total_stats(self):
         """Met à jour les stats visibles en combinant les permanentes, temporaires et équipements."""
         global debug
-        debug = 0
 
         # Vérification stricte des stats de base
         if not isinstance(self.permanent_stats, dict):
@@ -189,7 +199,6 @@ class Stats:
             print(f"{Colors.YELLOW}DEBUG: Equipment Bonuses Stored -> {self.equipment_bonuses}{Colors.RESET}")
             input()
 
-
     def modify_stat(self, stat_name, value, permanent=True):
         """Modifie une stat de façon permanente ou temporaire."""
         global debug
@@ -266,6 +275,8 @@ class Stats:
         # return total damage
         return damage, damage_absorbed
 
+
+# Every skill has a price... some more than others.
 
 class Skill:
     """
@@ -395,9 +406,6 @@ class Entity:
             print(f"DEBUG: After healing -> Temp HP: {self.stats.temporary_stats['hp']}/{hp_max_temp}, "
                 f"Perm HP: {self.stats.permanent_stats['hp']}/{hp_max_perm}")
 
-"""    def heal(self, amount:int):
-        self.stats.hp = min(self.stats.max_hp, self.stats.hp + amount)        
-"""
 
 """
     def take_damage(self, damage, difficulty="normal"):
@@ -425,6 +433,8 @@ class Entity:
             return actual_damage
 """
 
+
+# The player’s fate is written in blood and code.
 
 class Player(Entity):
     """
@@ -464,7 +474,7 @@ class Player(Entity):
             Prints the player's current stats and equipped items.
     """
     def __init__(self, name="Adventurer", difficulty="normal"):
-        super().__init__(name, 100, 100, 5, 5)  # Héritage (si Player hérite d'une autre classe)
+        super().__init__(name, 100, 100, 5, 5)  # Héritage de la classe Entity
 
         self.level = 1
         self.xp = 0
@@ -492,20 +502,23 @@ class Player(Entity):
         self.total_armor = 0
         self.set_bonuses = {}
         self.skills = []
+        self.kills = 0
+        self.difficulty = difficulty
+
         self.class_name = "Novice"
-        self.dungeon_level = 1
         self.profession = None
         self.quests = []
         self.completed_quests = []
-        self.kills = 0
-        self.difficulty = difficulty
+
+        self.ng_plus = {"normal": 0, "soul_enjoyer": 0, "realistic": 0}
+        self.dungeon_level = 1
+        self.rooms_explored = 0
 
         self.unlocked_difficulties = {"normal": True, "soul_enjoyer": False, "realistic": False}
         self.finished_difficulties = {"normal": False, "soul_enjoyer": False, "realistic": False}
 
         # Met à jour les stats avec l'équipement initial (même s'il est vide)
         self.stats.update_total_stats()
-
         
         # print('DEBUG: Permanant_stats:', self.stats.permanent_stats)
         # input('press enter to continue')
@@ -591,13 +604,9 @@ class Player(Entity):
         self.stats.update_total_stats()
 
 
-    def modify_stat(self, stat, bonus):
-        self.stats.__dict__.update({stat: self.stats.__dict__[stat] + bonus})
-
     def equip_item(self, item):
         """Equip a weapon or armor piece in the correct slot automatically."""
         global debug
-        debug = 1
 
         if isinstance(item, Weapon):
             # Vérifier si l'arme est déjà équipée
@@ -787,24 +796,38 @@ class Player(Entity):
 
     def level_up(self):
         self.level += 1
-        self.stats.max_hp += 10
-        self.stats.max_mana += 10
-        self.stats.max_stamina += 10
+        
+        old_max_hp = self.stats.max_hp
+        self.stats.permanent_stats["max_hp"] += 10
+        old_max_mana = self.stats.max_mana
+        self.stats.permanent_stats["max_mana"] += 10
+        old_max_stamina = self.stats.max_stamina
+        self.stats.permanent_stats["max_stamina"] += 10
+        
         self.stats.update_total_stats()
-        self.stats.hp = self.stats.max_hp
-        self.stats.mana = self.stats.max_mana
-        self.stats.stamina = self.stats.max_stamina
-        self.stats.attack += 2
-        self.stats.defense += 1
+        
+        old_hp = self.stats.hp
+        self.stats.permanent_stats["hp"] = self.stats.permanent_stats["max_hp"]
+        old_mana = self.stats.mana
+        self.stats.permanent_stats["mana"] = self.stats.permanent_stats["max_mana"]
+        old_stamina = self.stats.stamina
+        self.stats.permanent_stats["stamina"] = self.stats.permanent_stats["max_stamina"]
+        
+        old_attack = self.stats.attack
+        self.stats.permanent_stats["attack"] += 2
+        old_defense = self.stats.defense
+        self.stats.permanent_stats["defense"] += 1
+        
         self.max_xp = int(self.max_xp * 1.5)
+        
         self.stats.update_total_stats()
         
         print(f"\n{Colors.BRIGHT_GREEN}{Colors.BOLD}╔══════════════════════════════╗")
-        print(f"║     LEVEL UP! Level {self.level}!     ║")
+        print(f"║      LEVEL UP! Level {self.level}!     ║")
         print(f"╚══════════════════════════════╝{Colors.RESET}")
         print(f"{Colors.GREEN}Max HP +10 (Now {self.stats.max_hp})")
-        print(f"Attack +2 (Now {self.stats.attack})")
-        print(f"Defense +1 (Now {self.stats.defense}){Colors.RESET}")
+        print(f"Attack +{self.stats.attack - old_attack} (Now {self.stats.attack})")
+        print(f"Defense +{self.stats.defense - old_defense} (Now {self.stats.defense}){Colors.RESET}")
         
         if self.level == 5:
             self.choose_class1()
@@ -841,10 +864,11 @@ class Player(Entity):
             if choice in classes:
                 cls_data = classes[choice]
                 self.class_name = cls_data["name"]
-                self.stats.max_hp += cls_data["hp"]
-                self.stats.hp = self.stats.max_hp
-                self.stats.attack += cls_data["attack"]
-                self.stats.defense += cls_data["defense"]
+                self.stats.modify_stat("max_hp", cls_data["hp"])
+                self.heal(cls_data["hp"])
+                self.stats.modify_stat("attack", cls_data["attack"])
+                self.stats.modify_stat("defense", cls_data["defense"])
+                self.stats.modify_stat("agility", cls_data["agility"])
                 # Ajout du Skill correspondant via le dictionnaire skills_dict
                 skill_name = cls_data["skill"]
                 if skill_name in skills_dict:
@@ -1010,7 +1034,7 @@ class Player(Entity):
             print(f"\n{Colors.YELLOW}╔═══════════════ {Colors.BOLD}CHARACTER STATUS{Colors.RESET}{Colors.YELLOW} ════════════════╗{Colors.RESET}")
             print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # Character Name Placeholder
             print(f"{Colors.YELLOW}╠{'═' * (box_len + 1)}╣{Colors.RESET}")
-            print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # Level Placeholder
+            print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # Level and NG+ Placeholder
             # HP Section Placeholders
             print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # HP Text Placeholder
             print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # HP Bar Placeholder
@@ -1061,8 +1085,11 @@ class Player(Entity):
         # Skip separator line
         content_lines.append("")
         
-        # Level
-        content_lines.append(f"{Colors.YELLOW}║ {Colors.GREEN}{Colors.UNDERLINE}Level: {self.level}{Colors.RESET}".ljust(46))
+        # Level and NG+
+        ng = self.ng_plus[self.difficulty]
+        ng_text = f"{Colors.RED}NG+{ng}{Colors.RESET}" if ng != 0 else ""
+        content_lines.append(f"{Colors.YELLOW}║ {Colors.GREEN}{Colors.UNDERLINE}Level: {self.level}{Colors.RESET}{' ' * (38 - len(ng_text))}{ng_text}".ljust(46))
+
         
         # HP
         content_lines.append(f"{Colors.YELLOW}║ {stat_colors['hp']}HP: {self.stats.hp}/{self.stats.max_hp}".ljust(46))
@@ -1309,7 +1336,7 @@ class Player(Entity):
                 choice = input(f"\n{Colors.CYAN}Enter quest number to turn in (0 to cancel): {Colors.RESET}")
                 if choice.isdigit() and 1 <= int(choice) <= len(completable):
                     quest = completable[int(choice) - 1]
-                    self.complete_quest(player, quest)
+                    self.complete_quest(self, quest)
             except ValueError:
                 pass
         input('Enter to continue...')
@@ -1369,6 +1396,14 @@ class Player(Entity):
 
     def save_player(self, filename="player_save.json"):
         """Saves the player's data to a JSON file.""" 
+
+        SAVE_ENABLED = False  # Ne marche pas pour l'instant
+
+        if not SAVE_ENABLED:
+            print(f"\n{Colors.RED}Sorry but saving doesn't work for now.. consider following updates such as in the discord server (invite in the README.md){Colors.RESET}")
+            return
+
+
         if not filename.endswith('.json'):
             filename += '.json'
 
@@ -1460,7 +1495,6 @@ class Player(Entity):
 def load_player(filename=None):
     """Loads the player's data from a JSON file and reconstructs objects."""
     global debug
-    debug = 0
 
     if filename is None:
         filename = "player_save.json"
@@ -1503,7 +1537,6 @@ def load_player(filename=None):
 def load_player(filename=None):
     """Loads the player's data from a JSON file and reconstructs objects."""
     global debug
-    debug = 0
 
     if filename is None:
         filename = "player_save.json"
@@ -1561,6 +1594,7 @@ def load_player(filename=None):
 
         player.class_name = data["class_name"]
         player.dungeon_level = data["dungeon_level"]
+        player.rooms_explored = data["rooms_explored"]
         player.profession = data["profession"]
 
         # Chargement des quêtes
@@ -1598,6 +1632,8 @@ def continue_game(filename):
 
 
 
+# The enemy watches from the darkness, waiting for your mistake.
+
 class Enemy(Entity):
     """
     Represents an enemy character that the player can fight.
@@ -1621,12 +1657,13 @@ class Enemy(Entity):
         self.difficulty = difficulty  # 1-10 scale
         self.type = enemy_type
     
-    def attack_player(self, player):
+    def attack_player(self, player:Player):
         """Enemy attacks the player, considering total armor defense."""
         global debug
 
         # player.update_total_armor()
         damage = max(1, self.stats.attack - (player.stats.defense + player.total_armor))
+        damage = int(self.stats.attack * (10 / (10 + player.stats.defense + player.total_armor)))
         
         if debug >= 1:
             print('DEBUG: player hp:', player.stats.hp)
@@ -1637,11 +1674,11 @@ class Enemy(Entity):
         
         if debug >= 1:
             print("DEBUG: player hp after attack:", player.stats.hp)
-
+        
         return damage
 
 
-def generate_enemy(level=1, is_boss=False):
+def generate_enemy(level=1, is_boss=False, ng_plus=0):
     """Génère un ennemi ou un boss en fonction du niveau donné."""
     
     # Sélection des ennemis ou des boss disponibles pour ce niveau
@@ -1654,8 +1691,15 @@ def generate_enemy(level=1, is_boss=False):
     if not valid_types:
         valid_types = [enemy_types[0]]
 
-    # Sélection aléatoire d'un ennemi approprié
-    enemy_data = random.choice(valid_types)
+    # Calcul des poids pour chaque ennemi valide, favorisant ceux avec min_level proche du niveau
+    weights = []
+    for enemy in valid_types:
+        diff = level - enemy["min_level"]
+        weight = 1 / (1 + diff)  # Plus le min_level est proche du niveau, plus le poids est élevé
+        weights.append(weight)
+
+    # Sélection pondérée d'un ennemi approprié
+    enemy_data = random.choices(valid_types, weights=weights, k=1)[0]
 
     # Définition des stats de base
     base_hp = 20 + level * 10
@@ -1672,6 +1716,12 @@ def generate_enemy(level=1, is_boss=False):
         hp *= 2
         attack = int(attack * 1.5)
         defense = int(defense * 1.5)
+
+    # Apply NG+ difficulty multiplier to enemy stats, starting at NG+0 (multiplier >= 1)
+    ng_multiplier = 1 + 0.1 * max(0, ng_plus)
+    hp = int(hp * ng_multiplier)
+    attack = int(attack * ng_multiplier)
+    defense = int(defense * ng_multiplier)
 
     # Calcul des récompenses
     xp_reward = int(10 * level * (2 if is_boss else 1))
@@ -1691,8 +1741,11 @@ def generate_enemy(level=1, is_boss=False):
 
 if __name__ == '__main__':
     player = Player(name="Adventurer")
-    enemy = Enemy(name="Goblin", hp=50, attack=10, defense=5, xp_reward=20, gold_reward=10, difficulty=5)
+    enemy = Enemy(name="Goblin", enemy_type="Goblin", hp=50, attack=10, defense=5, xp_reward=20, gold_reward=10, difficulty=5)
+    
+    # The dungeon watches. Your fate is written in corrupted code.
+    # Error 404: Sanity not found.
+    # The final boss is not a boss. It's a watcher.
     
     print('enemy_test:', enemy)
     print('player_test:', player)
-    player.display_status()
