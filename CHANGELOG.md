@@ -527,8 +527,8 @@ Actual version: [4.5.3] - 04/05/2025
 |---------------------|----------|----------|--------|
 | Interactive Systems | 60       | 72       | +20%   |
 | Game Variables      | 100      | 130      | +30%   |
-| Lines of Code       | 2,500    | 3,500    | +40%   |
-| Quest Types         | 3        | 8        | +167%  |
+| Lines of Code       | 4,600    | 5,400    | +17%   |
+| Quest Types         | 3        | 8        | +260%  |
 
 This represents 150+ hours of development with particular focus on:
 - **Content Depth**: 8x more quest variety
