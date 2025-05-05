@@ -23,6 +23,10 @@ You can contact me on discord : https://discord.gg/3V7xGCvxEP
 
 ## How to Run the game
 
+### If you have downloaded the game from the release page
+You can find the latest version of the game with the 3 different ways to run it.
+Under here, you will find the 3 ways to run the game, and the one I recommend such as with the source code who will get hotfix and auto update.
+
 ### Recomanded : Auto-Update (req: GIT + Python 3)
 Why is this the best option:
    - Whenever you launch the game with play.bat, it automatically download the latest version of each files from the repo on github
@@ -350,13 +354,34 @@ And don't forget to ask help if needed
 
 ---
 
-This project is licensed under the MIT License. See [LICENSE](./LICENSE) for details.
+This project is licensed under the CC BY-NC 4.0 License. See [LICENSE](./LICENSE) for details.
 
 
 ## Credits
 
 - Made by Dragondefer
-- Uses Python 3 and standard libraries
+- Uses Python 3.10.6 and standard libraries such as `random`, `os`, `sys`, `random`, `json`...
 - Colorful console output powered by custom Colors module
 
 Thank you for playing Dungeon Hunter! Enjoy your adventure and may you finish the dungeon!
+
+
+---
+
+
+## 📄 License – CC BY-NC 4.0
+
+This project is licensed under the [Creative Commons Attribution-NonCommercial 4.0 International License](https://creativecommons.org/licenses/by-nc/4.0/).
+
+You are **free to**:
+
+* ✅ **Share** — copy and redistribute the material in any medium or format
+* ✅ **Adapt** — remix, transform, and build upon the material
+
+As long as you:
+
+* 📌 **Give appropriate credit** — you **must clearly credit** the original author: `@Dragondefer`, and link to this repository.
+* 🚫 **Do not use the material for commercial purposes** — this includes selling, monetizing, or distributing for profit in any form.
+* ⚠️ **Do not imply endorsement** — you may not suggest that the creator endorses your use.
+
+---
