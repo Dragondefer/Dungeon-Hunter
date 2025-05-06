@@ -1,5 +1,5 @@
 # Changelog
-__version__ = "432.0"
+__version__ = "619.0"
 __creation__ = "23-04-2025"
 
 All notable changes to this project will be documented in this file.
@@ -10,14 +10,15 @@ Note: Every logs before version [4.x.x] was made based on the files merges and m
 
 ## [Unreleased]
 ### Upcomming features
-- **Dungeon environment**
-  - Planned: Improve the theme of the dungeon levels
 
 - **Player's features**
+  - **Main priority : make saves work**
   - Planned: Improve quests such as using them more
   - Planned: Fixing save system
   - Difficulty-based inventory limits may be scale on a stat or level
 
+- **Dungeon environment**
+  - Planned: Improve the theme of the dungeon levels
 
 - **Combat improvement**
   - Planned: Improve combat balancing
@@ -25,6 +26,8 @@ Note: Every logs before version [4.x.x] was made based on the files merges and m
   - Critical hit visualization ?
 
 - New achievement: *"Ten Steps Forward... or is it?"*  
+
+---
 
 ### Later features
 
@@ -48,18 +51,16 @@ Note: Every logs before version [4.x.x] was made based on the files merges and m
   - Mobile workshop system for in-dungeon crafting
   - Item degradation and repair mechanics
 
----
-
-## Major Future Roadmap  
-### The Eternal Forge Expansion
+### Major Future Roadmap  
+#### The Eternal Forge Expansion
 - NPC integration
 
-### Realms Beyond Update (3.0.0)  
+#### Realms Beyond Update (3.0.0)  
 - Deity allegiance system with divine interventions
 - Time manipulation mechanics (rewind combat turns/freeze puzzles)
 - 100+ hour New Game+ mode with scaling challenges
 
-### Ascension Patch (4.0.0)  
+#### Ascension Patch (4.0.0)  
 - Neural network-driven dynamic storytelling
 
 ---
@@ -263,7 +264,7 @@ Tally of tunable parameters like:
 - Skill multipliers  
 - Rarity probabilities  
 
-
+---
 
 ## [2.x.x] - 13-03-2025
 ### Added
@@ -364,7 +365,7 @@ Tally of tunable parameters like:
 
 This update represents 85+ hours of additional development across 1,200+ changed lines, introducing 30+ new interactive elements and refining 50+ core gameplay systems. The semantic version increment to 1.1.0 reflects significant feature additions while maintaining backward compatibility with save files.
 
-
+---
 
 ## [3.x.x] - 01-04-2025
 ### Added
@@ -445,7 +446,7 @@ This update represents 85+ hours of additional development across 1,200+ changed
 
 This 2,800+ line update introduces 40+ new mechanical systems and refines 75+ core algorithms. The semantic version increment to 1.2.x reflects major subsystem overhauls while maintaining save compatibility through enhanced serialization. Total development time exceeds 120 hours across 7 files.
 
-
+---
 
 ## [4.0.0] - 15-03-2025
   - [4.1.x] - Files management
@@ -455,6 +456,9 @@ This 2,800+ line update introduces 40+ new mechanical systems and refines 75+ co
   - [4.5.x] - Core function revewiew and bug fixes
 
 Actual version: [4.5.3] - 04/05/2025
+
+GitHub first release: [4.5.3] [here](https://github.com/Dragondefer/Dungeon-Hunter/releases/tag/v4.5.3)
+GitHub repository: Now public and available [here](https://github.com/Dragondefer/Dungeon-Hunter)
 
 ### Added
 - **File organisation**:
@@ -541,15 +545,23 @@ The version increment reflects both substantial new content (quests/UI) and foun
 Need to be fixed in the future:
 Save compatibility maintained through enhanced JSON serialization handling. (Saves are still are comming soon)
 
-
 ---
 
+## [5.x.x] - 05-05-2025
+## [5.0.0] - Echoes of Depth
+
+### Added
+- **Breath of the Dungeon**
+
+- **Ascension Protocol**
+
+- **Fragments of Self**
 
 
+### Fixed
 
 
-
-
+### Changed
 
 
 
