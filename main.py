@@ -1,4 +1,4 @@
-__version__ = "443.0"
+__version__ = "476.0"
 __creation__ = "9-03-2025"
 
 import random
@@ -53,10 +53,11 @@ def main(continue_game=False, loaded_player=None):
         print(f"\n{Colors.YELLOW}What would you like to do?{Colors.RESET}")
         print(f"{Colors.CYAN}1. Explore a new room{Colors.RESET}")
         print(f"{Colors.GREEN}2. Check inventory{Colors.RESET}")
-        print(f"{Colors.MAGENTA}3. View quests{Colors.RESET}")
-        print(f"{Colors.RED}4. Rest{Colors.RESET}")
-        print(f"{Colors.BRIGHT_YELLOW}5. Save game{Colors.RESET}")
-        print(f"{Colors.BRIGHT_RED}6. Quit game{Colors.RESET}")
+        print(f"{Colors.RED}3. Rest{Colors.RESET}")
+        print(f"{Colors.MAGENTA}4. View quests{Colors.RESET}")
+        print(f"{Colors.BLUE}5. Display stats{Colors.RESET}")
+        print(f"{Colors.BRIGHT_YELLOW}6. Save game{Colors.RESET}")
+        print(f"{Colors.BRIGHT_RED}7. Quit game{Colors.RESET}")
         
         choice = input(f"\n{Colors.CYAN}Your choice: {Colors.RESET}")
         
@@ -74,7 +75,14 @@ def main(continue_game=False, loaded_player=None):
 
                 # After finishing level 10 dungeon for the first time, 
                 if player.dungeon_level == 11 and player.ng_plus[player.difficulty] == 0:
-                    print(f"\n{Colors.BRIGHT_YELLOW}You have finished level 10 dungeon! You can now change difficulty or start a new game + (NG+).{Colors.RESET}")
+                    print(f"\n{Colors.BRIGHT_YELLOW}You have finished level 10 dungeon!{Colors.RESET}")
+                    
+                    # Unlock the two difficulty:
+                    player.finished_difficulties["normal"] = True
+                    player.unlocked_difficulties["soul_enjoyer"] = True
+                    player.unlocked_difficulties["realistic"] = True
+
+                    print(f"\n{Colors.BRIGHT_YELLOW}You can now change difficulty or start a new game + (NG+).{Colors.RESET}")
                     choice = input(f"\n{Colors.YELLOW}Do you want to change difficulty ? (y/n): {Colors.RESET}").lower()
                     if choice == "y":
                         print(f"\n{Colors.YELLOW}You can now choose a new difficulty level.{Colors.RESET}")
@@ -87,6 +95,7 @@ def main(continue_game=False, loaded_player=None):
                         player.ng_plus[player.difficulty] += 1
                     player.dungeon_level = 1
                     player.rooms_explored = 0
+                
                 
                 if debug >= 1:
                     print(Colors.BLUE, 'DEBUG: No dungeon, generating a new dungeon...', Colors.RESET)
@@ -150,10 +159,8 @@ def main(continue_game=False, loaded_player=None):
         elif choice == "2":  # Check inventory
             player.manage_inventory()
         
-        elif choice == "3":  # View quests
-            player.view_quests()
         
-        elif choice == "4":  # Rest
+        elif choice == "3":  # Rest
             amount = interactive_bar(0, 100, 10, False, 10, Colors.GREEN, 50)
             if player.gold >= amount:
                 old_hp = player.stats.hp
@@ -177,14 +184,22 @@ def main(continue_game=False, loaded_player=None):
             
             input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
         
-        elif choice == "5":  # Save game
+
+        elif choice == "4":  # View quests
+            player.view_quests()
+        
+        elif choice == "5":  # Display stats summary
+            player.display_stats_summary()
+    
+
+        elif choice == "6":  # Save game
             # Save does not work for now
             # Ask the save name:
             save_name = input(f"\n{Colors.YELLOW}Enter a save name: {Colors.RESET}")
             player.save_player(save_name)
             input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
         
-        elif choice == "6":  # Quit game
+        elif choice == "7":  # Quit game
             confirm = input(f"{Colors.RED}Are you sure you want to quit? (y/n): {Colors.RESET}").lower()
             if confirm == "y":
                 try:
@@ -311,5 +326,5 @@ if __name__ == '__main__':
     main_menu()
     
 collect_feedback(player=player)
-print(f"\n{Colors.CYAN}Thanks for playing Treasure Hunter !{Colors.RESET}")
+print(f"\n{Colors.CYAN}Thanks for playing Dungeon Hunter !{Colors.RESET}")
 print(f"{Colors.UNDERLINE}Made by {Colors.BOLD}Dragondefer{Colors.RESET}")

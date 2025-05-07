@@ -1,4 +1,4 @@
-__version__ = "1465.0"
+__version__ = "1683.0"
 __creation__ = "9-03-2025"
 
 # This file contains the core entity classes for the Dungeon Hunter game.
@@ -13,7 +13,7 @@ import json
 import os
 
 from colors import Colors
-from game_utility import clear_screen, handle_error, typewriter_effect
+from game_utility import clear_screen, handle_error, typewriter_effect, glitch_text, random_glitch_text, ancient_text, glitch_burst, timed_input_pattern
 from items import Item, Equipment, Gear, Weapon, Armor, Ring, Amulet, Belt, Potion
 from data import armor_sets, enemy_types, boss_types
 from quests import Quest
@@ -34,6 +34,8 @@ class StatContainer: # Pas encore utilsé
     def __repr__(self):
         return str(self.__dict__)
 
+
+#̶̼͝ T̸̻̈́h̵̤͒ë̵͕́ s̸̱̅h̵̤͒ä̷̪́ď̶̙o̶͙͝ẅ̷̙́s̸̱̅ m̴̛̠ä̷̪́n̸̻̈́i̴̊͜p̵̦̆ŭ̵͇l̷̫̈́ä̷̪́ẗ̴̗́ë̵͕́ ÿ̸̡́o̶͙͝ŭ̵͇r̷͍̈́ v̶̼͝ë̵͕́r̷͍̈́ÿ̸̡́ ë̵͕́s̸̱̅s̸̱̅ë̵͕́n̸̻̈́c̴̱͝ë̵͕́.̵͇̆.̵͇̆.̵͇̆
 # The shadows manipulate your very essence...
 class Stats:
     """Gère les stats du joueur avec des effets permanents et temporaires."""
@@ -275,7 +277,7 @@ class Stats:
         # return total damage
         return damage, damage_absorbed
 
-
+#̶̼͝ E̶͍̚v̶̼͝ë̵͕́r̷͍̈́ÿ̸̡́ s̸̱̅k̵̢͝i̴̊͜l̷̫̈́l̷̫̈́ h̵̤͒ä̷̪́s̸̱̅ ä̷̪́ p̵̦̆r̷͍̈́i̴̊͜c̴̱͝ë̵͕́.̵͇̆.̵͇̆.̵͇̆ s̸̱̅o̶͙͝m̴̛̠ë̵͕́ m̴̛̠o̶͙͝r̷͍̈́ë̵͕́ ẗ̴̗́h̵̤͒ä̷̪́n̸̻̈́ o̶͙͝ẗ̴̗́h̵̤͒ë̵͕́r̷͍̈́s̸̱̅.̵͇̆
 # Every skill has a price... some more than others.
 
 class Skill:
@@ -319,18 +321,34 @@ class Skill:
             if current_value < cost_value:
                 print(f"{Colors.RED}You don't have enough {resource} to use {self.name}!{Colors.RESET}")
                 return 0
+        
+        print(f"\n{Colors.YELLOW}Timing skill activation! Press Enter at the right moment to increase skill effect.{Colors.RESET}")
+        input_multiplier = 1
+        timing_success = timed_input_pattern(difficulty=1.0, return_type='int')
+
+        if timing_success:
+            print(f"{Colors.GREEN}Perfect timing! Skill damage increased by 50%.{Colors.RESET}")
+            input_multiplier *= 1.5
+        else:
+            print(f"{Colors.RED}Poor timing! Skill damage reduced by 25%.{Colors.RESET}")
+            input_multiplier *= 0.75
 
         # Déduire le coût des ressources
         for resource, cost_value in self.cost.items():
-            # Utilise la méthode modify_stat pour déduire la valeur (cost_value négatif)
-            player.use_mana(cost_value)
+            # Deduct the correct resource cost
+            if resource == "mana":
+                player.use_mana(cost_value)
+            elif resource == "stamina":
+                player.use_stamina(cost_value)
+            elif resource == "hp":
+                player.use_hp(cost_value)
                         
         # Appliquer les bonus temporaires
         for stat, bonus in self.temporary_bonus.items():
             player.modify_stat(stat, bonus)
 
         print(f"{Colors.GREEN}{self.name} activated!{Colors.RESET}")
-        return self.damage_multiplier
+        return self.damage_multiplier * input_multiplier
 
 
 skills_dict = {
@@ -433,7 +451,7 @@ class Entity:
             return actual_damage
 """
 
-
+#̶̼͝ T̸̻̈́h̵̤͒ë̵͕́ p̵̦̆l̷̫̈́ä̷̪́ÿ̸̡́ë̵͕́r̷͍̈́’s̸̱̅ f̷̠͑ä̷̪́ẗ̴̗́ë̵͕́ i̴̊͜s̸̱̅ ẅ̷̙́r̷͍̈́i̴̊͜ẗ̴̗́ẗ̴̗́ë̵͕́n̸̻̈́ i̴̊͜n̸̻̈́ b̸̼̅l̷̫̈́o̶͙͝o̶͙͝ď̶̙ ä̷̪́n̸̻̈́ď̶̙ c̴̱͝o̶͙͝ď̶̙ë̵͕́.̵͇̆
 # The player’s fate is written in blood and code.
 
 class Player(Entity):
@@ -510,9 +528,34 @@ class Player(Entity):
         self.quests = []
         self.completed_quests = []
 
-        self.ng_plus = {"normal": 0, "soul_enjoyer": 0, "realistic": 0}
         self.dungeon_level = 1
         self.rooms_explored = 0
+
+        # New stats for tracking player activities
+        self.shops_visited = 0
+        self.combat_encounters = 0
+        self.rest_rooms_visited = 0
+        self.puzzles_solved = 0
+        self.treasures_found = 0
+        self.traps_triggered = 0
+        self.bosses_defeated = 0
+        self.items_collected = 0
+        self.gold_spent = 0
+        self.damage_dealt = 0
+        self.damage_taken = 0
+
+        self.ng_plus = {"normal": 0, "soul_enjoyer": 0, "realistic": 0}
+        # assign dificulty multiplier for actual difficulty:
+        
+        if self.difficulty == "normal":
+            self.difficulty_multiplier = 1
+        elif self.difficulty == "soul_enjoyer":
+            self.difficulty_multiplier = 0.5
+        elif self.difficulty == "realistic":
+            self.difficulty_multiplier = 2
+        
+        self.ng_multiplier = 1 + 0.1 * max(0, self.ng_plus[self.difficulty])
+        self.diff_mltp = self.ng_multiplier * self.difficulty_multiplier
 
         self.unlocked_difficulties = {"normal": True, "soul_enjoyer": False, "realistic": False}
         self.finished_difficulties = {"normal": False, "soul_enjoyer": False, "realistic": False}
@@ -786,7 +829,7 @@ class Player(Entity):
             if self.equipment.main_hand and self.equipment.off_hand:
                 total_domage = base_damage + (damage_main + damage_off) // 1.5  # Réduction pour équilibrer
             else:
-                total_domage = base_damage + damage_main + damage_off
+                total_domage = base_damage + damage_main
         else:
             if self.equipment.main_hand and self.equipment.off_hand:
                 total_domage = base_damage + (damage_main + damage_off) // 1.5  # Réduction pour équilibrer
@@ -800,9 +843,9 @@ class Player(Entity):
         old_max_hp = self.stats.max_hp
         self.stats.permanent_stats["max_hp"] += 10
         old_max_mana = self.stats.max_mana
-        self.stats.permanent_stats["max_mana"] += 10
+        self.stats.permanent_stats["max_mana"] += 5
         old_max_stamina = self.stats.max_stamina
-        self.stats.permanent_stats["max_stamina"] += 10
+        self.stats.permanent_stats["max_stamina"] += 5
         
         self.stats.update_total_stats()
         
@@ -816,9 +859,14 @@ class Player(Entity):
         old_attack = self.stats.attack
         self.stats.permanent_stats["attack"] += 2
         old_defense = self.stats.defense
-        self.stats.permanent_stats["defense"] += 1
+        self.stats.permanent_stats["defense"] += 2
+        old_agility = self.stats.agility
+        self.stats.permanent_stats["agility"] += 1
         
-        self.max_xp = int(self.max_xp * 1.5)
+        if self.level <= 1740:
+            self.max_xp = int(self.max_xp * 1.5)
+        else:
+            self.max_xp = 166291628028091842613009095009266495195675719663122313883385367291708148049287571070332769258231929566843581503287283337414771535086454589469476502004191810875221462134119793315060067813232587839056216279794984264298677002182295914072532150201829472437592045207860103637703316939267547371315877194678772170752
         
         self.stats.update_total_stats()
         
@@ -834,10 +882,6 @@ class Player(Entity):
         elif self.level == 10:
             self.choose_class2()
 
-        if self.dungeon_level >= 10 and self.difficulty == "normal":
-            self.unlocked_difficulties["soul_enjoyer"] = True
-            self.unlocked_difficulties["realistic"] = True
-            print(f"{Colors.BRIGHT_YELLOW}You have completed Normal mode! New difficulties unlocked!{Colors.RESET}")
 
     def choose_class1(self):
         clear_screen()
@@ -985,6 +1029,46 @@ class Player(Entity):
 
         return total_damage
 
+    def display_stats_summary(self):
+        """Displays player stats: kills, rooms explored, dungeon level, difficulty, and ng_plus in a nice box.""" 
+        box_width = 40
+        title = "PLAYER STATS SUMMARY"
+        ng = self.ng_plus.get(self.difficulty, 0)
+
+        def print_box_template():
+            print(f"\n{Colors.YELLOW}╔{'═' * (box_width)}╗{Colors.RESET}")
+            print(f"{Colors.YELLOW}║{Colors.BRIGHT_CYAN}{Colors.BOLD}{title.center(box_width)}{Colors.RESET}{Colors.YELLOW}║{Colors.RESET}")
+            print(f"{Colors.YELLOW}╠{'═' * (box_width)}╣{Colors.RESET}")
+            for _ in range(18):
+                print(f"{Colors.YELLOW}║{' ' * box_width}║{Colors.RESET}")
+            print(f"{Colors.YELLOW}╚{'═' * (box_width)}╝{Colors.RESET}")
+
+        print_box_template()
+
+        # Move cursor up to start filling the box
+        print(f"\033[20A")  # Move cursor up 20 lines
+
+        print(f"\r{Colors.YELLOW}║ Difficulty:        {Colors.BRIGHT_MAGENTA}{self.difficulty.capitalize().ljust(box_width - 20)}{Colors.RESET}")
+        print(f"\r{Colors.YELLOW}║ NG+:               {Colors.BRIGHT_YELLOW}{str(ng).ljust(box_width - 20)}{Colors.RESET}")
+        print(f"\r{Colors.YELLOW}║ Dungeon Level:     {Colors.BRIGHT_BLUE}{str(self.dungeon_level).ljust(box_width - 20)}{Colors.RESET}")
+        print(f"\r{Colors.YELLOW}║ Rooms Explored:    {Colors.BRIGHT_GREEN}{str(self.rooms_explored).ljust(box_width - 20)}{Colors.RESET}")
+        print(f"\r{Colors.YELLOW}║ Kills:             {Colors.BRIGHT_RED}{str(self.kills).ljust(box_width - 20)}{Colors.RESET}")
+        print(f"\r{Colors.YELLOW}║ Bosses Defeated:   {Colors.BRIGHT_CYAN}{str(self.bosses_defeated).ljust(box_width - 20)}{Colors.RESET}")
+        print()
+        print(f"\r{Colors.YELLOW}║ Items Collected:   {Colors.BRIGHT_MAGENTA}{str(self.items_collected).ljust(box_width - 20)}{Colors.RESET}")
+        print(f"\r{Colors.YELLOW}║ Traps Triggered:   {Colors.BRIGHT_RED}{str(self.traps_triggered).ljust(box_width - 20)}{Colors.RESET}")
+        print(f"\r{Colors.YELLOW}║ Gold Spent:        {Colors.BRIGHT_YELLOW}{str(self.gold_spent).ljust(box_width - 20)}{Colors.RESET}")
+        print(f"\r{Colors.YELLOW}║ Damage Dealt:      {Colors.BRIGHT_GREEN}{str(self.damage_dealt).ljust(box_width - 20)}{Colors.RESET}")
+        print(f"\r{Colors.YELLOW}║ Damage Taken:      {Colors.BRIGHT_BLUE}{str(self.damage_taken).ljust(box_width - 20)}{Colors.RESET}")
+        print()
+        print(f"\r{Colors.YELLOW}║ Shops Visited:     {Colors.BRIGHT_CYAN}{str(self.shops_visited).ljust(box_width - 20)}{Colors.RESET}")
+        print(f"\r{Colors.YELLOW}║ Combat Encounters: {Colors.BRIGHT_MAGENTA}{str(self.combat_encounters).ljust(box_width - 20)}{Colors.RESET}")
+        print(f"\r{Colors.YELLOW}║ Rest Visited:      {Colors.BRIGHT_YELLOW}{str(self.rest_rooms_visited).ljust(box_width - 20)}{Colors.RESET}")
+        print(f"\r{Colors.YELLOW}║ Puzzles Solved:    {Colors.BRIGHT_GREEN}{str(self.puzzles_solved).ljust(box_width - 20)}{Colors.RESET}")
+        print(f"\r{Colors.YELLOW}║ Treasures Found:   {Colors.BRIGHT_BLUE}{str(self.treasures_found).ljust(box_width - 20)}{Colors.RESET}")
+        print('\n')
+        input(f'{Colors.YELLOW}Enter to continue...{Colors.RESET}')
+
     def display_dungeon_level(self, rooms_explored=0):
         # Display dungeon level and explored rooms
         print(f"\n{Colors.BRIGHT_BLUE}{Colors.BOLD}╔══════════════════════════════════╗")
@@ -993,7 +1077,7 @@ class Player(Entity):
         print(f"╚══════════════════════════════════╝{Colors.RESET}")
 
     def display_status(self):
-        """Displays all player stats dynamically with proper formatting."""
+        """Displays all player stats dynamically with proper formatting.""" 
         # Color mapping for stats
         stat_colors = {
             "hp": Colors.RED,
@@ -1011,6 +1095,7 @@ class Player(Entity):
             "souls": Colors.BRIGHT_BLACK,
             "critical_chance": Colors.BRIGHT_RED,
         }
+
 
         def truncate_text(text, length):
             """Truncate text to fit within the box width."""
@@ -1118,17 +1203,6 @@ class Player(Entity):
         content_lines.append("")
 
         """
-        # Additional Stats
-        stat_count = 0
-        for stat, base_value in self.stats.__dict__.items():
-            if stat in ["base_stats", "permanent_stats", "hp", "max_hp", "max_stamina", "stamina", "max_mana", "mana", "equipment"]:
-                continue
-            if isinstance(base_value, dict):  
-                continue
-
-            color = stat_colors.get(stat, Colors.WHITE)
-            stat_label = stat.replace("_", " ").capitalize()
-
             # Calculate equipment effects
             if stat == "attack":
                 effects_value = 0
@@ -1142,9 +1216,6 @@ class Player(Entity):
                                 for item in self.equipment.__dict__.values() if item)
 
             effects_text = f" (+{effects_value:>3})"
-            line = f"{stat_label:<15}: {base_value:>3}{effects_text}"
-            content_lines.append(f"{Colors.YELLOW}║ {color}{line}".ljust(46))
-            stat_count += 1
         """
 
         # Additional Stats
@@ -1220,11 +1291,261 @@ class Player(Entity):
         for i, line in enumerate(content_lines):
             print(f"\r{line}")
 
+
+
+    def corrupted_display_status(self):
+        """Displays all player stats dynamically with proper formatting but corrupted"""
+        # Color mapping for stats
+        stat_colors = {
+            "hp": Colors.RED,
+            "xp": Colors.BRIGHT_GREEN,
+            "stamina": Colors.YELLOW,
+            "mana": Colors.BRIGHT_BLUE,
+            "max_hp": Colors.RED,
+            "attack": Colors.BRIGHT_MAGENTA,
+            "defense": Colors.BRIGHT_BLUE,
+            "magic_damage": Colors.MAGENTA,
+            "magic_defense": Colors.BLUE,
+            "luck": Colors.BRIGHT_GREEN,
+            "agility": Colors.BRIGHT_CYAN,
+            "gold": Colors.BRIGHT_YELLOW,
+            "souls": Colors.BRIGHT_BLACK,
+            "critical_chance": Colors.BRIGHT_RED,
+        }
+
+        def truncate_text(text, length):
+            """Truncate text to fit within the box width."""
+            return text[:length] if len(text) > length else text.ljust(length)
+
+        # Calculate bar lengths and ratios
+        hp_ratio = self.stats.hp / self.stats.max_hp
+        xp_ratio = self.xp / self.max_xp
+        stamina_ratio = self.stats.stamina / self.stats.max_stamina
+        mana_ratio = self.stats.mana / self.stats.max_mana
+
+        def corrupted_bar(ratio, length=46):
+            """Create a glitchy progress bar based on ratio."""
+            filled = int(length * ratio)
+            bar_chars = []
+            glitch_chars = ['▓', '▒', '░', '█', '■', '▇', '▆', '▅', '▃', '▂', '▁', '▉', '▊', '▋', '▌', '▍', '▎', '▏']
+            for i in range(length):
+                if i < filled:
+                    # Mostly solid block, but with some chance of glitch char
+                    if random.random() < 0.15:
+                        bar_chars.append(random.choice(glitch_chars))
+                    else:
+                        bar_chars.append('█')
+                else:
+                    # Mostly light block, but with some chance of glitch char or empty space
+                    r = random.random()
+                    if r < 0.1:
+                        bar_chars.append(random.choice(glitch_chars))
+                    elif r < 0.2:
+                        bar_chars.append(' ')
+                    else:
+                        bar_chars.append('░')
+            return ''.join(bar_chars)
+
+        # Prepare the box template
+        box_len = 48
+        def print_box_template():
+            print(f"\n{Colors.YELLOW}╔═══════════════{Colors.BOLD} {glitch_text('CHARACTER STATUS')}{Colors.RESET} {Colors.YELLOW}════════════════╗{Colors.RESET}")
+            print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # Character Name Placeholder
+            print(f"{Colors.YELLOW}╠{'═' * (box_len + 1)}╣{Colors.RESET}")
+            print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # Level and NG+ Placeholder
+            # HP Section Placeholders
+            print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # HP Text Placeholder
+            print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # HP Bar Placeholder
+            
+            # XP Section Placeholders
+            print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # XP Text Placeholder
+            print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # XP Bar Placeholder
+            
+            # Stamina Section Placeholders
+            print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # Stamina Text Placeholder
+            print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # Stamina Bar Placeholder
+            
+            # Mana Section Placeholders
+            print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # Mana Text Placeholder
+            print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # Mana Bar Placeholder
+            
+            print(f"{Colors.YELLOW}╠{'═' * (box_len + 1)}╣{Colors.RESET}")
+            
+            # Gold and Souls Placeholders
+            print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # Gold Placeholder
+            print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # Souls Placeholder
+            
+            # Stats Placeholders
+            for _ in range(8):
+                print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")
+            
+            print(f"{Colors.YELLOW}╠{'═' * (box_len + 1)}╣{Colors.RESET}")
+            
+            # Equipment Placeholders
+            for _ in range(12):
+                print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")
+            
+            print(f"{Colors.YELLOW}╚{'═' * (box_len + 1)}╝{Colors.RESET}")
+
+        # Clear screen and print box template
+        print("\033[2J\033[H")  # Clear screen and move cursor to top
+        print_box_template()
+
+        # Move cursor back up to fill in the details (adding 1 for the initial newline)
+        print("\033[37A")  # Move up to start of box (number of lines + 1)
+
+        # Create empty line list and add content
+        content_lines = []
+        
+        # Character Name
+        content_lines.append(f"{Colors.YELLOW}║ {Colors.BRIGHT_WHITE}{truncate_text(glitch_text(f'{self.name} the {self.class_name}'), 46)}")
+        
+        # Skip separator line
+        content_lines.append("")
+        
+        # Level and NG+
+        ng = self.ng_plus[self.difficulty]
+        ng_text = f"{Colors.RED}NG+{ng}{Colors.RESET}" if ng != 0 else ""
+        content_lines.append(f"{Colors.YELLOW}║ {Colors.GREEN}{Colors.UNDERLINE}{glitch_text('Level: ' + str(self.level))}{Colors.RESET}{' ' * (38 - len(ng_text))}{ng_text}".ljust(46))
+
+        
+        # HP
+        content_lines.append(f"{Colors.YELLOW}║ {stat_colors['hp']}{glitch_text('HP')}: {self.stats.hp}/{self.stats.max_hp}".ljust(46))
+        content_lines.append(f"{Colors.YELLOW}║ {stat_colors['hp']}{corrupted_bar(hp_ratio)}".ljust(46))
+        
+        # XP
+        content_lines.append(f"{Colors.YELLOW}║ {stat_colors['xp']}{glitch_text('XP')}: {self.xp}/{self.max_xp}".ljust(46))
+        content_lines.append(f"{Colors.YELLOW}║ {stat_colors['xp']}{corrupted_bar(xp_ratio)}".ljust(46))
+        
+        # Stamina
+        content_lines.append(f"{Colors.YELLOW}║ {stat_colors['stamina']}{glitch_text('Stamina')}: {self.stats.stamina}/{self.stats.max_stamina}".ljust(46))
+        content_lines.append(f"{Colors.YELLOW}║ {stat_colors['stamina']}{corrupted_bar(stamina_ratio)}".ljust(46))
+        
+        # Mana
+        content_lines.append(f"{Colors.YELLOW}║ {stat_colors['mana']}{glitch_text('Mana')}: {self.stats.mana}/{self.stats.max_mana}".ljust(46))
+        content_lines.append(f"{Colors.YELLOW}║ {stat_colors['mana']}{corrupted_bar(mana_ratio)}".ljust(46))
+        
+        # Skip separator line
+        content_lines.append("")
+        
+        # Gold and Souls
+        content_lines.append(f"{Colors.YELLOW}║ {Colors.BRIGHT_YELLOW}{glitch_text('Gold:')}{Colors.RESET} {self.gold}".ljust(46))
+        content_lines.append(f"{Colors.YELLOW}║ {Colors.BRIGHT_BLACK}{glitch_text('Souls:')}{Colors.RESET} {self.souls}".ljust(46))
+
+        # Skip separator line
+        content_lines.append("")
+
+        """
+        # Additional Stats
+        stat_count = 0
+        for stat, base_value in self.stats.__dict__.items():
+            if stat in ["base_stats", "permanent_stats", "hp", "max_hp", "max_stamina", "stamina", "max_mana", "mana", "equipment"]:
+                continue
+            if isinstance(base_value, dict):  
+                continue
+
+            color = stat_colors.get(stat, Colors.WHITE)
+            stat_label = stat.replace("_", " ").capitalize()
+
+            # Calculate equipment effects
+            if stat == "attack":
+                effects_value = 0
+                if self.total_domage():
+                    effects_value += self.total_domage(base_damage=False) - self.stats.attack
+            elif stat == "defense":
+                effects_value = sum(item.effects.get("defense", 0) if hasattr(item, "effects") else getattr(item, stat, 0)
+                                for item in self.equipment.__dict__.values() if item)
+            else:
+                effects_value = sum(item.effects.get(stat, 0) if hasattr(item, "effects") else getattr(item, stat, 0)
+                                for item in self.equipment.__dict__.values() if item)
+
+            effects_text = f" (+{effects_value:>3})"
+            line = f"{stat_label:<15}: {base_value:>3}{effects_text}"
+            content_lines.append(f"{Colors.YELLOW}║ {color}{line}".ljust(46))
+            stat_count += 1
+        """
+
+        # Additional Stats
+        stat_count = 0
+        for stat, base_value in self.stats.__dict__.items():
+            if stat in ["base_stats", "permanent_stats", "hp", "max_hp", "max_stamina", "stamina", "max_mana", "mana", "equipment"]:
+                continue
+            if isinstance(base_value, dict):  
+                continue
+
+            color = stat_colors.get(stat, Colors.WHITE)
+            stat_label = stat.replace("_", " ").capitalize()
+
+            # Calculate equipment effects
+            # equip_bonus = getattr(self.stats.equipment, stat, 0)
+            equip_bonus = self.stats.equipment_bonuses.get(stat, 0)
+            temp_bonus = self.stats.temporary_stats.get(stat, 0)
+            total_bonus = equip_bonus + temp_bonus
+
+            perm_value = self.stats.permanent_stats.get(stat, 0)
+            
+            effects_text = f" (+{equip_bonus:>3})" if total_bonus != 0 else ""
+            line = f"{stat_label:<18}: {perm_value:>3}{effects_text}"
+            content_lines.append(f"{Colors.YELLOW}║ {color}{glitch_text(line)}".ljust(46))
+            stat_count += 1
+
+        # Skip separator line
+        content_lines.append("")
+
+        # Equipment
+        for slot, item in self.equipment.slots.items():
+            if item:
+                item_name = item.name
+                if isinstance(item, Weapon):
+                    extra = f" ({stat_colors.get('attack', Colors.RESET)}{item.damage}{Colors.RESET})"
+                elif isinstance(item, Armor):
+                    defense_value = item.effects.get('defense', 0)
+                    extra = f" ({stat_colors.get('defense', Colors.RESET)}{defense_value}{Colors.RESET})"
+                elif isinstance(item, (Ring, Amulet, Belt)):
+                    effects_str = ", ".join(f"{stat_colors.get(k, Colors.RESET)}{v}{Colors.RESET}" for k, v in item.effects.items())
+                    extra = f" ({effects_str})"
+                else:
+                    extra = ""
+                
+                """
+                # Traitement pour tout les items (soit weapon armor amulet ect on effect, soit weapon a damage, armor a defense, amulet a effect...)
+                if item.effects:  # Vérifie si item.effects existe et n'est pas vide
+                    effects_str = ", ".join(f"{stat_colors.get(k, Colors.RESET)}{v}{Colors.RESET}" for k, v in item.effects.items())
+                    extra = f" ({effects_str})"
+                else:
+                    extra = ""
+                """
+                
+                # Format with proper spacing
+                item_display = f"{item_name:<20} {extra}"
+                
+                # Truncate if too long
+                item_display = truncate_text(item_display, 46)
+            else:
+                item_display = "None"
+
+            slot_line = f"{slot.capitalize():<10}: {item_display}"
+            content_lines.append(f"{Colors.YELLOW}║ {Colors.BRIGHT_CYAN}{glitch_text(slot_line)}")
+
+        # Skills
+        skill_list = ", ".join(f"{skill.name} (Lv{skill.level})" for skill in self.skills) if self.skills else "None"
+        content_lines.append(f"{Colors.YELLOW}║ {Colors.MAGENTA}{glitch_text('Skills:')}{Colors.RESET} {truncate_text(glitch_text(skill_list), 39)}")
+
+        # Add a blank line to end the box
+        content_lines.append("")
+
+        # Print content lines, skipping separator positions
+        for i, line in enumerate(content_lines):
+            print(f"\r{line}")
+
+
+
     def manage_inventory(self):
         """Handles inventory management: equip, use, unequip, or drop items dynamically."""
 
         if not self.inventory:
-            print(f"\n{Colors.RED}Your inventory is empty!{Colors.RESET}")
+            print(f"\n{Colors.RED}Your inventory is empty!{Colors.RESET}", end="")
+            input(f'{Colors.YELLOW}Enter to continue...{Colors.RESET}')
             return
         
         managing = True
@@ -1339,7 +1660,7 @@ class Player(Entity):
                     self.complete_quest(self, quest)
             except ValueError:
                 pass
-        input('Enter to continue...')
+        input(f'{Colors.YELLOW}Enter to continue...{Colors.RESET}')
     
     def display_quests(self):
         """Display the player's active and completed quests"""
@@ -1397,12 +1718,11 @@ class Player(Entity):
     def save_player(self, filename="player_save.json"):
         """Saves the player's data to a JSON file.""" 
 
-        SAVE_ENABLED = False  # Ne marche pas pour l'instant
+        SAVE_ENABLED = True  # Ne marche pas pour l'instant
 
         if not SAVE_ENABLED:
             print(f"\n{Colors.RED}Sorry but saving doesn't work for now.. consider following updates such as in the discord server (invite in the README.md){Colors.RESET}")
             return
-
 
         if not filename.endswith('.json'):
             filename += '.json'
@@ -1422,201 +1742,99 @@ class Player(Entity):
         print(f"{Colors.GREEN}Game saved successfully!{Colors.RESET}")
 
     def to_dict(self):
-        """Convert the Player object to a dictionary for serialization using a generic serializer."""
-        def serialize_obj(obj):
-            if obj is None:
-                return None
-            elif isinstance(obj, (str, int, float, bool)):
-                return obj
-            elif isinstance(obj, list):
-                return [serialize_obj(item) for item in obj]
-            elif isinstance(obj, dict):
-                return {key: serialize_obj(value) for key, value in obj.items()}
-            elif hasattr(obj, "to_dict") and callable(getattr(obj, "to_dict")):
-                # Call to_dict once and serialize the resulting dict without recursion on to_dict again
-                dict_obj = obj.to_dict()
-                if dict_obj is obj:
-                    # Defensive: if to_dict returns self, avoid infinite recursion
-                    return str(obj)
-                return serialize_obj(dict_obj)
-            elif hasattr(obj, "__dict__"):
-                return {key: serialize_obj(value) for key, value in obj.__dict__.items()}
-            else:
-                return str(obj)  # fallback to string representation
+        """Convert the Player object to a dictionary for serialization using a generic serializer.""" 
+        data = {
+            "name": self.name,
+            "level": self.level,
+            "xp": self.xp,
+            "max_xp": self.max_xp,
+            "gold": self.gold,
+            "difficulty": self.difficulty,
+            "class_name": self.class_name,
+            "dungeon_level": self.dungeon_level,
+            "profession": self.profession,
+            "kills": self.kills,
+            "unlocked_difficulties": self.unlocked_difficulties,
+            "finished_difficulties": self.finished_difficulties,
+        }
 
-        return serialize_obj(self)
+        # Save stats with equipment converted to dict
+        stats_dict = {}
+        for k, v in self.stats.__dict__.items():
+            if k == "equipment" and isinstance(v, Equipment):
+                stats_dict[k] = v.to_dict()
+            else:
+                stats_dict[k] = v
+        data["stats"] = stats_dict
+
+        # Save inventory
+        data["inventory"] = [item.to_dict() for item in self.inventory]
+
+        # Save equipment
+        if isinstance(self.equipment, Equipment):
+            data["equipment"] = self.equipment.to_dict()
+        else:
+            data["equipment"] = None
+
+        # Save skills
+        data["skills"] = [skill.to_dict() for skill in self.skills]
+
+        # Save quests
+        data["quests"] = [quest.to_dict() for quest in self.quests]
+        data["completed_quests"] = [quest.to_dict() for quest in self.completed_quests]
+
+        return data
 
     @classmethod
     def from_dict(cls, data):
         """Create a Player object from a dictionary."""
-        player = cls(data["name"], data.get("difficulty", "normal"))
-        player.level = data.get("level", 1)
-        player.xp = data.get("xp", 0)
-        player.max_xp = data.get("max_xp", 100)
-        player.gold = data.get("gold", 0)
+        from entity import Player, Equipment, Item, Skill, Quest
 
-        # Load stats
-        player.stats.__dict__.update(data.get("stats", {}))
-
-        # Load inventory
-        player.inventory = [Item.from_dict(item) for item in data.get("inventory", [])]
-
-        # Load equipment
-        eq_data = data.get("equipment", {})
-        if eq_data:
-            from items import Equipment
-            player.equipment = Equipment.from_dict(eq_data)
-        else:
-            player.equipment = None
-
-        player.total_armor = data.get("total_armor", 0)
-
-        # Load skills
-        from entity import Skill
-        player.skills = [Skill(**skill) for skill in data.get("skills", [])]
-
-        player.class_name = data.get("class_name", "Novice")
-        player.dungeon_level = data.get("dungeon_level", 1)
-        player.profession = data.get("profession", None)
-
-        # Load quests
-        from quests import Quest
-        player.quests = [Quest.from_dict(quest) for quest in data.get("quests", [])]
-        player.completed_quests = [Quest.from_dict(quest) for quest in data.get("completed_quests", [])]
-
-        player.kills = data.get("kills", 0)
-        player.difficulty = data.get("difficulty", "normal")
-        player.unlocked_difficulties = data.get("unlocked_difficulties", {"normal": True, "soul_enjoyer": False, "realistic": False})
-        player.finished_difficulties = data.get("finished_difficulties", {"normal": False, "soul_enjoyer": False, "realistic": False})
-
-        return player
-
-
-def load_player(filename=None):
-    """Loads the player's data from a JSON file and reconstructs objects."""
-    global debug
-
-    if filename is None:
-        filename = "player_save.json"
-        if debug >= 1:
-            print(f"{Colors.BLUE}INFO: default filename set: {filename}{Colors.RESET}")
-
-    # Ensure filename is in saves directory
-    save_dir = "saves"
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
-    filename = os.path.join(save_dir, filename)
-
-    if debug >= 1:
-        print(f"{Colors.BLUE}INFO: filename: {filename}{Colors.RESET}")
-
-    try:
-        with open(filename, "r") as file:
-            data = json.load(file)
-            if debug >= 1:
-                print(f"{Colors.BLUE}INFO: loaded data: {data}{Colors.RESET}")
-
-        # Use from_dict to create player
-        from entity import Player
-        player = Player.from_dict(data)
-
-        print(f"{Colors.GREEN}Game loaded successfully!{Colors.RESET}")
-        return player
-
-    except FileNotFoundError:
-        print(f"{Colors.RED}No save file found! Starting a new game...{Colors.RESET}")
-        handle_error()
-        return Player()
-
-    except KeyError as e:
-        print(f"{Colors.RED}Error loading save file: Missing key{Colors.RESET}")
-        handle_error()
-        return Player()
-
-
-def load_player(filename=None):
-    """Loads the player's data from a JSON file and reconstructs objects."""
-    global debug
-
-    if filename is None:
-        filename = "player_save.json"
-        if debug >= 1:
-            print(f"{Colors.BLUE}INFO: default filename set: {filename}{Colors.RESET}")
-
-    # Ensure filename is in saves directory
-    save_dir = "saves"
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
-    filename = os.path.join(save_dir, filename)
-    
-    if debug >= 1:
-        print(f"{Colors.BLUE}INFO: filename: {filename}{Colors.RESET}")
-    
-    try:
-        with open(filename, "r") as file:
-            data = json.load(file)
-            if debug >= 1:
-                print(f"{Colors.BLUE}INFO: loaded data: {data}{Colors.RESET}")
-
-        # Création du joueur avec les données chargées
-        player = Player(data["name"], data["difficulty"])
+        player = cls(data["name"], data["difficulty"])
         player.level = data["level"]
         player.xp = data["xp"]
         player.max_xp = data["max_xp"]
         player.gold = data["gold"]
-
-        # Chargement des stats
-        player.stats.__dict__.update(data["stats"])
-
-        # Chargement de l'inventaire (conversion des dictionnaires en objets Item)
-        player.inventory = [Item.from_dict(item) for item in data["inventory"]]
-
-        # Chargement de l'équipement
-        eq_data = {slot: Item.from_dict(item) if item else None for slot, item in data["equipment"].items()}
-        if debug >= 1:
-            print(f"DEBUG: eq_data before assignment -> {eq_data}")
-            input()
-        player.equipment = Equipment(**eq_data)
-        player.total_armor = data["total_armor"]
-
-        # Vérification et conversion des équipements en objets Gear si nécessaire
-        if isinstance(player.equipment, dict):  
-            player.equipment = Equipment(**{
-                slot: Gear(**item) if isinstance(item, dict) else item
-                for slot, item in player.equipment.items()
-            })
-        
-        if debug >= 1:
-            print(f"{Colors.BLUE}player.equipment: {player.equipment}{Colors.RESET}")
-
-
-        player.skills = [Skill(**skill) for skill in data["skills"]]
-
         player.class_name = data["class_name"]
         player.dungeon_level = data["dungeon_level"]
-        player.rooms_explored = data["rooms_explored"]
         player.profession = data["profession"]
-
-        # Chargement des quêtes
-        player.quests = [Quest.from_dict(quest) for quest in data["quests"]]
-        player.completed_quests = [Quest.from_dict(quest) for quest in data["completed_quests"]]
-
         player.kills = data["kills"]
         player.unlocked_difficulties = data["unlocked_difficulties"]
         player.finished_difficulties = data["finished_difficulties"]
 
-        print(f"{Colors.GREEN}Game loaded successfully!{Colors.RESET}")
+        # Load stats
+        player.stats.__dict__.update(data["stats"])
+
+        # Load inventory
+        player.inventory = [Item.from_dict(item) for item in data["inventory"]]
+
+        # Load equipment
+        if isinstance(data.get("equipment"), dict):
+            player.equipment = Equipment.from_dict(data["equipment"])
+            # Fix: ensure stats.equipment is the Equipment instance, not a dict
+            player.stats.equipment = player.equipment
+        
+        # Load skills
+        player.skills = [Skill.from_dict(skill) for skill in data["skills"]]
+
+        # Load quests
+        player.quests = [Quest.from_dict(quest) for quest in data["quests"]]
+        player.completed_quests = [Quest.from_dict(quest) for quest in data["completed_quests"]]
+
         return player
 
-    except FileNotFoundError:
-        print(f"{Colors.RED}No save file found! Starting a new game...{Colors.RESET}")
-        handle_error()
-        return Player()
 
-    except KeyError as e:
-        print(f"{Colors.RED}Error loading save file: Missing key{Colors.RESET}")
-        handle_error()
-        return Player()
+def load_player(filename=None):
+    """Loads the player's data from a JSON file and reconstructs objects."""
+    global debug
+
+    if filename is None:
+        filename = "default_player.json"
+    
+    with open("./saves/" + filename, "r") as file:
+        data = json.load(file)
+    
+    return Player.from_dict(data)
 
 
 def continue_game(filename):
@@ -1632,6 +1850,7 @@ def continue_game(filename):
 
 
 
+#̶̼͝ T̸̻̈́h̵̤͒ë̵͕́ ë̵͕́n̸̻̈́ë̵͕́m̴̛̠ÿ̸̡́ ẅ̷̙́ä̷̪́ẗ̴̗́c̴̱͝h̵̤͒ë̵͕́s̸̱̅ f̷̠͑r̷͍̈́o̶͙͝m̴̛̠ ẗ̴̗́h̵̤͒ë̵͕́ ď̶̙ä̷̪́r̷͍̈́k̵̢͝n̸̻̈́ë̵͕́s̸̱̅s̸̱̅,̶̼͝ ẅ̷̙́ä̷̪́i̴̊͜ẗ̴̗́i̴̊͜n̸̻̈́g̸̻̿ f̷̠͑o̶͙͝r̷͍̈́ ÿ̸̡́o̶͙͝ŭ̵͇r̷͍̈́ m̴̛̠i̴̊͜s̸̱̅ẗ̴̗́ä̷̪́k̵̢͝ë̵͕́.̵͇̆
 # The enemy watches from the darkness, waiting for your mistake.
 
 class Enemy(Entity):
@@ -1650,7 +1869,7 @@ class Enemy(Entity):
         attack_player(player: Player) -> int:
             Attacks the player and returns the damage dealt.
     """
-    def __init__(self, name, enemy_type, hp, attack, defense, xp_reward, gold_reward, difficulty):
+    def __init__(self, name="???", enemy_type="???", hp=random.randint(1,9317), attack=random.randint(1,5785), defense=random.randint(1,31957), xp_reward=random.randint(1,352934), gold_reward=random.randint(1,53126), difficulty=random.randint(1,152)):
         super().__init__(name, hp, hp, attack, defense)
         self.xp_reward = xp_reward
         self.gold_reward = gold_reward
@@ -1678,7 +1897,7 @@ class Enemy(Entity):
         return damage
 
 
-def generate_enemy(level=1, is_boss=False, ng_plus=0):
+def generate_enemy(level=1, is_boss=False, player=None):
     """Génère un ennemi ou un boss en fonction du niveau donné."""
     
     # Sélection des ennemis ou des boss disponibles pour ce niveau
@@ -1718,10 +1937,9 @@ def generate_enemy(level=1, is_boss=False, ng_plus=0):
         defense = int(defense * 1.5)
 
     # Apply NG+ difficulty multiplier to enemy stats, starting at NG+0 (multiplier >= 1)
-    ng_multiplier = 1 + 0.1 * max(0, ng_plus)
-    hp = int(hp * ng_multiplier)
-    attack = int(attack * ng_multiplier)
-    defense = int(defense * ng_multiplier)
+    hp = int(hp * player.diff_mltp)
+    attack = int(attack * player.diff_mltp)
+    defense = int(defense * player.diff_mltp)
 
     # Calcul des récompenses
     xp_reward = int(10 * level * (2 if is_boss else 1))
@@ -1740,12 +1958,20 @@ def generate_enemy(level=1, is_boss=False, ng_plus=0):
 
 
 if __name__ == '__main__':
-    player = Player(name="Adventurer")
+    player = Player()
     enemy = Enemy(name="Goblin", enemy_type="Goblin", hp=50, attack=10, defense=5, xp_reward=20, gold_reward=10, difficulty=5)
-    
+
+    #̶̼͝ T̸̻̈́h̵̤͒ë̵͕́ ď̶̙ŭ̵͇n̸̻̈́g̸̻̿ë̵͕́o̶͙͝n̸̻̈́ ẅ̷̙́ä̷̪́ẗ̴̗́c̴̱͝h̵̤͒ë̵͕́s̸̱̅.̵͇̆ Y̴̙͝o̶͙͝ŭ̵͇r̷͍̈́ f̷̠͑ä̷̪́ẗ̴̗́ë̵͕́ i̴̊͜s̸̱̅ ẅ̷̙́r̷͍̈́i̴̊͜ẗ̴̗́ẗ̴̗́ë̵͕́n̸̻̈́ i̴̊͜n̸̻̈́ c̴̱͝o̶͙͝r̷͍̈́r̷͍̈́ŭ̵͇p̵̦̆ẗ̴̗́ë̵͕́ď̶̙ c̴̱͝o̶͙͝ď̶̙ë̵͕́.̵͇̆
     # The dungeon watches. Your fate is written in corrupted code.
+    
+    #̶̼͝ E̶͍̚r̷͍̈́r̷͍̈́o̶͙͝r̷͍̈́ 4̷̫̈́0̵̢̈́4̷̫̈́:̴̨͝ S̶̤̕ä̷̪́n̸̻̈́i̴̊͜ẗ̴̗́ÿ̸̡́ n̸̻̈́o̶͙͝ẗ̴̗́ f̷̠͑o̶͙͝ŭ̵͇n̸̻̈́ď̶̙.̵͇̆
     # Error 404: Sanity not found.
+
+    #̶̼͝ T̸̻̈́h̵̤͒ë̵͕́ f̷̠͑i̴̊͜n̸̻̈́ä̷̪́l̷̫̈́ b̸̼̅o̶͙͝s̸̱̅s̸̱̅ i̴̊͜s̸̱̅ n̸̻̈́o̶͙͝ẗ̴̗́ ä̷̪́ b̸̼̅o̶͙͝s̸̱̅s̸̱̅.̵͇̆ I̴̡̛ẗ̴̗́'̸̱̅s̸̱̅ ä̷̪́ ẅ̷̙́ä̷̪́ẗ̴̗́c̴̱͝h̵̤͒ë̵͕́r̷͍̈́.̵͇̆
     # The final boss is not a boss. It's a watcher.
     
     print('enemy_test:', enemy)
     print('player_test:', player)
+
+    #print the player class in a dict:
+    print(player.to_dict())

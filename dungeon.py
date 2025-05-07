@@ -1,4 +1,4 @@
-__version__ = "893.0"
+__version__ = "926.0"
 __creation__ = "9-03-2025"
 
 import time
@@ -17,37 +17,61 @@ debug = 0
 # Beware: Rooms may hide secrets that trap your soul forever.
 class Room:
     """
-    Represents a room in the dungeon with different gameplay elements.
+    Represents a room within the dungeon, encapsulating various gameplay elements and interactions.
 
     Attributes:
-        room_type (str): The type of room (e.g., "combat", "treasure", "shop").
-        description (str): A text description of the room.
-        enemies (list[Enemy]): A list of enemies in the room.
-        items (list[Item]): A list of items in the room.
-        trap (dict | None): A trap mechanism (if present).
-        visited (bool): Tracks if the room has been entered before.
+        room_type (str): Specifies the category of the room, such as "combat", "treasure", "shop", "rest", "puzzle", or "boss".
+        description (str): A textual description providing details about the room's appearance or ambiance.
+        enemies (list[Enemy]): A list containing enemy instances present in the room, if any.
+        items (list[Item]): A list of items available within the room for the player to collect.
+        trap (dict | None): Optional trap details that may trigger upon player entry, including type, effect, and status.
+        visited (bool): Indicates whether the player has previously entered this room, affecting interaction behavior.
 
     Methods:
         enter(player: Player) -> bool:
-            Handles room interactions when the player enters.
-        
+            Manages the player's entry into the room, including displaying descriptions, triggering traps, and handling room-specific events.
+
         trigger_trap(player: Player) -> None:
-            Activates the trap and applies consequences.
-        
-        handle_combat(player: Player) -> bool:
-            Manages combat sequences in enemy-filled rooms.
-        
+            Activates the trap mechanism if present and applies its effects to the player.
+
+        handle_room(player: Player) -> bool:
+            Directs the flow to the appropriate handler based on the room type, such as combat, treasure, shop, rest, boss, or puzzle.
+
+        handle_combat(player: Player, is_boss_room: bool = False) -> bool:
+            Conducts combat sequences with enemies in the room, including boss encounters.
+
         handle_treasure(player: Player) -> bool:
-            Allows the player to collect loot.
-        
+            Facilitates the collection of treasure items by the player.
+
         handle_shop(player: Player) -> bool:
-            Opens the shop interface.
-        
+            Opens the shop interface for buying and selling items.
+
+        sell_items(player: Player, shopkeeper: str) -> None:
+            Allows the player to sell items to the shopkeeper.
+
         handle_rest(player: Player) -> bool:
-            Allows the player to heal or manage inventory.
-        
+            Allows the player to rest, recover, and manage inventory.
+
+        random_rest_event(player: Player) -> None:
+            Triggers a random event during rest that can affect player stats or inventory.
+
         handle_puzzle(player: Player) -> bool:
-            Handles puzzle interactions in the room.
+            Manages puzzle interactions and challenges within the room.
+
+        handle_riddle(player: Player) -> bool:
+            Handles riddle-type puzzles.
+
+        handle_number_puzzle(player: Player) -> bool:
+            Handles number-guessing puzzles.
+
+        handle_sequence_puzzle(player: Player) -> bool:
+            Handles mathematical sequence puzzles.
+
+        handle_choice_puzzle(player: Player) -> bool:
+            Manages choice-based puzzles where the player selects from options.
+
+        handle_dice_puzzle(player: Player) -> bool:
+            Manages dice roll puzzles with rewards based on outcomes.
     """
     def __init__(self, room_type, description, enemies=None, items=None, trap=None):
         self.available_room_type = ["combat", "treasure", "shop", "rest", "puzzle"] # and "boss"
@@ -79,7 +103,7 @@ class Room:
             
         return self.handle_room(player)
     
-    def trigger_trap(self, player : Player):
+    def trigger_trap(self, player):
         print(f"\n{Colors.RED}{Colors.BOLD}*CLICK*{Colors.RESET}")
         time.sleep(0.5)
         print(f"{Colors.RED}It's a trap! {self.trap['description']}{Colors.RESET}")
@@ -399,7 +423,7 @@ class Room:
 
         return True
 
-    def handle_combat(self, player, is_boss_room=False):
+    def handle_combat(self, player:Player, is_boss_room=False):
         """Gère un combat, normal ou contre un boss, de manière optimisée avec timing-based mechanic et UI améliorée."""
         
         import math
@@ -535,17 +559,7 @@ class Room:
                 print(f"You deal {Colors.RED}{math.ceil(actual_damage)}{Colors.RESET} damage to {enemy.name}!")
 
             elif choice == "2" and player.skills:  # Use skill with timing mechanic
-                print(f"\n{Colors.YELLOW}Timing skill activation! Press Enter at the right moment to increase skill effect.{Colors.RESET}")
-                timing_success = timed_input_pattern(difficulty=1.0, return_type='bool')
-
-                if timing_success:
-                    print(f"{Colors.GREEN}Perfect timing! Skill damage increased by 50%.{Colors.RESET}")
-                    multiplier = player.use_skill(enemy)
-                    multiplier *= 1.5
-                else:
-                    print(f"{Colors.RED}Poor timing! Skill damage reduced by 25%.{Colors.RESET}")
-                    multiplier = player.use_skill(enemy)
-                    multiplier *= 0.75
+                player.use_skill(enemy)
 
             elif choice == "3":  # Use item
                 potions = [item for item in player.inventory if isinstance(item, Potion)]
@@ -580,6 +594,7 @@ class Room:
 
             # Check if enemy defeated
             if not enemy.is_alive():
+                player.kills += 1
                 print(f"\n{Colors.GREEN}You defeated the {enemy.name}!{Colors.RESET}")
                 print(f"{Colors.YELLOW}You gain {enemy.gold_reward} gold!{Colors.RESET}")
                 player.gold += enemy.gold_reward
@@ -954,7 +969,7 @@ def generate_random_room(player, room_type=None, is_boss_room=False):
     if room_type in ["combat", "boss"]:
         num_enemies = 1 if room_type == "boss" else random.randint(1, 2 + level // 3)
         for _ in range(num_enemies):
-            enemies.append(generate_enemy(level, is_boss_room))
+            enemies.append(generate_enemy(level, is_boss_room, player))
     if debug >= 1:
         print(f"{Colors.YELLOW}DEBUG: Enemies generated: {enemies}{Colors.RESET}")
     # Generate items for treasure rooms
@@ -1427,13 +1442,13 @@ def debug_menu(player, dungeon):
         elif choice == "2":
             try:
                 # Modify Player Stats
-                player.stats.hp = int(input(f"{Colors.CYAN}Set HP: {Colors.RESET}") or 100)
-                player.stats.max_hp = int(input(f"{Colors.CYAN}Set Max HP: {Colors.RESET}") or 100)
-                player.stats.attack = int(input(f"{Colors.CYAN}Set Attack: {Colors.RESET}") or 5)
-                player.stats.defense = int(input(f"{Colors.CYAN}Set Defense: {Colors.RESET}") or 5)
-                player.stats.luck = int(input(f"{Colors.CYAN}Set Luck: {Colors.RESET}") or 5)
-                player.xp = int(input(f"{Colors.CYAN}Set XP: {Colors.RESET}") or 0)
-                player.gold = int(input(f"{Colors.CYAN}Set Gold: {Colors.RESET}") or 50)
+                player.stats.permanent_stats["hp"] = int(input(f"{Colors.CYAN}Set HP: {Colors.RESET}") or player.stats["hp"])
+                player.stats.permanent_stats["max_hp"] = int(input(f"{Colors.CYAN}Set Max HP: {Colors.RESET}") or player.stats["max_hp"])
+                player.stats.permanent_stats["attack"] = int(input(f"{Colors.CYAN}Set Attack: {Colors.RESET}") or player.stats["attack"])
+                player.stats.permanent_stats["defense"] = int(input(f"{Colors.CYAN}Set Defense: {Colors.RESET}") or player.stats["defense"])
+                player.stats.permanent_stats["luck"] = int(input(f"{Colors.CYAN}Set Luck: {Colors.RESET}") or player.stats["luck"])
+                player.xp = int(input(f"{Colors.CYAN}Set XP: {Colors.RESET}") or player.xp)
+                player.gold = int(input(f"{Colors.CYAN}Set Gold: {Colors.RESET}") or player.gold)
                 for i in range(int(input(f"{Colors.CYAN}Set Level: {Colors.RESET}") or 0)):
                     player.level_up()
                 print(f"{Colors.GREEN}Player stats updated!{Colors.RESET}")
@@ -1485,7 +1500,7 @@ def debug_menu(player, dungeon):
                 enemy_level = int(input(f"{Colors.CYAN}Enter enemy level: {Colors.RESET}"))
                 # ask if enemy a boss:
                 is_boss = input(f"{Colors.CYAN}Is enemy a boss (y/n): {Colors.RESET}")
-                enemy = generate_enemy(enemy_level, is_boss)
+                enemy = generate_enemy(enemy_level, is_boss, player)
                 dungeon.rooms.append(enemy)
                 print(f"{Colors.RED}Spawned enemy: {enemy.name}{Colors.RESET}")
 
