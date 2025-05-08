@@ -17,6 +17,7 @@ from game_utility import clear_screen, handle_error, typewriter_effect, glitch_t
 from items import Item, Equipment, Gear, Weapon, Armor, Ring, Amulet, Belt, Potion
 from data import armor_sets, enemy_types, boss_types
 from quests import Quest
+from inventory import Inventory
 
 debug = 0
 
@@ -503,11 +504,6 @@ class Player(Entity):
         self.gold = 50
         self.souls = 0
 
-        self.inventory = Inventory(self)
-        self.inventory.append(Potion("Minor Health Potion", "Restores some health", 100, "heal", 50))
-
-        self.inventory = [Potion("Minor Health Potion", "Restores some health", 100, "heal", 50)]
-
         # Équipement initialisé avant les stats (pour pouvoir l'envoyer dans Stats)
         self.equipment = Equipment(
             main_hand=None, off_hand=None, helmet=None, chest=None,
@@ -557,6 +553,9 @@ class Player(Entity):
         self.unlocked_difficulties = {"normal": True, "soul_enjoyer": False, "realistic": False}
         self.finished_difficulties = {"normal": False, "soul_enjoyer": False, "realistic": False}
         
+
+        self.inventory = Inventory(self)
+        self.inventory.append(Potion("Minor Health Potion", "Restores some health", 100, "heal", 50))
 
         # Met à jour les stats avec l'équipement initial (même s'il est vide)
         self.stats.update_total_stats()
