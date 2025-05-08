@@ -1,5 +1,5 @@
 __version__ = "1683.0"
-__creation__ = "9-03-2025"
+__creation__ = "09-03-2025"
 
 # This file contains the core entity classes for the Dungeon Hunter game.
 # Entities include players, enemies, and their stats, skills, and interactions.
@@ -454,6 +454,8 @@ class Entity:
 #̶̼͝ T̸̻̈́h̵̤͒ë̵͕́ p̵̦̆l̷̫̈́ä̷̪́ÿ̸̡́ë̵͕́r̷͍̈́’s̸̱̅ f̷̠͑ä̷̪́ẗ̴̗́ë̵͕́ i̴̊͜s̸̱̅ ẅ̷̙́r̷͍̈́i̴̊͜ẗ̴̗́ẗ̴̗́ë̵͕́n̸̻̈́ i̴̊͜n̸̻̈́ b̸̼̅l̷̫̈́o̶͙͝o̶͙͝ď̶̙ ä̷̪́n̸̻̈́ď̶̙ c̴̱͝o̶͙͝ď̶̙ë̵͕́.̵͇̆
 # The player’s fate is written in blood and code.
 
+from difficulty import GameMode, NormalMode, RealisticMode
+
 class Player(Entity):
     """
     Represents the player-controlled character.
@@ -491,7 +493,8 @@ class Player(Entity):
         display_status() -> None:
             Prints the player's current stats and equipped items.
     """
-    def __init__(self, name="Adventurer", difficulty="normal"):
+    def __init__(self, name="Adventurer", difficulty=NormalMode()):
+        """Initialise le joueur avec des stats de base et un équipement vide."""
         super().__init__(name, 100, 100, 5, 5)  # Héritage de la classe Entity
 
         self.level = 1
@@ -500,7 +503,10 @@ class Player(Entity):
         self.gold = 50
         self.souls = 0
 
-        self.inventory = [Potion("Minor Health Potion", "Restores some health", 10, "heal", 20)]
+        self.inventory = Inventory(self)
+        self.inventory.append(Potion("Minor Health Potion", "Restores some health", 100, "heal", 50))
+
+        self.inventory = [Potion("Minor Health Potion", "Restores some health", 100, "heal", 50)]
 
         # Équipement initialisé avant les stats (pour pouvoir l'envoyer dans Stats)
         self.equipment = Equipment(
@@ -521,7 +527,9 @@ class Player(Entity):
         self.set_bonuses = {}
         self.skills = []
         self.kills = 0
-        self.difficulty = difficulty
+
+        # Map difficulty string to mode instance
+        self.mode = difficulty if difficulty in [NormalMode, RealisticMode] else NormalMode()
 
         self.class_name = "Novice"
         self.profession = None
@@ -545,20 +553,10 @@ class Player(Entity):
         self.damage_taken = 0
 
         self.ng_plus = {"normal": 0, "soul_enjoyer": 0, "realistic": 0}
-        # assign dificulty multiplier for actual difficulty:
-        
-        if self.difficulty == "normal":
-            self.difficulty_multiplier = 1
-        elif self.difficulty == "soul_enjoyer":
-            self.difficulty_multiplier = 0.5
-        elif self.difficulty == "realistic":
-            self.difficulty_multiplier = 2
-        
-        self.ng_multiplier = 1 + 0.1 * max(0, self.ng_plus[self.difficulty])
-        self.diff_mltp = self.ng_multiplier * self.difficulty_multiplier
 
         self.unlocked_difficulties = {"normal": True, "soul_enjoyer": False, "realistic": False}
         self.finished_difficulties = {"normal": False, "soul_enjoyer": False, "realistic": False}
+        
 
         # Met à jour les stats avec l'équipement initial (même s'il est vide)
         self.stats.update_total_stats()
@@ -713,14 +711,23 @@ class Player(Entity):
                     choice = input(">>> ").lower()
                     if choice == "y":
                         self.unequip_item(slot)
-
-                if debug >= 1:
-                    print(f"Équipement avant: {self.equipment.slots}")  # Debug avant équipement
-                self.equipment.equip(slot, item, self)
-                if debug >= 1:
-                    print(f"Équipement après: {self.equipment.slots}")  # Debug après équipement
-                print(f"\n{Colors.GREEN}You equipped {item.name} in {slot}!{Colors.RESET}")
-                self.inventory.remove(item)
+                        if debug >= 1:
+                            print(f"Équipement avant: {self.equipment.slots}")  # Debug avant équipement
+                        self.equipment.equip(slot, item, self)
+                        if debug >= 1:
+                            print(f"Équipement après: {self.equipment.slots}")  # Debug après équipement
+                        print(f"\n{Colors.GREEN}You equipped {item.name} in {slot}!{Colors.RESET}")
+                        self.inventory.remove(item)
+                    else:
+                        print(f"\n{Colors.YELLOW}Did not equip {item.name}.{Colors.RESET}")
+                else:
+                    if debug >= 1:
+                        print(f"Équipement avant: {self.equipment.slots}")  # Debug avant équipement
+                    self.equipment.equip(slot, item, self)
+                    if debug >= 1:
+                        print(f"Équipement après: {self.equipment.slots}")  # Debug après équipement
+                    print(f"\n{Colors.GREEN}You equipped {item.name} in {slot}!{Colors.RESET}")
+                    self.inventory.remove(item)
             else:
                 print(f"\n{Colors.RED}Invalid armor type: {item.armor_type}{Colors.RESET}")
 
@@ -839,44 +846,50 @@ class Player(Entity):
 
     def level_up(self):
         self.level += 1
-        
-        old_max_hp = self.stats.max_hp
-        self.stats.permanent_stats["max_hp"] += 10
-        old_max_mana = self.stats.max_mana
-        self.stats.permanent_stats["max_mana"] += 5
-        old_max_stamina = self.stats.max_stamina
-        self.stats.permanent_stats["max_stamina"] += 5
-        
-        self.stats.update_total_stats()
-        
-        old_hp = self.stats.hp
+
+        # Obtenir les bonus selon le mode
+        bonus = self.mode.level_up_bonus()
+
+        # Stocker les anciennes valeurs
+        old_stats = {
+            "max_hp": self.stats.max_hp,
+            "max_mana": self.stats.max_mana,
+            "max_stamina": self.stats.max_stamina,
+            "attack": self.stats.attack,
+            "defense": self.stats.defense,
+            "agility": self.stats.agility
+        }
+
+        # Appliquer les bonus
+        for stat, value in bonus.items():
+            key = f"max_{stat}" if stat in ["hp", "mana", "stamina"] else stat
+            self.stats.permanent_stats[key] += value
+
+        # Remettre les ressources à fond
         self.stats.permanent_stats["hp"] = self.stats.permanent_stats["max_hp"]
-        old_mana = self.stats.mana
         self.stats.permanent_stats["mana"] = self.stats.permanent_stats["max_mana"]
-        old_stamina = self.stats.stamina
         self.stats.permanent_stats["stamina"] = self.stats.permanent_stats["max_stamina"]
-        
-        old_attack = self.stats.attack
-        self.stats.permanent_stats["attack"] += 2
-        old_defense = self.stats.defense
-        self.stats.permanent_stats["defense"] += 2
-        old_agility = self.stats.agility
-        self.stats.permanent_stats["agility"] += 1
-        
+
+        self.stats.update_total_stats()
+
+        # XP progression
         if self.level <= 1740:
             self.max_xp = int(self.max_xp * 1.5)
         else:
             self.max_xp = 166291628028091842613009095009266495195675719663122313883385367291708148049287571070332769258231929566843581503287283337414771535086454589469476502004191810875221462134119793315060067813232587839056216279794984264298677002182295914072532150201829472437592045207860103637703316939267547371315877194678772170752
-        
-        self.stats.update_total_stats()
-        
+
+        # Affichage
         print(f"\n{Colors.BRIGHT_GREEN}{Colors.BOLD}╔══════════════════════════════╗")
         print(f"║      LEVEL UP! Level {self.level}!     ║")
         print(f"╚══════════════════════════════╝{Colors.RESET}")
-        print(f"{Colors.GREEN}Max HP +10 (Now {self.stats.max_hp})")
-        print(f"Attack +{self.stats.attack - old_attack} (Now {self.stats.attack})")
-        print(f"Defense +{self.stats.defense - old_defense} (Now {self.stats.defense}){Colors.RESET}")
-        
+
+        for stat, old_val in old_stats.items():
+            new_val = getattr(self.stats, stat)
+            diff = new_val - old_val
+            stat_label = stat.replace("_", " ").title()
+            print(f"{Colors.GREEN}{stat_label} +{diff} (Now {new_val}){Colors.RESET}")
+
+        # Choix de classe
         if self.level == 5:
             self.choose_class1()
         elif self.level == 10:
@@ -972,7 +985,7 @@ class Player(Entity):
 
     def gain_xp(self, amount):
         self.xp += amount
-        print(f"{Colors.BRIGHT_GREEN}+{amount} XP{Colors.RESET}")
+        print(f"{Colors.BRIGHT_GREEN}You gain {amount} XP!{Colors.RESET}")
         
         # Check for level up
         if self.xp >= self.max_xp:
@@ -1055,17 +1068,17 @@ class Player(Entity):
         print(f"\r{Colors.YELLOW}║ Kills:             {Colors.BRIGHT_RED}{str(self.kills).ljust(box_width - 20)}{Colors.RESET}")
         print(f"\r{Colors.YELLOW}║ Bosses Defeated:   {Colors.BRIGHT_CYAN}{str(self.bosses_defeated).ljust(box_width - 20)}{Colors.RESET}")
         print()
-        print(f"\r{Colors.YELLOW}║ Items Collected:   {Colors.BRIGHT_MAGENTA}{str(self.items_collected).ljust(box_width - 20)}{Colors.RESET}")
-        print(f"\r{Colors.YELLOW}║ Traps Triggered:   {Colors.BRIGHT_RED}{str(self.traps_triggered).ljust(box_width - 20)}{Colors.RESET}")
         print(f"\r{Colors.YELLOW}║ Gold Spent:        {Colors.BRIGHT_YELLOW}{str(self.gold_spent).ljust(box_width - 20)}{Colors.RESET}")
+        print(f"\r{Colors.YELLOW}║ Items Collected:   {Colors.BRIGHT_MAGENTA}{str(self.items_collected).ljust(box_width - 20)}{Colors.RESET}")
         print(f"\r{Colors.YELLOW}║ Damage Dealt:      {Colors.BRIGHT_GREEN}{str(self.damage_dealt).ljust(box_width - 20)}{Colors.RESET}")
         print(f"\r{Colors.YELLOW}║ Damage Taken:      {Colors.BRIGHT_BLUE}{str(self.damage_taken).ljust(box_width - 20)}{Colors.RESET}")
         print()
-        print(f"\r{Colors.YELLOW}║ Shops Visited:     {Colors.BRIGHT_CYAN}{str(self.shops_visited).ljust(box_width - 20)}{Colors.RESET}")
+        print(f"\r{Colors.YELLOW}║ Traps Triggered:   {Colors.BRIGHT_RED}{str(self.traps_triggered).ljust(box_width - 20)}{Colors.RESET}")
         print(f"\r{Colors.YELLOW}║ Combat Encounters: {Colors.BRIGHT_MAGENTA}{str(self.combat_encounters).ljust(box_width - 20)}{Colors.RESET}")
+        print(f"\r{Colors.YELLOW}║ Shops Visited:     {Colors.BRIGHT_CYAN}{str(self.shops_visited).ljust(box_width - 20)}{Colors.RESET}")
         print(f"\r{Colors.YELLOW}║ Rest Visited:      {Colors.BRIGHT_YELLOW}{str(self.rest_rooms_visited).ljust(box_width - 20)}{Colors.RESET}")
-        print(f"\r{Colors.YELLOW}║ Puzzles Solved:    {Colors.BRIGHT_GREEN}{str(self.puzzles_solved).ljust(box_width - 20)}{Colors.RESET}")
         print(f"\r{Colors.YELLOW}║ Treasures Found:   {Colors.BRIGHT_BLUE}{str(self.treasures_found).ljust(box_width - 20)}{Colors.RESET}")
+        print(f"\r{Colors.YELLOW}║ Puzzles Solved:    {Colors.BRIGHT_GREEN}{str(self.puzzles_solved).ljust(box_width - 20)}{Colors.RESET}")
         print('\n')
         input(f'{Colors.YELLOW}Enter to continue...{Colors.RESET}')
 
@@ -1897,7 +1910,7 @@ class Enemy(Entity):
         return damage
 
 
-def generate_enemy(level=1, is_boss=False, player=None):
+def generate_enemy(level:int, is_boss:bool, player: Player):
     """Génère un ennemi ou un boss en fonction du niveau donné."""
     
     # Sélection des ennemis ou des boss disponibles pour ce niveau
@@ -1937,9 +1950,10 @@ def generate_enemy(level=1, is_boss=False, player=None):
         defense = int(defense * 1.5)
 
     # Apply NG+ difficulty multiplier to enemy stats, starting at NG+0 (multiplier >= 1)
-    hp = int(hp * player.diff_mltp)
-    attack = int(attack * player.diff_mltp)
-    defense = int(defense * player.diff_mltp)
+    diff_mltp = 1 + (player.ng_plus[player.difficulty] * 0.1)  # 10% increase per NG+ level
+    hp = int(hp * diff_mltp)
+    attack = int(attack * diff_mltp)
+    defense = int(defense * diff_mltp)
 
     # Calcul des récompenses
     xp_reward = int(10 * level * (2 if is_boss else 1))

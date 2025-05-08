@@ -1,5 +1,5 @@
 __version__ = "926.0"
-__creation__ = "9-03-2025"
+__creation__ = "09-03-2025"
 
 import time
 import random
@@ -166,7 +166,9 @@ class Room:
 
 
     
-    def handle_puzzle(self, player):
+    def handle_puzzle(self, player:Player):
+        """Handles the puzzle room, allowing the player to solve various types of puzzles."""
+        player.puzzles_solved += 1
         puzzle_types = ["riddle", "number", "sequence", "choice", "dice"]
         puzzle_type = random.choice(puzzle_types)
         
@@ -425,7 +427,7 @@ class Room:
 
     def handle_combat(self, player:Player, is_boss_room=False):
         """Gère un combat, normal ou contre un boss, de manière optimisée avec timing-based mechanic et UI améliorée."""
-        
+        player.combat_encounters += 1
         import math
 
         def display_combat_status():
@@ -595,9 +597,12 @@ class Room:
             # Check if enemy defeated
             if not enemy.is_alive():
                 player.kills += 1
-                print(f"\n{Colors.GREEN}You defeated the {enemy.name}!{Colors.RESET}")
-                print(f"{Colors.YELLOW}You gain {enemy.gold_reward} gold!{Colors.RESET}")
+                player.souls += 1
                 player.gold += enemy.gold_reward
+                print(f"\n{Colors.GREEN}You defeated the {enemy.name}!{Colors.RESET}\n")
+                player.gain_xp(enemy.xp_reward)
+                print(f"{Colors.YELLOW}You gain {enemy.gold_reward} gold!{Colors.RESET}")
+                print(f"{Colors.BRIGHT_BLACK}You gain 1 souls!{Colors.RESET}\n")
 
                 # Item drop
                 if is_boss_room:
@@ -609,7 +614,6 @@ class Room:
                     print(f"{Colors.GREEN}The {enemy.name} dropped: {dropped_item.name}!{Colors.RESET}")
                     input(f"{Colors.YELLOW}Press enter to continue...{Colors.RESET}")
 
-                player.gain_xp(enemy.xp_reward)
                 self.enemies.remove(enemy)
 
                 # Quest progress
@@ -637,7 +641,9 @@ class Room:
         return player.is_alive()
 
     
-    def handle_treasure(self, player):
+    def handle_treasure(self, player:Player):
+        """Handles treasure room interactions."""
+        player.treasures_found += 1
         if not self.items:
             print(f"{Colors.YELLOW}You've already collected all treasure from this room.{Colors.RESET}")
             return True
@@ -661,7 +667,8 @@ class Room:
         
         return True
     
-    def handle_shop(self, player, box=False):
+    def handle_shop(self, player:Player, box=False):
+        player.shops_visited += 1
         def print_box(title, lines, color_title=Colors.BRIGHT_CYAN, color_border=Colors.BRIGHT_CYAN, color_text=Colors.RESET):
             width = max(len(line) for line in lines + [title]) + 2
             print(f"{color_border}╔{'═' * width}╗{Colors.RESET}")
@@ -811,7 +818,9 @@ class Room:
             print(f"\n{Colors.RED}Please enter a number.{Colors.RESET}")
 
 
-    def handle_rest(self, player):
+    def handle_rest(self, player:Player):
+        """Gère le repos du joueur, permettant de récupérer des PV, de la mana et de l'endurance."""
+        player.rest_rooms_visited += 1
         print(f"\n{Colors.CYAN}You find a safe place to rest.{Colors.RESET}")
         
         options = [
