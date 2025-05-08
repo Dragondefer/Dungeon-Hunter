@@ -7,12 +7,26 @@ So log doesn't include every changes but only the main one as there is a huge am
 
 Note: Every logs before version [4.x.x] was made based on the files merges and might include mistakes and oversights
 
+---
+**paterns:**:
+## [x.x.x] : Title - DD-MM-YYYY (creation date)
+  - [x.0.0] : Main changes - DD-MM-YYYY (finish date)
+  - [x.1.0] : Main changes - DD-MM-YYYY (finish date)
+  ...
+
+### Added
+
+### Fixed
+
+### Changed
+
+---
+
 
 ## [Unreleased]
 ### Upcomming features
 
 - **Player's features**
-  - **Main priority : make saves work**
   - Planned: Improve quests such as using them more
   - Planned: Fixing save system
   - Difficulty-based inventory limits may be scale on a stat or level
@@ -543,123 +557,110 @@ This represents 150+ hours of development with particular focus on:
 The version increment reflects both substantial new content (quests/UI) and foundational improvements (architecture/balance).
 
 Need to be fixed in the future:
-Save compatibility maintained through enhanced JSON serialization handling. (Saves are still are comming soon)
+  - Save compatibility maintained through enhanced JSON serialization handling.
 
 ---
 
-## [5.x.x] - 05-05-2025
-## [5.0.0] - Echoes of Depth
+## [5.x.x] : Echoes of Depth - 05-05-2025
+  - [5.0.0] : Save system + player's statistics - 07-05-2025
+  - [5.1.0] : Difficulty core class + Inventory class
 
 ### Added
+- **Player**:
+  - Added a new stats summary display for player kills, rooms explored, dungeon level, difficulty, NG+...
+  - Made the inventory a class `Inventory(list)` and a `inventory.py` file
+
 - **Breath of the Dungeon**
 
 - **Ascension Protocol**
 
 - **Fragments of Self**
 
-
 ### Fixed
-
+- **Player**:
+  - **Saves / Load finaly work !!**
+  - Fixed skill activation resource deduction to correctly use mana, stamina, or HP based on skill cost.
+  - the code equips the new item regardless of the user's choice to unequip the old item or not, so now it. Fixed by adding `else` + `return` to cancel the action
 
 ### Changed
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+- **Player**:
+  - Modifed the basics functions like `append` and `remove` of the new Inventory(list) class to add
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
 ## [T̸̻̈́h̵̤͒␊ W̸͕̆h̵̤͒␋s̸̱̅p̵̦̆ë̵͕́⎼i̴̊͜┼g̸̻̿ V̵̰͊o̶͙͝i̴̊͜␍] - ???-??-??
