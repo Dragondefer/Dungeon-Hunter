@@ -1,5 +1,5 @@
 __version__ = "257.0"
-__creation__ = "9-03-2025"
+__creation__ = "09-03-2025"
 
 import os
 import sys
@@ -190,6 +190,27 @@ def random_glitch_text(text):
     """Convertit un texte normal en une version corrompue aléatoirement selon une table fixe."""
     return "".join(random.choice([corruption_map.get(char, char), ancient_map.get(char, char)]) for char in text)
 
+
+"""def glitch_text(text):
+    glitched = ''
+    for char in text:
+        if random.random() < 0.2:  # 20% de glitch
+            glitched += f"\033[9{random.randint(1,7)}m{random.choice(['█', '░', '▒', '@', '#'])}\033[0m"
+        else:
+            glitched += char
+    return glitched"""
+
+
+def glitch_burst(text, duration=1):
+    end_time = time.time() + duration
+    while time.time() < end_time:
+        sys.stdout.write('\033[2K\r')  # efface ligne
+        sys.stdout.write(random_glitch_text(text))
+        sys.stdout.flush()
+        time.sleep(0.05)
+    sys.stdout.write('\033[2K\r' + text + '\n')
+
+
 def dice_animation(sides=6, rolls=10, delay=0.1):
     for i in range(rolls):
         clear_screen()
@@ -271,11 +292,16 @@ def choose_difficulty(player):
             print("")
 
     choice = input(f"{Colors.CYAN}Select your mode: {Colors.RESET}")
+    while True:
+        if choice in difficulties:
+            break
+        print(f"{Colors.RED}Mode locked or invalid choice! Defaulting to Normal.{Colors.RESET}")
+        choice = input("Please retry: ")
 
     if choice == "1":
         player.difficulty = "normal"
     elif choice == "2" and player.unlocked_difficulties["soul_enjoyer"]:
-        player.difficulty = "noul_enjoyer"
+        player.difficulty = "soul_enjoyer"
     elif choice == "3" and player.unlocked_difficulties["realistic"]:
         player.difficulty = "realistic"
     else:
@@ -283,6 +309,8 @@ def choose_difficulty(player):
         player.difficulty = "normal"
         print(Colors.BLUE, 'Press enter to continue...', Colors.RESET, end="")
         input()
+    
+    return player.difficulty
 
 
 def game_over(describtion=None):
@@ -428,6 +456,26 @@ def interactive_bar(min_value=0, max_value=100, default_value=50, allow_beyond=F
 
 
 if __name__ == '__main__':
+    clear_screen()
+    print(f"\n{Colors.YELLOW}{Colors.BOLD}╔══════════════════════════════════════════╗")
+    print(f"║         GAME UTILITY TESTING             ║")
+    print(f"╚══════════════════════════════════════════╝{Colors.RESET}")
+    while True:
+        while (choice:=input(f"\n{Colors.CYAN}1. Glitch Text\n2. Ancient Text\n3. Random Glitch Text\n4. Burst Glitch\n5. Try Everything{Colors.RESET}\n\nYour choice: ")) not in ('1', '2', '3', '4', '5'):
+            print('Invalid choice, please retry.')
+        if choice == '1':
+            print(glitch_text(input('Enter text to glitch: ')))
+        elif choice == '2':
+            print(ancient_text(input('Enter text to ancient: ')))
+        elif choice == '3':
+            print(random_glitch_text(input('Enter text to random glitch: ')))
+        elif choice == '4':
+            glitch_burst(input('Enter text to burst glitch: '))
+        elif choice == '5':
+            break
+        else:
+            print("DEBUG ERROR: Invalid choice", choice)
+
     import inspect
     wait_time = 0.5
 
