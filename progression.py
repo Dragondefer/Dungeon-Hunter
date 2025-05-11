@@ -1,8 +1,11 @@
-__version__ = "17.0"
-__creation__ = "9-03-2025"
+__version__ = "30.0"
+__creation__ = "09-03-2025"
+
+import time
 
 from colors import Colors
 from game_utility import clear_screen
+
 class Quest:
     """
     Represents a quest that the player can complete for rewards.
@@ -78,3 +81,52 @@ class Quest:
         quest.completed = data["completed"]
         return quest
 
+
+
+
+class Achievement:
+    """
+    Represents an achievement that can be unlocked by the player.
+    
+    Attributes:
+        id (str): Unique identifier for the achievement.
+        name (str): Name of the achievement.
+        description (str): Description of the achievement.
+        condition (function): A function that checks if the achievement can be unlocked.
+        unlocked (bool): Indicates if the achievement has been unlocked.
+    
+    Methods:
+        check(player): Checks if the achievement can be unlocked based on the player's state.
+        __str__(): Returns a string representation of the achievement.
+    """
+    def __init__(self, id, name, description, condition, hidden=False):
+        self.id = id
+        self.name = name
+        self.description = description
+        self.condition = condition  # Fonction lambda qui prend le joueur en paramètre
+        self.unlocked = False
+        self.hidden = hidden
+
+
+    def check(self, player):
+        if not self.unlocked and self.condition(player):
+            self.unlocked = True
+            print(f"\n{self.name} unlocked ! - {self.description}")
+            time.sleep(2)
+            return True
+        return False
+
+    def __str__(self):
+        status = "Y" if self.unlocked else "X"
+        return f"[{status}] {self.name}: {self.description}"
+
+
+class Event:
+    def __init__(self, name, description, effect):
+        self.name = name
+        self.description = description
+        self.effect = effect  # une fonction
+
+    def trigger(self, player):
+        print(self.description)
+        self.effect(player)
