@@ -1,4 +1,4 @@
-__version__ = "1683.0"
+__version__ = "1770.0"
 __creation__ = "09-03-2025"
 
 # This file contains the core entity classes for the Dungeon Hunter game.
@@ -15,8 +15,7 @@ import os
 from colors import Colors
 from game_utility import clear_screen, handle_error, typewriter_effect, glitch_text, random_glitch_text, ancient_text, glitch_burst, timed_input_pattern
 from items import Item, Equipment, Gear, Weapon, Armor, Ring, Amulet, Belt, Potion
-from data import armor_sets, enemy_types, boss_types
-from quests import Quest
+from data import armor_sets, enemy_types, boss_types, achievements
 from inventory import Inventory
 
 debug = 0
@@ -525,12 +524,13 @@ class Player(Entity):
         self.kills = 0
 
         # Map difficulty string to mode instance
-        self.mode = difficulty if difficulty in [NormalMode, RealisticMode] else NormalMode()
+        self.mode = difficulty if difficulty in [NormalMode, RealisticMode] else NormalMode() and print('Normal mode set by deffault cus diff was:', difficulty)
 
         self.class_name = "Novice"
         self.profession = None
         self.quests = []
         self.completed_quests = []
+        self.achievements = achievements
 
         self.dungeon_level = 1
         self.rooms_explored = 0
@@ -888,6 +888,8 @@ class Player(Entity):
             stat_label = stat.replace("_", " ").title()
             print(f"{Colors.GREEN}{stat_label} +{diff} (Now {new_val}){Colors.RESET}")
 
+        print()
+
         # Choix de classe
         if self.level == 5:
             self.choose_class1()
@@ -1183,7 +1185,7 @@ class Player(Entity):
         content_lines.append("")
         
         # Level and NG+
-        ng = self.ng_plus[self.difficulty]
+        ng = self.difficulty.get_ng_plus(self)
         ng_text = f"{Colors.RED}NG+{ng}{Colors.RESET}" if ng != 0 else ""
         content_lines.append(f"{Colors.YELLOW}║ {Colors.GREEN}{Colors.UNDERLINE}Level: {self.level}{Colors.RESET}{' ' * (38 - len(ng_text))}{ng_text}".ljust(46))
 
@@ -1564,8 +1566,15 @@ class Player(Entity):
         while managing:
             print(f"\n{Colors.BRIGHT_CYAN}Your Inventory:{Colors.RESET}")
 
-            # Trie l'inventaire (les objets équipés en premier, puis tri alphabétique)
-            sorted_inventory = sorted(self.inventory, key=lambda item: (item not in self.equipment.__dict__.values(), item.name.lower()))
+            # Multi-criteria sorting: equipped first, then alphabetically, then by item value descending
+            sorted_inventory = sorted(
+                self.inventory,
+                key=lambda item: (
+                    item not in self.equipment.__dict__.values(),
+                    item.name.lower(),
+                    -getattr(item, 'value', 0)
+                )
+            )
 
             for i, item in enumerate(sorted_inventory, 1):
                 status = ""
@@ -1576,7 +1585,7 @@ class Player(Entity):
             print(f"\n{Colors.CYAN}Options:{Colors.RESET}")
             print(f"{Colors.GREEN}U. Use/Equip Item{Colors.RESET}")
             print(f"{Colors.YELLOW}E. Unequip Item{Colors.RESET}")
-            print(f"{Colors.RED}D. Drop Item{Colors.RESET}")
+            print(f"{Colors.RED}D. Drop Item(s){Colors.RESET}")
             print(f"{Colors.YELLOW}B. Back{Colors.RESET}")
             
             choice = input(f"\n{Colors.CYAN}What would you like to do? {Colors.RESET}").upper()
@@ -1610,10 +1619,16 @@ class Player(Entity):
 
             elif choice == "D":
                 try:
-                    item_index = int(input(f"\n{Colors.CYAN}Enter item number to drop: {Colors.RESET}")) - 1
-                    if 0 <= item_index < len(sorted_inventory):
-                        item = sorted_inventory[item_index]
-                        
+                    input_str = input(f"\n{Colors.CYAN}Enter item number(s) to drop (comma separated for multiple): {Colors.RESET}")
+                    indices = [int(i.strip()) - 1 for i in input_str.split(",") if i.strip().isdigit()]
+                    invalid_indices = [i for i in indices if i < 0 or i >= len(sorted_inventory)]
+                    if invalid_indices:
+                        print(f"\n{Colors.RED}Invalid item number(s): {', '.join(str(i+1) for i in invalid_indices)}.{Colors.RESET}")
+                        continue
+                    
+                    items_to_drop = [sorted_inventory[i] for i in indices]
+                    
+                    for item in items_to_drop:
                         equipped_slot = None
                         for slot, equipped_item in self.equipment.__dict__.items():
                             if equipped_item == item:
@@ -1621,7 +1636,7 @@ class Player(Entity):
                                 break
 
                         if equipped_slot:
-                            confirm = input(f"\n{Colors.RED}This item is equipped. Are you sure you want to drop it? (y/n) {Colors.RESET}").lower()
+                            confirm = input(f"\n{Colors.RED}Item '{item.name}' is equipped. Are you sure you want to drop it? (y/n) {Colors.RESET}").lower()
                             if confirm != "y":
                                 continue
                             self.equipment.unequip(equipped_slot, self)
@@ -1629,11 +1644,8 @@ class Player(Entity):
                         self.inventory.remove(item)
                         print(f"\n{Colors.YELLOW}You dropped {item.name}.{Colors.RESET}")
 
-                    else:
-                        print(f"\n{Colors.RED}Invalid item number.{Colors.RESET}")
-
                 except ValueError:
-                    print(f"\n{Colors.RED}Please enter a valid number.{Colors.RESET}")
+                    print(f"\n{Colors.RED}Please enter valid number(s).{Colors.RESET}")
 
             else:
                 print(f"\n{Colors.RED}Invalid choice.{Colors.RESET}")
@@ -1709,7 +1721,14 @@ class Player(Entity):
         
         input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
 
-    
+    def update_quests(self, objective_type, amount=1):
+        for quest in self.quests:
+            if quest.objective_type == objective_type and not quest.completed:
+                if quest.update_progress(amount):
+                    print(f"\n{Colors.BRIGHT_GREEN}{Colors.BOLD}Quest Completed: {quest.title}!{Colors.RESET}")
+        
+        self.check_achievements()
+
     def complete_quest(self, player, quest):
         print(f"\n{Colors.BRIGHT_GREEN}{Colors.BOLD}Quest Complete: {quest.title}!{Colors.RESET}")
         print(f"{Colors.YELLOW}Rewards:{Colors.RESET}")
@@ -1725,12 +1744,24 @@ class Player(Entity):
         
         self.quests.remove(quest)
         self.completed_quests.append(quest)
+
     
+    def check_achievements(self):
+        for ach in self.achievements:
+            ach.check(self)
+        
+    def display_achievements(self):
+        print(f"\n{Colors.BRIGHT_YELLOW}Vos succès :{Colors.RESET}")
+        for ach in self.achievements:
+            if ach.hidden:
+                continue
+            print(f"{Colors.GREEN}  - {ach}{Colors.RESET}")
+        input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
 
     def save_player(self, filename="player_save.json"):
         """Saves the player's data to a JSON file.""" 
 
-        SAVE_ENABLED = True  # Ne marche pas pour l'instant
+        SAVE_ENABLED = True # Supposed to work
 
         if not SAVE_ENABLED:
             print(f"\n{Colors.RED}Sorry but saving doesn't work for now.. consider following updates such as in the discord server (invite in the README.md){Colors.RESET}")
@@ -1894,7 +1925,11 @@ class Enemy(Entity):
 
         # player.update_total_armor()
         damage = max(1, self.stats.attack - (player.stats.defense + player.total_armor))
+        if debug >= 1:
+            print(damage)
         damage = int(self.stats.attack * (10 / (10 + player.stats.defense + player.total_armor)))
+        if debug >= 1:
+            print(damage)
         
         if debug >= 1:
             print('DEBUG: player hp:', player.stats.hp)
@@ -1949,7 +1984,8 @@ def generate_enemy(level:int, is_boss:bool, player: Player):
         defense = int(defense * 1.5)
 
     # Apply NG+ difficulty multiplier to enemy stats, starting at NG+0 (multiplier >= 1)
-    diff_mltp = 1 + (player.ng_plus[player.difficulty] * 0.1)  # 10% increase per NG+ level
+    # diff_mltp = 1 + (player.ng_plus[player.difficulty] * 0.1)
+    diff_mltp = 1 + player.difficulty.get_ng_plus(player) * 0.1 # 10% increase per NG+ level
     hp = int(hp * diff_mltp)
     attack = int(attack * diff_mltp)
     defense = int(defense * diff_mltp)
