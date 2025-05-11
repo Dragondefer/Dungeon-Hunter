@@ -1,7 +1,21 @@
 __version__ = "14.0"
 __creation__ = "09-03-2025"
 
+import random
+
+from data import EVENTS
+
+
 class GameMode:
+    def __init__(self, name="normal"):
+        self.name = name
+    
+    def __str__(self):
+        return self.name # str(self.difficulty) return "normal"
+
+    def capitalize(self):
+        return self.name.capitalize()  # Now we can call `self.difficulty.capitalize()` and not get an AttributeError
+
     def take_damage(self, player, damage):
         raise NotImplementedError
 
@@ -33,8 +47,32 @@ class GameMode:
         """Hook called when player levels up."""
         pass
 
+    def get_room_count(self):
+        # Valeur par défaut
+        return random.randint(5, 8)
+
+    def maybe_trigger_event(player):
+        if random.random() < 0.2:  # 20% de chance
+            event = random.choice(EVENTS)
+            event.trigger(player)
+    
+    def get_available_rarities(self):
+        return ["common", "uncommon", "rare", "epic", "legendary", "divine"]
+
+    def get_rarity_boost(self):
+        return 1.0
+
+    def get_ng_plus(self, player):
+        return player.ng_plus[self.name]
+    
+    def get_shop_item_num(self):
+        return random.randint(5, 7)
+
 
 class NormalMode(GameMode):
+    def __init__(self):
+        super().__init__("normal")
+
     def take_damage(self, player, damage):
         player.stats.hp = max(0, player.stats.hp - damage)
         return damage
@@ -54,9 +92,15 @@ class NormalMode(GameMode):
             "defense": 2,
             "agility": 1
         }
+    
+    def get_shop_item_num(self):
+        return random.randint(5, 7)
 
 
 class SoulsEnjoyerMode(GameMode):
+    def __init__(self):
+        super().__init__("soul_enjoyer")
+
     def take_damage(self, player, damage):
         # In Souls Enjoyer mode, damage is halved but player has less health
         true_damage = max(1, damage / 2)
@@ -82,9 +126,13 @@ class SoulsEnjoyerMode(GameMode):
             "agility": 1
         }
 
-
+    def get_shop_item_num(self):
+        return random.randint(3, 6)
 
 class RealisticMode(GameMode):
+    def __init__(self):
+        super().__init__("realistic")
+
     def take_damage(self, player, damage):
         true_damage = max(1, damage / max(1, player.stats.defense))
         player.stats.permanent_stats["hp"] = max(0, player.stats.permanent_stats["hp"] - true_damage)
@@ -114,3 +162,15 @@ class RealisticMode(GameMode):
             "defense": 1,
             "agility": 0
         }
+    
+    def get_room_count(self):
+        return random.randint(50, 100)
+
+    def get_available_rarities(self):
+        return ["common", "uncommon", "rare", "epic", "legendary", "divine", "???"]
+
+    def get_rarity_boost(self):
+        return 1.0
+
+    def get_shop_item_num(self):
+        return random.randint(2, 5)
