@@ -86,7 +86,7 @@ puzzle_choices = [
 
 # Player's quests
 def get_quests_dict():
-    from quests import Quest
+    from progression import Quest
     quests_dict = {
         "Dungeon Master": Quest(
             title="Dungeon Master",
@@ -162,6 +162,33 @@ def get_quests_dict():
         ),
     }
     return quests_dict
+
+# Achievements
+from progression import Achievement
+achievements = [
+    Achievement("first_blood", "First Blood", "Kill an enemy.", lambda p: p.kills >= 1),
+    Achievement("collector", "Collector", "Get 10 items.", lambda p: p.items_collected >= 10),
+    Achievement("hoarder", "Trunk rat", "Get 1000 gold.", lambda p: p.gold >= 1000),
+]
+
+
+# Events
+from progression import Event
+
+def blood_moon_effect(player):
+    player.stats.permanent_stats["attack"] += 5
+    print("Une puissance obscure vous renforce... (ATK +5)")
+
+def healing_waters(player):
+    player.stats.permanent_stats["hp"] = player.stats.max_hp
+    print("Les eaux guérissantes restaurent tous vos PV.")
+
+EVENTS = [
+    Event("Blood Moon", "Une lune rouge illumine la salle...", blood_moon_effect),
+    Event("Healing Fountain", "Une fontaine magique vous soigne entièrement.", healing_waters),
+    # Ajoute d'autres ici
+]
+
 
 # Enemies
 enemy_types = [
