@@ -1,7 +1,7 @@
 __version__ = "260.0"
 __creation__ = "23-04-2025"
 
-# Dungeon Hunter - Version 5.1.0
+# Dungeon Hunter - Version 5.2.0
 
 Dungeon Hunter is a text-based dungeon exploration RPG game where you play as a brave adventurer exploring dangerous dungeons, battling enemies, completing quests, collecting loot, and leveling up your character.
 
@@ -143,6 +143,22 @@ And now your main.exe file is marked with the given hash
 ---
 
 # Developer playground
+
+### ⚠️ Warning: Spoilers in the Source Code
+
+This project contains hidden game content such as secret achievements, late-game story elements, and hidden events.
+If you're planning to play the game, **reading through the source code may spoil your experience**.
+
+We recommend **not inspecting files like `story.py`, `achievements.py`, or data/ files** unless you’ve finished the game or are contributing as a developer.
+
+---
+
+### 🛡 Prevent Spoilers in Code
+
+* Clear `""" SPOILER WARNING """` docstrings at the top of sensitive files or sections.
+* Comments like `# --- SPOILER SECTION BELOW ---` to separate spoiler content visually.
+* Grouped spoiler content into separate files (e.g., `data.py`, `story.py`).
+
 
 ## Reviewing Suspicious Files 🔍
 
