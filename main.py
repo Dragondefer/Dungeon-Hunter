@@ -7,10 +7,11 @@ import os
 
 from colors import Colors
 from game_utility import clear_screen, game_over, choose_difficulty, handle_error, collect_feedback, interactive_bar
-from dungeon import generate_dungeon, debug_menu 
+from dungeon import Room, generate_dungeon, debug_menu 
 from entity import Player, continue_game
 from data import get_quests_dict
 from story import display_title
+from progression import Quest
 
 debug = 0
 
@@ -24,7 +25,7 @@ def main(continue_game=False, loaded_player=None):
         player = Player(name if name else "Adventurer")
         choose_difficulty(player)
     elif continue_game and loaded_player is not None:
-        player = loaded_player
+        player:Player = loaded_player
     else:
         print(f'{Colors.RED} hein? continue_game != False & continue_game and loaded_player IS None')
 
@@ -56,10 +57,12 @@ def main(continue_game=False, loaded_player=None):
         print(f"{Colors.RED}3. Rest{Colors.RESET}")
         print(f"{Colors.MAGENTA}4. View quests{Colors.RESET}")
         print(f"{Colors.BLUE}5. Display stats{Colors.RESET}")
-        print(f"{Colors.BRIGHT_YELLOW}6. Save game{Colors.RESET}")
-        print(f"{Colors.BRIGHT_RED}7. Quit game{Colors.RESET}")
+        print(f"{Colors.BRIGHT_GREEN}6. Display success{Colors.RESET}")
+        print(f"{Colors.BRIGHT_YELLOW}7. Save game{Colors.RESET}")
+        print(f"{Colors.BRIGHT_RED}8. Quit game{Colors.RESET}\n")
+
         
-        choice = input(f"\n{Colors.CYAN}Your choice: {Colors.RESET}")
+        choice = input(f"{Colors.CYAN}Your choice: {Colors.RESET}")
         
         if choice == "1":  # Explore a new room
             if not dungeon:
@@ -124,7 +127,7 @@ def main(continue_game=False, loaded_player=None):
             else:
                 if debug >= 1:
                     print(f"{Colors.CYAN}DEBUG: Dungeon size before exploration: {len(dungeon)}{Colors.RESET}")
-                room = dungeon.pop(0)
+                room:Room = dungeon.pop(0)
                 player_survived = room.enter(player)
                 rooms_explored += 1
                 
@@ -189,17 +192,20 @@ def main(continue_game=False, loaded_player=None):
             player.view_quests()
         
         elif choice == "5":  # Display stats summary
+            player.rooms_explored = rooms_explored
             player.display_stats_summary()
-    
+        
+        elif choice == "6": # Display Achievement
+            player.display_achievements()
 
-        elif choice == "6":  # Save game
+        elif choice == "7":  # Save game
             # Save does not work for now
             # Ask the save name:
             save_name = input(f"\n{Colors.YELLOW}Enter a save name: {Colors.RESET}")
             player.save_player(save_name)
             input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
         
-        elif choice == "7":  # Quit game
+        elif choice == "8":  # Quit game
             confirm = input(f"{Colors.RED}Are you sure you want to quit? (y/n): {Colors.RESET}").lower()
             if confirm == "y":
                 try:
