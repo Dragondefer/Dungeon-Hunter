@@ -264,7 +264,8 @@ class Room:
     
     def handle_dice_puzzle(self, player):
         print(f"\n{Colors.CYAN}You find a strange dice game set up on a table.{Colors.RESET}")
-        print(f"{Colors.YELLOW}The rules state: Roll three dice. If their sum is greater than 10, you win a prize.{Colors.RESET}")
+        print(f"{Colors.YELLOW}The rules state:{Colors.RESET}")
+        print(f"{Colors.YELLOW}Roll three dice. If their sum is greater than 10, you win a prize.{Colors.RESET}")
         print(f"{Colors.YELLOW}However, if you roll three of the same number, you win a special prize!{Colors.RESET}")
         print(f"{Colors.YELLOW}It costs 10 gold to play.{Colors.RESET}")
         
@@ -281,13 +282,20 @@ class Room:
                     return True
                 
                 player.gold -= 10
+                self.gold_spent += 10
                 print(f"{Colors.YELLOW}You pay 10 gold to play.{Colors.RESET}")
                 
                 print(f"\n{Colors.CYAN}Rolling dice...{Colors.RESET}")
                 dice1 = dice_animation()
+                print(f"\n{Colors.YELLOW}You rolled: {dice1}{Colors.RESET}")
+                time.sleep(0.5)
                 dice2 = dice_animation()
+                print(f"\n{Colors.YELLOW}You rolled: {dice2}{Colors.RESET}")
+                time.sleep(0.5)
                 dice3 = dice_animation()
-                
+                print(f"\n{Colors.YELLOW}You rolled: {dice3}{Colors.RESET}")
+                time.sleep(0.5)
+
                 total = dice1 + dice2 + dice3
                 print(f"\n{Colors.YELLOW}You rolled: {dice1}, {dice2}, {dice3} (Total: {total}){Colors.RESET}")
                 
@@ -612,15 +620,19 @@ class Room:
                     dropped_item = generate_random_item(player=player, enemy=enemy)
                     player.inventory.append(dropped_item)
                     print(f"{Colors.GREEN}The {enemy.name} dropped: {dropped_item.name}!{Colors.RESET}")
-                    input(f"{Colors.YELLOW}Press enter to continue...{Colors.RESET}")
+                    time.sleep(2)
 
                 self.enemies.remove(enemy)
 
                 # Quest progress
+                """
                 for quest in player.quests:
                     if quest.objective_type == "kill_enemies" and not quest.completed:
                         if quest.update_progress():
                             print(f"\n{Colors.BRIGHT_GREEN}{Colors.BOLD}Quest Completed: {quest.title}!{Colors.RESET}")
+                """
+                player.update_quests("kill_enemies")
+
 
                 if self.enemies:
                     enemy = self.enemies[0]
@@ -721,16 +733,8 @@ class Room:
 
         # Generate shop inventory
         shop_inventory = []
-        diff = player.difficulty
-        if diff == "normal":
-            for _ in range(random.randint(5, 7)):
-                shop_inventory.append(generate_random_item(player=player))
-        elif diff == "soul_enjoyer":
-            for _ in range(random.randint(3, 6)):
-                shop_inventory.append(generate_random_item(player=player))
-        elif diff == "realistic":
-            for _ in range(random.randint(2, 5)):
-                shop_inventory.append(generate_random_item(player=player))
+        for _ in range(player.difficulty.get_shop_item_num()):
+            shop_inventory.append(generate_random_item(player=player))
 
         shop_inventory.sort(key=lambda item: item.value, reverse=True)
 
@@ -766,6 +770,7 @@ class Room:
                         item = shop_inventory[item_index]
                         if player.gold >= item.value:
                             player.gold -= item.value
+                            self.gold_spent += item.value
                             player.inventory.append(item)
                             shop_inventory.remove(item)
                             print(f"\n{Colors.GREEN}You bought {item.name} for {item.value} gold.{Colors.RESET}")
@@ -810,7 +815,7 @@ class Room:
                 
                 player.gold += sell_value
                 player.inventory.remove(item)
-                print(f"\n{Colors.GREEN}You sold {item.name} for {sell_value} gold.{Colors.RESET}")
+                print(f"\n{Colors.GREEN}You sold {item.name} for {sell_value} gold.{Colors.RESET}\n")
             else:
                 print(f"\n{Colors.RED}Invalid choice.{Colors.RESET}")
         
@@ -1004,7 +1009,7 @@ def generate_random_room(player, room_type=None, is_boss_room=False):
     
     return Room(room_type, description, enemies, items, trap)
 
-def generate_dungeon(player):
+def generate_dungeon(player:Player):
     """Generates a dungeon with rooms based on the level and difficulty."""
     global debug
     dungeon_level = player.dungeon_level
@@ -1014,6 +1019,7 @@ def generate_dungeon(player):
         print(f"{Colors.YELLOW}DEBUG: Generating dungeon level {dungeon_level} with difficulty {difficulty}{Colors.RESET}")
     
     # Définition du nombre de salles selon la difficulté
+    """
     if difficulty == "normal":
         num_rooms = random.randint(5, 8)
     elif difficulty == "soul_enjoyer":
@@ -1025,6 +1031,8 @@ def generate_dungeon(player):
         print(difficulty)
         num_rooms = random.randint(5, 8)
         input()
+    """
+    num_rooms = player.difficulty.get_room_count()
     
     if debug >= 1:
         print(f"{Colors.YELLOW}DEBUG: Number of rooms: {num_rooms}{Colors.RESET}")
