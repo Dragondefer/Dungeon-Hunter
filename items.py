@@ -1,5 +1,5 @@
-__version__ = "581.0"
-__creation__ = "9-03-2025"
+__version__ = "622.0"
+__creation__ = "09-03-2025"
 
 import random
 
@@ -9,7 +9,7 @@ from data import enemy_sets
 
 debug = 0
 
-# Beware: Items may hold hidden curses that drain your soul slowly.
+#̶̼͝ B̵̕͜ë̵͕́ẅ̷̙́ä̷̪́r̷͍̈́ë̵͕́:̴̨͝ I̴̡̛ẗ̴̗́ë̵͕́m̴̛̠s̸̱̅ m̴̛̠ä̷̪́ÿ̸̡́ h̵̤͒o̶͙͝l̷̫̈́ď̶̙ h̵̤͒i̴̊͜ď̶̙ď̶̙ë̵͕́n̸̻̈́ c̴̱͝ŭ̵͇r̷͍̈́s̸̱̅ë̵͕́s̸̱̅ ẗ̴̗́h̵̤͒ä̷̪́ẗ̴̗́ ď̶̙r̷͍̈́ä̷̪́i̴̊͜n̸̻̈́ ÿ̸̡́o̶͙͝ŭ̵͇r̷͍̈́ s̸̱̅o̶͙͝ŭ̵͇l̷̫̈́ s̸̱̅l̷̫̈́o̶͙͝ẅ̷̙́l̷̫̈́ÿ̸̡́.̵͇̆
 class Item:
     """
     Represents any usable or equippable item in the game.
@@ -74,7 +74,7 @@ class Item:
         # Pour les autres types d'items (ex : consommables spéciaux)
         return item_type(data["name"], data["description"], data["value"], **extras)
 
-# Beware: Gear may bind you to a fate worse than death.
+#̶̼͝ B̵̕͜ë̵͕́ẅ̷̙́ä̷̪́r̷͍̈́ë̵͕́:̴̨͝ G̵̨̽ë̵͕́ä̷̪́r̷͍̈́ m̴̛̠ä̷̪́ÿ̸̡́ b̸̼̅i̴̊͜n̸̻̈́ď̶̙ ÿ̸̡́o̶͙͝ŭ̵͇ ẗ̴̗́o̶͙͝ ä̷̪́ f̷̠͑ä̷̪́ẗ̴̗́ë̵͕́ ẅ̷̙́o̶͙͝r̷͍̈́s̸̱̅ë̵͕́ ẗ̴̗́h̵̤͒ä̷̪́n̸̻̈́ ď̶̙ë̵͕́ä̷̪́ẗ̴̗́h̵̤͒.̵͇̆
 class Gear(Item):
     """Gère les objets équipables (armes, armures, anneaux, etc.)."""
     def __init__(self, name, description, value, effects=None):
@@ -107,7 +107,7 @@ class Gear(Item):
         return item_type(data["name"], data["description"], data["value"], **extras)
 
 
-# Beware: Equipment may carry the whispers of fallen heroes.
+#̶̼͝ B̵̕͜ë̵͕́ẅ̷̙́ä̷̪́r̷͍̈́ë̵͕́:̴̨͝ E̶͍̚q̴̨͝ŭ̵͇i̴̊͜p̵̦̆m̴̛̠ë̵͕́n̸̻̈́ẗ̴̗́ m̴̛̠ä̷̪́ÿ̸̡́ c̴̱͝ä̷̪́r̷͍̈́r̷͍̈́ÿ̸̡́ ẗ̴̗́h̵̤͒ë̵͕́ ẅ̷̙́h̵̤͒i̴̊͜s̸̱̅p̵̦̆ë̵͕́r̷͍̈́s̸̱̅ o̶͙͝f̷̠͑ f̷̠͑ä̷̪́l̷̫̈́l̷̫̈́ë̵͕́n̸̻̈́ h̵̤͒ë̵͕́r̷͍̈́o̶͙͝ë̵͕́s̸̱̅.̵͇̆
 class Equipment:
     """Gère l'équipement du joueur (slots et bonus appliqués)."""
     def __init__(self, **kwargs):
@@ -196,7 +196,7 @@ class Equipment:
         return {slot: item for slot, item in self.slots.items() if item}
 
 
-# Beware: Weapons may thirst for blood beyond the wielder's control.
+#̶̼͝ B̵̕͜ë̵͕́ẅ̷̙́ä̷̪́r̷͍̈́ë̵͕́:̴̨͝ W̸͕̆ë̵͕́ä̷̪́p̵̦̆o̶͙͝n̸̻̈́s̸̱̅ m̴̛̠ä̷̪́ÿ̸̡́ ẗ̴̗́h̵̤͒i̴̊͜r̷͍̈́s̸̱̅ẗ̴̗́ f̷̠͑o̶͙͝r̷͍̈́ b̸̼̅l̷̫̈́o̶͙͝o̶͙͝ď̶̙ b̸̼̅ë̵͕́ÿ̸̡́o̶͙͝n̸̻̈́ď̶̙ ẗ̴̗́h̵̤͒ë̵͕́ ẅ̷̙́i̴̊͜ë̵͕́l̷̫̈́ď̶̙ë̵͕́r̷͍̈́'̸̱̅s̸̱̅ c̴̱͝o̶͙͝n̸̻̈́ẗ̴̗́r̷͍̈́o̶͙͝l̷̫̈́.̵͇̆
 class Weapon(Gear):
     """
     Représente une arme équipable qui augmente les dégâts d'attaque.
@@ -227,7 +227,7 @@ class Weapon(Gear):
         )
 
 
-# Beware: Armor may trap the wearer in eternal torment.
+#̶̼͝ B̵̕͜ë̵͕́ẅ̷̙́ä̷̪́r̷͍̈́ë̵͕́:̴̨͝ A̷̛͠r̷͍̈́m̴̛̠o̶͙͝r̷͍̈́ m̴̛̠ä̷̪́ÿ̸̡́ ẗ̴̗́r̷͍̈́ä̷̪́p̵̦̆ ẗ̴̗́h̵̤͒ë̵͕́ ẅ̷̙́ë̵͕́ä̷̪́r̷͍̈́ë̵͕́r̷͍̈́ i̴̊͜n̸̻̈́ ë̵͕́ẗ̴̗́ë̵͕́r̷͍̈́n̸̻̈́ä̷̪́l̷̫̈́ ẗ̴̗́o̶͙͝r̷͍̈́m̴̛̠ë̵͕́n̸̻̈́ẗ̴̗́.̵͇̆
 class Armor(Gear):
     """Represents an equippable armor piece that enhances defense."""
     def __init__(self, name, description, value, defense, armor_type):
@@ -240,7 +240,7 @@ class Armor(Gear):
         return data
 
 
-# Beware: Shields may block more than just attacks.
+#̶̼͝ B̵̕͜ë̵͕́ẅ̷̙́ä̷̪́r̷͍̈́ë̵͕́:̴̨͝ S̶̤̕h̵̤͒i̴̊͜ë̵͕́l̷̫̈́ď̶̙s̸̱̅ m̴̛̠ä̷̪́ÿ̸̡́ b̸̼̅l̷̫̈́o̶͙͝c̴̱͝k̵̢͝ m̴̛̠o̶͙͝r̷͍̈́ë̵͕́ ẗ̴̗́h̵̤͒ä̷̪́n̸̻̈́ j̶̩̈́ŭ̵͇s̸̱̅ẗ̴̗́ ä̷̪́ẗ̴̗́ẗ̴̗́ä̷̪́c̴̱͝k̵̢͝s̸̱̅.̵͇̆
 class Shield(Gear):
     """Represents an equippable shield that provides high defense and blocking."""
     def __init__(self, name, description, value, defense, block_chance):
@@ -253,7 +253,7 @@ class Shield(Gear):
         return data
 
 
-# Beware: Gauntlets may bind the wearer's soul to dark forces.
+#̶̼͝ B̵̕͜ë̵͕́ẅ̷̙́ä̷̪́r̷͍̈́ë̵͕́:̴̨͝ G̵̨̽ä̷̪́ŭ̵͇n̸̻̈́ẗ̴̗́l̷̫̈́ë̵͕́ẗ̴̗́s̸̱̅ m̴̛̠ä̷̪́ÿ̸̡́ b̸̼̅i̴̊͜n̸̻̈́ď̶̙ ẗ̴̗́h̵̤͒ë̵͕́ ẅ̷̙́ë̵͕́ä̷̪́r̷͍̈́ë̵͕́r̷͍̈́'̸̱̅s̸̱̅ s̸̱̅o̶͙͝ŭ̵͇l̷̫̈́ ẗ̴̗́o̶͙͝ ď̶̙ä̷̪́r̷͍̈́k̵̢͝ f̷̠͑o̶͙͝r̷͍̈́c̴̱͝ë̵͕́s̸̱̅.̵͇̆
 class Gauntlets(Gear):
     """Represents an equippable gauntlet that increases strength and defense."""
     def __init__(self, name, description, value, defense, strength_boost):
@@ -271,26 +271,26 @@ class Gauntlets(Gear):
         return super().to_dict()
 
 
-# Beware: Amulets may whisper secrets of forgotten realms.
+#̶̼͝ B̵̕͜ë̵͕́ẅ̷̙́ä̷̪́r̷͍̈́ë̵͕́:̴̨͝ A̷̛͠m̴̛̠ŭ̵͇l̷̫̈́ë̵͕́ẗ̴̗́s̸̱̅ m̴̛̠ä̷̪́ÿ̸̡́ ẅ̷̙́h̵̤͒i̴̊͜s̸̱̅p̵̦̆ë̵͕́r̷͍̈́ s̸̱̅ë̵͕́c̴̱͝r̷͍̈́ë̵͕́ẗ̴̗́s̸̱̅ o̶͙͝f̷̠͑ f̷̠͑o̶͙͝r̷͍̈́g̸̻̿o̶͙͝ẗ̴̗́ẗ̴̗́ë̵͕́n̸̻̈́ r̷͍̈́ë̵͕́ä̷̪́l̷̫̈́m̴̛̠s̸̱̅.̵͇̆
 class Amulet(Gear):
     """Represents an equippable amulet with magical bonuses."""
     def __init__(self, name, description, value, effects):
         super().__init__(name, description, value, effects)
 
-# Beware: Rings may carry curses that twist fate.
+#̶̼͝ B̵̕͜ë̵͕́ẅ̷̙́ä̷̪́r̷͍̈́ë̵͕́:̴̨͝ R̷̞͝i̴̊͜n̸̻̈́g̸̻̿s̸̱̅ m̴̛̠ä̷̪́ÿ̸̡́ c̴̱͝ä̷̪́r̷͍̈́r̷͍̈́ÿ̸̡́ c̴̱͝ŭ̵͇r̷͍̈́s̸̱̅ë̵͕́s̸̱̅ ẗ̴̗́h̵̤͒ä̷̪́ẗ̴̗́ ẗ̴̗́ẅ̷̙́i̴̊͜s̸̱̅ẗ̴̗́ f̷̠͑ä̷̪́ẗ̴̗́ë̵͕́.̵͇̆
 class Ring(Gear):
     """Represents an equippable ring that grants magical or stat bonuses."""
     def __init__(self, name, description, value, effects):
         super().__init__(name, description, value, effects)
 
-# Beware: Belts may tighten with a will of their own.
+#̶̼͝ B̵̕͜ë̵͕́ẅ̷̙́ä̷̪́r̷͍̈́ë̵͕́:̴̨͝ B̵̕͜ë̵͕́l̷̫̈́ẗ̴̗́s̸̱̅ m̴̛̠ä̷̪́ÿ̸̡́ ẗ̴̗́i̴̊͜g̸̻̿h̵̤͒ẗ̴̗́ë̵͕́n̸̻̈́ ẅ̷̙́i̴̊͜ẗ̴̗́h̵̤͒ ä̷̪́ ẅ̷̙́i̴̊͜l̷̫̈́l̷̫̈́ o̶͙͝f̷̠͑ ẗ̴̗́h̵̤͒ë̵͕́i̴̊͜r̷͍̈́ o̶͙͝ẅ̷̙́n̸̻̈́.̵͇̆
 class Belt(Gear):
     """Represents an equippable belt that boosts stamina or defense."""
     def __init__(self, name, description, value, effects):
         super().__init__(name, description, value, effects)
 
 
-# Beware: Potions may have side effects beyond healing.
+#̶̼͝ B̵̕͜ë̵͕́ẅ̷̙́ä̷̪́r̷͍̈́ë̵͕́:̴̨͝ P̶̺̒o̶͙͝ẗ̴̗́i̴̊͜o̶͙͝n̸̻̈́s̸̱̅ m̴̛̠ä̷̪́ÿ̸̡́ h̵̤͒ä̷̪́v̶̼͝ë̵͕́ s̸̱̅i̴̊͜ď̶̙ë̵͕́ ë̵͕́f̷̠͑f̷̠͑ë̵͕́c̴̱͝ẗ̴̗́s̸̱̅ b̸̼̅ë̵͕́ÿ̸̡́o̶͙͝n̸̻̈́ď̶̙ h̵̤͒ë̵͕́ä̷̪́l̷̫̈́i̴̊͜n̸̻̈́g̸̻̿.̵͇̆
 class Potion(Item):
     """
     Represents a consumable potion with temporary effects.
@@ -453,8 +453,8 @@ def generate_random_item(player=None, enemy=None, item_type=None, rarity=None, i
     global debug
     debug = 0
 
-    level = (player.dungeon_level + level_boost) if player else 1
-    difficulty = player.difficulty if player else "normal"
+    level = (player.dungeon_level + level_boost)
+    difficulty = player.difficulty  # Objet, ex: NormalMode()
     
     if not enemy_type:
         if enemy:
@@ -467,23 +467,29 @@ def generate_random_item(player=None, enemy=None, item_type=None, rarity=None, i
         print(f"{Colors.RED}enemy_type: {enemy_type} not in enemy_sets{Colors.RESET}")
         enemy_type = None
     else:
-        # print(f"{Colors.RED}enemy_type = None")
+        if debug >= 1:
+            print(f"{Colors.RED}enemy_type = None")
         enemy_type = None
 
     if debug >= 1:
         print('DEBUG: Given item_type:', item_type)
 
     if available_rarities is None:
+        rarities_ls = ["common", "uncommon", "rare", "epic", "legendary", "divine", "???"]
+
+        """
         if difficulty == "normal":
-            available_rarities = ["common", "uncommon", "rare", "epic", "legendary", "divine"]
+            available_rarities = rarities_ls[:-1]
         elif difficulty == "soul_enjoyer":
-            available_rarities = ["common", "uncommon", "rare", "epic", "legendary"]
+            available_rarities = rarities_ls[:-2]
         elif difficulty == "realistic":
-            available_rarities = ["common", "uncommon", "rare", "epic", "legendary", "divine", "???"]
+            available_rarities = rarities_ls
         else:
-            available_rarities = ["common", "uncommon", "rare", "epic", "legendary", "divine"]
+            available_rarities = rarities_ls[:-1]
             print(difficulty)
             print(available_rarities)
+        """
+        available_rarities = difficulty.get_available_rarities()
 
         # Adapte les rareté au niveaux (niv 1 on ne peut avoir mieux : rare, niv 2: rareté max = epic...)
         if level <= len(available_rarities) and not rarity:  
@@ -493,10 +499,11 @@ def generate_random_item(player=None, enemy=None, item_type=None, rarity=None, i
 
 
     elif available_rarities not in ["common", "uncommon", "rare", "epic", "legendary", "divine", "???"]:
-        print('invalid rarity called in generate_random_item')
+        print('invalid rarity called in generate_random_item\nCalled rarity:', available_rarities)
 
 
     if rarity_boost is None:
+        """
         if difficulty == "normal":
             rarity_boost = 1.0
         elif difficulty == "soul_enjoyer":
@@ -510,6 +517,8 @@ def generate_random_item(player=None, enemy=None, item_type=None, rarity=None, i
                 print(rarity_boost)
             except Exception as e:
                 print(e)
+        """
+        rarity_boost = difficulty.get_rarity_boost()
 
     # Adjust rarity weights based on rarity_boost
     rarity_weights = {
