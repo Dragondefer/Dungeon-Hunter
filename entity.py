@@ -1168,7 +1168,7 @@ class Player(Entity):
         print(f"\r{Colors.YELLOW}║ Difficulty:        {Colors.BRIGHT_MAGENTA}{self.difficulty.capitalize().ljust(box_width - 20)}{Colors.RESET}")
         print(f"\r{Colors.YELLOW}║ NG+:               {Colors.BRIGHT_YELLOW}{str(ng).ljust(box_width - 20)}{Colors.RESET}")
         print(f"\r{Colors.YELLOW}║ Dungeon Level:     {Colors.BRIGHT_BLUE}{str(self.dungeon_level).ljust(box_width - 20)}{Colors.RESET}")
-        print(f"\r{Colors.YELLOW}║ Rooms Number:      {Colors.BRIGHT_GREEN}{str(player.current_room_number).ljust(box_width - 20)}{Colors.RESET}")
+        print(f"\r{Colors.YELLOW}║ Rooms Number:      {Colors.BRIGHT_GREEN}{str(self.current_room_number).ljust(box_width - 20)}{Colors.RESET}")
         print(f"\r{Colors.YELLOW}║ Kills:             {Colors.BRIGHT_RED}{str(self.kills).ljust(box_width - 20)}{Colors.RESET}")
         print(f"\r{Colors.YELLOW}║ Bosses Defeated:   {Colors.BRIGHT_CYAN}{str(self.bosses_defeated).ljust(box_width - 20)}{Colors.RESET}")
         print()
