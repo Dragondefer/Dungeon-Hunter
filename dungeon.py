@@ -1,4 +1,4 @@
-__version__ = "926.0"
+__version__ = "1050.0"
 __creation__ = "09-03-2025"
 
 import time
@@ -11,6 +11,7 @@ from colors import Colors
 from entity import Player, generate_enemy, load_player
 from items import Armor, Weapon, Potion, generate_random_item
 from data import room_descriptions, puzzle_choices, rest_events
+from logger import logger
 
 debug = 0
 
@@ -86,6 +87,7 @@ class Room:
         global debug
         if debug >= 1:
             print(f"{Colors.YELLOW}DEBUG: Entering room of type '{self.room_type}' with description: {self.description}{Colors.RESET}")
+        logger.info(f"Player entering room of type '{self.room_type}' with description: {self.description}")
         if not self.visited:
             
             splited_desc = self.description.split('\n') if '\n' in self.description else [self.description]
@@ -97,24 +99,30 @@ class Room:
             self.visited = True
         else:
             print(f"\n{Colors.CYAN}You've returned to {self.description}{Colors.RESET}")
+            logger.info(f"Player returned to room: {self.description}")
         
         if self.trap and not self.trap["triggered"]:
+            logger.warning(f"Trap triggered in room: {self.description} - Trap details: {self.trap}")
             self.trigger_trap(player)
             
         return self.handle_room(player)
     
     def trigger_trap(self, player):
         print(f"\n{Colors.RED}{Colors.BOLD}*CLICK*{Colors.RESET}")
+        player.traps_triggered +=1
+        logger.info(f"Trap activated: {self.trap['description']}")
         time.sleep(0.5)
         print(f"{Colors.RED}It's a trap! {self.trap['description']}{Colors.RESET}")
         
         # Give player a chance to avoid the trap based on luck
         if random.random() < (0.1 + player.stats.luck * 0.01 + player.stats.agility * 0.01):
             print(f"{Colors.GREEN}Thanks to your quick reflexes, you manage to avoid the trap!{Colors.RESET}")
+            logger.info("Player avoided the trap due to quick reflexes.")
         else:
             if self.trap["type"] == "damage":
                 damage = self.trap["value"]
                 player.stats.modify_stat(stat_name="hp", value=-damage)
+                logger.info(f"Player took {damage} damage from trap.")
                 #player.stats.hp = max(0, player.stats.hp - damage)
                 print(f"{Colors.RED}You take {damage} damage from the trap!{Colors.RESET}")
             elif self.trap["type"] == "stat_reduction":
@@ -122,9 +130,11 @@ class Room:
                 value = self.trap["value"]
                 if stat == "attack":
                     player.stats.modify_stat(stat_name="attack", value=-value, permanent=False)
+                    logger.info(f"Player's attack temporarily reduced by {value} due to trap.")
                     print(f"{Colors.RED}Your attack is temporary reduced by {value}!{Colors.RESET}")
                 elif stat == "defense":
                     player.stats.modify_stat(stat_name="defense", value=-value, permanent=False)
+                    logger.info(f"Player's defense temporarily reduced by {value} due to trap.")
                     print(f"{Colors.RED}Your defense is temporary reduced by {value}!{Colors.RESET}")
         
         self.trap["triggered"] = True
@@ -134,36 +144,42 @@ class Room:
 
         if debug >= 1:
             print(f"\n{Colors.YELLOW}DEBUG: Entering handle_room() for \"{self.room_type}\"{Colors.RESET}")
-        
+        logger.debug(f"handle_room() called for room type \"{self.room_type}\"")
         if self.room_type == "combat":
             if debug >= 1:
                 print(f"{Colors.RED}DEBUG: Combat room detected!{Colors.RESET}")
+            logger.info("Combat room detected.")
             return self.handle_combat(player)
         elif self.room_type == "treasure":
             if debug >= 1:
                 print(f"{Colors.GREEN}DEBUG: Treasure room detected!{Colors.RESET}")
+            logger.info("Treasure room detected.")
             return self.handle_treasure(player)
         elif self.room_type == "shop":
             if debug >= 1:
                 print(f"{Colors.CYAN}DEBUG: Shop room detected!{Colors.RESET}")
+            logger.info("Shop room detected.")
             return self.handle_shop(player)
         elif self.room_type == "rest":
             if debug >= 1:
                 print(f"{Colors.BLUE}DEBUG: Rest room detected!{Colors.RESET}")
+            logger.info("Rest room detected.")
             return self.handle_rest(player)
         elif self.room_type == "boss":
             if debug >= 1:
                 print(f"{Colors.RED}DEBUG: Boss room detected!{Colors.RESET}")
+            logger.info("Boss room detected.")
             return self.handle_combat(player, True)
         elif self.room_type == "puzzle":
             if debug >= 1:
                 print(f"{Colors.MAGENTA}DEBUG: Puzzle room detected!{Colors.RESET}")
+            logger.info("Puzzle room detected.")
             return self.handle_puzzle(player)
 
         if debug >= 1:
             print(f"{Colors.YELLOW}DEBUG: Room type not triggering any event.{Colors.RESET}")
+        logger.debug("Room type not triggering any event.")
         return True  # Continue exploration si rien ne se passe
-
 
     
     def handle_puzzle(self, player:Player):
@@ -172,6 +188,7 @@ class Room:
         puzzle_types = ["riddle", "number", "sequence", "choice", "dice"]
         puzzle_type = random.choice(puzzle_types)
         
+        logger.info(f"Player encountered a puzzle of type: {puzzle_type}")
         print(f"\n{Colors.CYAN}You encounter a puzzle.{Colors.RESET}")
         
         result = False
@@ -197,6 +214,7 @@ class Room:
         target = random.randint(1, 20)
         attempts = 5
         
+        logger.info(f"Number puzzle target is {target} with {attempts} attempts allowed.")
         print(f"\n{Colors.CYAN}There's a strange mechanical device with numbered dials.{Colors.RESET}")
         print(f"{Colors.YELLOW}You need to guess the correct number between 1 and 20.{Colors.RESET}")
         print(f"{Colors.GREEN}The device will tell you if your guess is higher or lower than the target.{Colors.RESET}")
@@ -204,13 +222,14 @@ class Room:
         for attempt in range(attempts):
             try:
                 guess = int(input(f"\n{Colors.YELLOW}Your guess (attempt {attempt+1}/{attempts}): {Colors.RESET}"))
-                
+                logger.debug(f"Player guessed {guess} on attempt {attempt+1}")
                 if guess == target:
                     print(f"\n{Colors.GREEN}Correct! The device whirs and opens.{Colors.RESET}")
                     
                     # Generate reward
                     gold_amount = random.randint(20, 50) * player.dungeon_level
                     player.gold += gold_amount
+                    logger.info(f"Player guessed correctly and won {gold_amount} gold.")
                     print(f"{Colors.YELLOW}You found {gold_amount} gold!{Colors.RESET}")
                     
                     return True
@@ -219,9 +238,11 @@ class Room:
                 else:
                     print(f"{Colors.RED}The target number is lower.{Colors.RESET}")
             except ValueError:
+                logger.warning("Player entered invalid input for number puzzle guess.")
                 print(f"{Colors.RED}Please enter a valid number.{Colors.RESET}")
                 attempt -= 1  # Don't count invalid inputs as attempts
         
+        logger.info(f"Player failed to guess the number. The correct number was {target}.")
         print(f"\n{Colors.RED}You failed to guess the number. The correct number was {target}.{Colors.RESET}")
         print(f"{Colors.YELLOW}The device resets and nothing happens.{Colors.RESET}")
         
@@ -282,7 +303,7 @@ class Room:
                     return True
                 
                 player.gold -= 10
-                self.gold_spent += 10
+                player.gold_spent += 10
                 print(f"{Colors.YELLOW}You pay 10 gold to play.{Colors.RESET}")
                 
                 print(f"\n{Colors.CYAN}Rolling dice...{Colors.RESET}")
@@ -422,7 +443,8 @@ class Room:
                     return True
                 else:
                     print(f"{Colors.RED}Wrong answer! You're left with {2 - attempt} attempt.{Colors.RESET}")
-            except ValueError:
+            except ValueError as e:
+                logger.warning(f"ValueError in number puzzle guess input: {e}")
                 print(f"{Colors.RED}Please enter a valid number.{Colors.RESET}")
                 attempt -= 1  # Ne pas compter une entrée invalide comme une tentative
 
@@ -492,6 +514,8 @@ class Room:
             print(f"\r{Colors.YELLOW}║ {Colors.BRIGHT_BLUE}{mana_text.ljust(box_len)}{Colors.RESET}")
             print(f"\r{Colors.YELLOW}║ {mana_bar.ljust(box_len)}{Colors.RESET}")
 
+            logger.info(f"Player: {player.stats.hp}/{player.stats.max_hp} hp, {player.stats.stamina}/{player.stats.max_stamina} stm, {player.stats.mana}/{player.stats.max_mana} mana")
+
             # Skip separator line
             print("\033[1B", end="")
 
@@ -504,6 +528,8 @@ class Room:
             enemy_hp_bar = create_bar(enemy.stats.hp, enemy.stats.max_hp, color=Colors.RED)
             print(f"\r{Colors.YELLOW}║ {Colors.RED}{enemy_hp_text.ljust(box_len)}{Colors.RESET}")
             print(f"\r{Colors.YELLOW}║ {enemy_hp_bar.ljust(box_len)}{Colors.RESET}")
+
+            logger.info(f"{enemy.name}: {enemy.stats.hp}/{enemy.stats.max_hp} hp")
 
             # Bottom border
             print(f"{Colors.YELLOW}╚{'═' * (box_len + 1)}╝{Colors.RESET}")
@@ -518,12 +544,14 @@ class Room:
         clear_screen()
 
         if is_boss_room:
+            logger.info(f"Boss Enconter: {enemy.name}")
             print(f"\n{Colors.RED}{Colors.BOLD}╔══════════════════════════════════════════╗")
             print(f"║              BOSS ENCOUNTER              ║")
             print(f"╚══════════════════════════════════════════╝{Colors.RESET}")
             typewriter_effect(f"\n{Colors.RED}{Colors.BOLD}The {enemy.name} emerges from the shadows!{Colors.RESET}", 0.03)
             time.sleep(1)
         else:
+            logger.info(f"Enemy enconter: {enemy.name}")
             print(f"\n{Colors.RED}A {enemy.name} appears!{Colors.RESET}")
             time.sleep(0.5)
 
@@ -566,6 +594,7 @@ class Room:
 
                 damage, absorbed_damage = enemy.stats.take_damage(base_damage)
                 actual_damage = damage + absorbed_damage
+                logger.info(f"Player attack: {'critical hit' if critical else ''} {actual_damage} dmg, {stamina_cost} stm")
                 print(f"You deal {Colors.RED}{math.ceil(actual_damage)}{Colors.RESET} damage to {enemy.name}!")
 
             elif choice == "2" and player.skills:  # Use skill with timing mechanic
@@ -770,7 +799,7 @@ class Room:
                         item = shop_inventory[item_index]
                         if player.gold >= item.value:
                             player.gold -= item.value
-                            self.gold_spent += item.value
+                            player.gold_spent += item.value
                             player.inventory.append(item)
                             shop_inventory.remove(item)
                             print(f"\n{Colors.GREEN}You bought {item.name} for {item.value} gold.{Colors.RESET}")
@@ -778,7 +807,8 @@ class Room:
                             print(f"\n{Colors.RED}You don't have enough gold!{Colors.RESET}")
                     else:
                         print(f"\n{Colors.RED}Invalid choice.{Colors.RESET}")
-                except ValueError:
+                except ValueError as e:
+                    logger.warning(f"ValueError in shop item choice input: {e}")
                     print(f"\n{Colors.RED}Please enter a valid option.{Colors.RESET}")
 
         return True
@@ -819,7 +849,8 @@ class Room:
             else:
                 print(f"\n{Colors.RED}Invalid choice.{Colors.RESET}")
         
-        except ValueError:
+        except ValueError as e:
+            logger.warning(f"ValueError in sell item choice input: {e}")
             print(f"\n{Colors.RED}Please enter a number.{Colors.RESET}")
 
 
@@ -947,6 +978,7 @@ class Room:
                 print(f"{Colors.YELLOW}You gained {rest_event['value']} gold!{Colors.RESET}")
 
 def generate_shop_inventory(level):
+    logger.info(f"Generating shop inventory for level {level}")
     shop_items = [
         Weapon("Short Sword", "A basic sword for beginners.", 30, 4),
         Weapon("Iron Mace", "A heavy but strong weapon.", 50, 6),
@@ -955,6 +987,8 @@ def generate_shop_inventory(level):
         Potion("Healing Potion", "Restores 30 HP.", 25, "heal", 30),
         Potion("Strength Elixir", "Increases attack power.", 40, "attack_boost", 5)
     ]
+    logger.debug(f"Shop items generated: {[item.name for item in shop_items]}")
+    logger.info(f"Returning {min(len(shop_items), 5)} items for sale")
     return random.sample(shop_items, min(len(shop_items), 5))  # Randomly pick 5 items for sale
 
 
@@ -969,9 +1003,11 @@ def generate_random_room(player, room_type=None, is_boss_room=False):
     
     if debug >= 1:
         print(f"{Colors.YELLOW}DEBUG: Generating random room of type '{room_type}' for level {level}{Colors.RESET}")
+    logger.info(f"Generating random room of type '{room_type}' for level {level}")
     
     if is_boss_room:
         room_type = "boss"
+        logger.info("Generating boss room")
     
     description = random.choice(room_descriptions[room_type])
     
@@ -986,6 +1022,7 @@ def generate_random_room(player, room_type=None, is_boss_room=False):
             enemies.append(generate_enemy(level, is_boss_room, player))
     if debug >= 1:
         print(f"{Colors.YELLOW}DEBUG: Enemies generated: {enemies}{Colors.RESET}")
+        logger.debug(f"Generated {len(enemies)} enemies for room")
     # Generate items for treasure rooms
     if room_type == "treasure":
         num_items = random.randint(1, 2)
@@ -993,6 +1030,7 @@ def generate_random_room(player, room_type=None, is_boss_room=False):
             items.append(generate_random_item(player=player))
     if debug >= 1:
         print(f"{Colors.YELLOW}DEBUG: Items generated: {items}{Colors.RESET}")
+    logger.debug(f"Generated item: {items}")
     
     # Generate trap (30% chance) for all rooms except rest, shop, and inter_level
     if room_type not in ("rest", "shop", "inter_level") and random.random() < 0.3:
@@ -1006,6 +1044,7 @@ def generate_random_room(player, room_type=None, is_boss_room=False):
         trap["triggered"] = False
     if debug >= 1:
         print(f"{Colors.YELLOW}DEBUG: Trap generated: {trap}{Colors.RESET}")
+    logger.info(f"Trap generated: {trap}")
     
     return Room(room_type, description, enemies, items, trap)
 
@@ -1017,6 +1056,7 @@ def generate_dungeon(player:Player):
     rooms = []
     if debug >= 1:
         print(f"{Colors.YELLOW}DEBUG: Generating dungeon level {dungeon_level} with difficulty {difficulty}{Colors.RESET}")
+    logger.info(f"Starting dungeon generation for level {dungeon_level} with difficulty {difficulty}")
     
     # Définition du nombre de salles selon la difficulté
     """
@@ -1033,23 +1073,27 @@ def generate_dungeon(player:Player):
         input()
     """
     num_rooms = player.difficulty.get_room_count()
+    logger.debug(f"Number of rooms to generate: {num_rooms}")
     
     if debug >= 1:
         print(f"{Colors.YELLOW}DEBUG: Number of rooms: {num_rooms}{Colors.RESET}")
     
     # Starting room
     if dungeon_level == 1:
+        logger.debug(f"Generating Starting room")
         rooms.append(Room("start", f"You noticed the entrance to the dungeon.\nYou finaly decided to open the door and step in.\nTorches flicker on the damp walls, and the air is heavy with anticipation.", [], [], None))
         if debug >= 1:
             print(f"{Colors.YELLOW}DEBUG: Starting room added{Colors.RESET}")
     else:
         # Inter-level room:
+        logger.debug(f"Generating Inter-level room")
         rooms.append(Room("inter_level", f"You find a small room with a few torches and a table.\nIt seems like a resting place for adventurers.", [], [], None))
         if debug >= 1:
             print(f"{Colors.YELLOW}DEBUG: Inter-level room added{Colors.RESET}")
 
     for i in range(1, num_rooms):
         rooms.append(generate_random_room(player=player))
+        logger.debug(f"Room generated: {rooms[i]}")
     
     if debug >= 1:
         print(f"{Colors.YELLOW}DEBUG: Generated {len(rooms)} rooms :{Colors.RESET}")
@@ -1445,10 +1489,16 @@ def debug_menu(player, dungeon):
 
                 # Generate item with specified parameters
                 item = generate_random_item(player=player, enemy_type=enemy_type.capitalize(), item_type=item_type, rarity=rarity, item_name=item_name, rarity_boost=rarity_boost, level_boost=level_boost)
-            except Exception as e:
+            except ValueError as e:
+                logger.warning(f"ValueError in give item input: {e}")
+                print(f"{Colors.RED}Invalid input: {e}{Colors.RESET}")
+                handle_error()
                 item = None
+            except Exception as e:
+                logger.warning(f"Exception in give item input: {e}")
                 print(f"{Colors.RED}Error : {e}{Colors.RESET}")
                 handle_error()
+                item = None
             finally:
                 if item:
                     player.inventory.append(item)
@@ -1469,7 +1519,12 @@ def debug_menu(player, dungeon):
                 for i in range(int(input(f"{Colors.CYAN}Set Level: {Colors.RESET}") or 0)):
                     player.level_up()
                 print(f"{Colors.GREEN}Player stats updated!{Colors.RESET}")
+            except ValueError as e:
+                logger.warning(f"ValueError in modify player stats input: {e}")
+                print(f"{Colors.RED}Invalid input: {e}{Colors.RESET}")
+                handle_error()
             except Exception as e:
+                logger.warning(f"Exception caught: {e}")
                 print(f"{Colors.RED}Error : {e}{Colors.RESET}")
                 handle_error()
 
@@ -1479,15 +1534,25 @@ def debug_menu(player, dungeon):
                 new_level = int(input(f"{Colors.CYAN}Set new dungeon level: {Colors.RESET}"))
                 player.dungeon_level = new_level
                 print(f"{Colors.GREEN}Dungeon level set to {new_level}{Colors.RESET}")
+            except ValueError as e:
+                logger.warning(f"ValueError in set dungeon level input: {e}")
+                print(f"{Colors.RED}Invalid input: {e}{Colors.RESET}")
+                handle_error()
             except Exception as e:
+                logger.warning(f"Exception caught: {e}")
                 print(f"{Colors.RED}Error : {e}{Colors.RESET}")
                 handle_error()
 
         elif choice == "4":
-            if input('Generate or Teleport ? (G/T)').upper == "G":
+            if input('Generate or Teleport ? (G/T)').upper() == "G":
                 try:
                     lvl = int(input('Level room: '))
-                except TypeError:
+                except ValueError as e:
+                    logger.warning(f"ValueError in teleport input: {e}")
+                    print('Invalid input')
+                    continue
+                except TypeError as e:
+                    logger.warning(f"TypeError in teleport input: {e}")
                     print('Invalid input')
                     continue
                 rtype = input('Room type ("combat", "treasure", "shop", "rest", "puzzle"): ')
@@ -1510,31 +1575,45 @@ def debug_menu(player, dungeon):
                 print(f"{Colors.RED}No room of that type found.{Colors.RESET}")
 
         elif choice == "5":
-            # Spawn Enemies in Current Room
-            num_enemies = int(input(f"{Colors.CYAN}Enter number of enemies to spawn: {Colors.RESET}"))
-            for _ in range(num_enemies):
-                # ask for enemy level:
-                enemy_level = int(input(f"{Colors.CYAN}Enter enemy level: {Colors.RESET}"))
-                # ask if enemy a boss:
-                is_boss = input(f"{Colors.CYAN}Is enemy a boss (y/n): {Colors.RESET}")
-                enemy = generate_enemy(enemy_level, is_boss, player)
-                dungeon.rooms.append(enemy)
-                print(f"{Colors.RED}Spawned enemy: {enemy.name}{Colors.RESET}")
+            try:
+                # Spawn Enemies in Current Room
+                num_enemies = int(input(f"{Colors.CYAN}Enter number of enemies to spawn: {Colors.RESET}"))
+                for _ in range(num_enemies):
+                    # ask for enemy level:
+                    enemy_level = int(input(f"{Colors.CYAN}Enter enemy level: {Colors.RESET}"))
+                    # ask if enemy a boss:
+                    is_boss = input(f"{Colors.CYAN}Is enemy a boss (y/n): {Colors.RESET}")
+                    enemy = generate_enemy(enemy_level, is_boss, player)
+                    dungeon.rooms.append(enemy)
+                    print(f"{Colors.RED}Spawned enemy: {enemy.name}{Colors.RESET}")
+            except ValueError as e:
+                logger.warning(f"ValueError in spawn enemies input: {e}")
+                print(f"{Colors.RED}Invalid input: {e}{Colors.RESET}")
+            except Exception as e:
+                logger.warning(f"Exception caught: {e}")
+                print(f"{Colors.RED}Error : {e}{Colors.RESET}")
 
         elif choice == "6":
-            # Complete a Quest Instantly
-            if player.quests:
-                for i, quest in enumerate(player.quests):
-                    print(f"{Colors.YELLOW}{i+1}. {quest.title}{Colors.RESET}")
-                quest_choice = int(input(f"{Colors.CYAN}Enter quest number to complete: {Colors.RESET}")) - 1
-                if 0 <= quest_choice < len(player.quests):
-                    player.quests[quest_choice].completed = True
-                    player.completed_quests.append(player.quests.pop(quest_choice))
-                    print(f"{Colors.GREEN}Quest completed!{Colors.RESET}")
+            try:
+                # Complete a Quest Instantly
+                if player.quests:
+                    for i, quest in enumerate(player.quests):
+                        print(f"{Colors.YELLOW}{i+1}. {quest.title}{Colors.RESET}")
+                    quest_choice = int(input(f"{Colors.CYAN}Enter quest number to complete: {Colors.RESET}")) - 1
+                    if 0 <= quest_choice < len(player.quests):
+                        player.quests[quest_choice].completed = True
+                        player.completed_quests.append(player.quests.pop(quest_choice))
+                        print(f"{Colors.GREEN}Quest completed!{Colors.RESET}")
+                    else:
+                        print(f"{Colors.RED}Invalid choice.{Colors.RESET}")
                 else:
-                    print(f"{Colors.RED}Invalid choice.{Colors.RESET}")
-            else:
-                print(f"{Colors.RED}No active quests.{Colors.RESET}")
+                    print(f"{Colors.RED}No active quests.{Colors.RESET}")
+            except ValueError as e:
+                logger.warning(f"ValueError in complete quest input: {e}")
+                print(f"{Colors.RED}Invalid input: {e}{Colors.RESET}")
+            except Exception as e:
+                logger.warning(f"Exception caught: {e}")
+                print(f"{Colors.RED}Error : {e}{Colors.RESET}")
 
         elif choice == "7":
             # Heal Player
@@ -1542,17 +1621,25 @@ def debug_menu(player, dungeon):
             print(f"{Colors.GREEN}Player fully healed!{Colors.RESET}")
 
         elif choice == "8":
-            # Save Game
-            save_name = input(f"{Colors.YELLOW}Enter save name: {Colors.RESET}")
-            player.save_player(save_name)
-            print(f"{Colors.GREEN}Game saved!{Colors.RESET}")
+            try:
+                # Save Game
+                save_name = input(f"{Colors.YELLOW}Enter save name: {Colors.RESET}")
+                player.save_player(save_name)
+                print(f"{Colors.GREEN}Game saved!{Colors.RESET}")
+            except Exception as e:
+                logger.warning(f"Exception caught during save game: {e}")
+                print(f"{Colors.RED}Error saving game: {e}{Colors.RESET}")
 
         elif choice == "9":
-            # Load Game
-            loaded_player = load_player()
-            if loaded_player:
-                player = loaded_player
-                print(f"{Colors.GREEN}Game loaded!{Colors.RESET}")
+            try:
+                # Load Game
+                loaded_player = load_player()
+                if loaded_player:
+                    player = loaded_player
+                    print(f"{Colors.GREEN}Game loaded!{Colors.RESET}")
+            except Exception as e:
+                logger.warning(f"Exception caught during load game: {e}")
+                print(f"{Colors.RED}Error loading game: {e}{Colors.RESET}")
 
         elif choice == "0":
             # Exit Debug Menu

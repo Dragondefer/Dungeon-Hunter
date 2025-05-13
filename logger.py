@@ -1,3 +1,6 @@
+__version__ = "4.0"
+__creation__ = "12-05-2025"
+
 import logging
 import os
 from datetime import datetime

@@ -1,10 +1,11 @@
-__version__ = "30.0"
+__version__ = "76.0"
 __creation__ = "09-03-2025"
 
 import time
 
 from colors import Colors
 from game_utility import clear_screen
+from logger import logger
 
 class Quest:
     """
@@ -111,14 +112,41 @@ class Achievement:
     def check(self, player):
         if not self.unlocked and self.condition(player):
             self.unlocked = True
-            print(f"\n{self.name} unlocked ! - {self.description}")
+            print(f"{Colors.GREEN}{self.name} unlocked ! - {self.description}{Colors.RESET}")
             time.sleep(2)
             return True
         return False
 
     def __str__(self):
-        status = "Y" if self.unlocked else "X"
-        return f"[{status}] {self.name}: {self.description}"
+        color_main, color_char, status_char = ((Colors.BRIGHT_GREEN, Colors.GREEN, "Y") if self.unlocked else (Colors.BRIGHT_RED, Colors.RED, "X"))
+        return f"{color_main}[{color_char}{status_char}{color_main}] {self.name}: {self.description}{Colors.RESET}"
+
+    def to_dict(self):
+        """Converts an Achievement instance to a dictionary for saving."""
+        return {
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "unlocked": self.unlocked,
+            "hidden": self.hidden,
+            # Store the condition as the id, assuming external mapping for deserialization
+            "condition_id": self.id
+        }
+
+    @classmethod
+    def from_dict(cls, data, condition_mapping):
+        """Creates an Achievement instance from a dictionary and a condition mapping."""
+        condition_func = condition_mapping.get(data.get("condition_id"))
+        achievement = cls(
+            data["id"],
+            data["name"],
+            data["description"],
+            condition_func,
+            data.get("hidden", False)
+        )
+        achievement.unlocked = data.get("unlocked", False)
+        return achievement
+
 
 
 class Event:

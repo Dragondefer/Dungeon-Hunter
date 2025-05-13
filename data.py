@@ -1,4 +1,4 @@
-__version__ = "155.0"
+__version__ = "224.0"
 __creation__ = "16-03-2025"
 
 import random
@@ -169,6 +169,9 @@ achievements = [
     Achievement("first_blood", "First Blood", "Kill an enemy.", lambda p: p.kills >= 1),
     Achievement("collector", "Collector", "Get 10 items.", lambda p: p.items_collected >= 10),
     Achievement("hoarder", "Trunk rat", "Get 1000 gold.", lambda p: p.gold >= 1000),
+    Achievement("still_alive", "I'm still standing !", "Having 1% HP", lambda p: round((p.stats.hp/p.stats.max_hp), 2) <= 0.01),
+    Achievement("explorer", "Explorer", "Explore 100 rooms.", lambda p: p.total_rooms_explored >= 100),
+    Achievement("10_steps", "Ten Steps Forward... or is it?", "Reach level 10", lambda p: p.dungeon_level == 10)
 ]
 
 
@@ -218,7 +221,7 @@ boss_types = [
     {"name": "Ancient Golem",   "type": "Golem",      "hp_mod": 3.0, "atk_mod": 2.0, "def_mod": 2.5, "agl_mod": 0.0, "min_level": 9},
     {"name": "Elder Dragon",    "type": "Dragon",     "hp_mod": 3.5, "atk_mod": 2.7, "def_mod": 2.2, "agl_mod": 1.0, "min_level": 10},
     {"name": "Dark Lord",       "type": "Dark Shape", "hp_mod": 3.5, "atk_mod": 3.5, "def_mod": 2.0, "agl_mod": 1.5, "min_level": 11},
-    {"name": "Senessax",        "type": "Dragon",     "hp_mod": 4.0, "atk_mod": 3.5, "def_mod": 4.0, "agl_mod": 1.0, "min_level": 12},
+    {"name": "Senessax",        "type": "Dragon",     "hp_mod": 5.0, "atk_mod": 5.0, "def_mod": 5.0, "agl_mod": 5.0, "min_level": 12},
 ]
 
 # Sets

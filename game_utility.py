@@ -1,4 +1,4 @@
-__version__ = "257.0"
+__version__ = "340.0"
 __creation__ = "09-03-2025"
 
 import os
@@ -9,6 +9,7 @@ import datetime
 import traceback
 
 from colors import Colors
+from logger import logger
 
 # For Windows non-blocking key detection
 if os.name == 'nt':
@@ -271,18 +272,20 @@ def progress_bar(current, total, length=40, fill='█', empty='░'):
     bar = fill * filled_length + empty * (length - filled_length)
     return f"{Colors.GREEN}{bar}{Colors.RESET} {Colors.YELLOW}{int(100 * percent)}%{Colors.RESET}"
 
+
 def choose_difficulty(player):
     """
     Allows the player to select a difficulty mode with suspense effect.
     """
+    from difficulty import NormalMode, SoulsEnjoyerMode, RealisticMode
     clear_screen()
     print(f"\n{Colors.YELLOW}{Colors.BOLD}CHOOSE YOUR DIFFICULTY MODE{Colors.RESET}")
 
     # Affichage des difficultés disponibles
     difficulties = {
-        "1": ("normal".capitalize(), "✓" if player.finished_difficulties["normal"] else ""),
-        "2": ("soul Enjoyer".capitalize(), "✓" if player.finished_difficulties["soul_enjoyer"] else "") if player.unlocked_difficulties["soul_enjoyer"] else ("", ""),
-        "3": ("realistic".capitalize(), "✓" if player.finished_difficulties["realistic"] else "") if player.unlocked_difficulties["realistic"] else ("", ""),
+        "1": ("normal".capitalize(), f"{Colors.GREEN}Y{Colors.RESET}" if player.finished_difficulties["normal"] else f"{Colors.RED}X{Colors.RESET}"),
+        "2": ("soul Enjoyer".capitalize(), f"{Colors.GREEN}Y{Colors.RESET}" if player.finished_difficulties["soul_enjoyer"] else f"{Colors.RED}X{Colors.RESET}") if player.unlocked_difficulties["soul_enjoyer"] else ("", ""),
+        "3": ("realistic".capitalize(), f"{Colors.GREEN}Y{Colors.RESET}" if player.finished_difficulties["realistic"] else f"{Colors.RED}X{Colors.RESET}") if player.unlocked_difficulties["realistic"] else ("", ""),
     }
 
     for key, (name, status) in difficulties.items():
@@ -299,17 +302,18 @@ def choose_difficulty(player):
         choice = input("Please retry: ")
 
     if choice == "1":
-        player.difficulty = "normal"
+        player.difficulty = NormalMode()
     elif choice == "2" and player.unlocked_difficulties["soul_enjoyer"]:
-        player.difficulty = "soul_enjoyer"
+        player.difficulty = SoulsEnjoyerMode()
     elif choice == "3" and player.unlocked_difficulties["realistic"]:
-        player.difficulty = "realistic"
+        player.difficulty = RealisticMode()
     else:
         print(f"{Colors.RED}Mode locked or invalid choice! Defaulting to Normal.{Colors.RESET}")
-        player.difficulty = "normal"
+        player.difficulty = NormalMode()
         print(Colors.BLUE, 'Press enter to continue...', Colors.RESET, end="")
         input()
-    
+
+    logger.debug(f"Difficulty chosed: {player.difficulty}")    
     return player.difficulty
 
 
@@ -317,14 +321,16 @@ def game_over(describtion=None):
     if describtion:
         print(Colors.RED, describtion, Colors.RESET)
     print(f"\n{Colors.RED}{Colors.BOLD}GAME OVER!{Colors.RESET}")
+    logger.info(f"Game Over - {describtion}")
     input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
 
 def handle_error():
     print(f"\n{Colors.RED}{Colors.BOLD}ERROR OCCURRED:\n{traceback.print_exc()}{Colors.RESET}")    
-    input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
+    logger.warning("Error Occurred")
     # save error debug into a log file (create a new file):
     with open("error.log", "a") as f:
         f.write(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n{traceback.format_exc()}\n\n")
+    input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
 
 def collect_feedback(player=None, ask=True):
     """Collect player feedback about game experience"""
@@ -360,6 +366,7 @@ def collect_feedback(player=None, ask=True):
             f.write(f"Comments: {feedback['comments']}\n")
         f.write("------------------------\n")
     print(f"{Colors.GREEN}Feedback file created successfully!{Colors.RESET}")
+    logger.debug("FeedBack file created")
     print(f"{Colors.YELLOW}Please consider providing the created file \"feedback.txt\" in the game file to the {Colors.BOLD}discord channel: feedback (link in readme.md){Colors.RESET}")
     
 

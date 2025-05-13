@@ -11,8 +11,7 @@ from dungeon import Room, generate_dungeon, debug_menu
 from entity import Player, continue_game
 from data import get_quests_dict
 from story import display_title
-from progression import Quest
-
+from logger import logger
 debug = 0
 
 def main(continue_game=False, loaded_player=None):
@@ -40,14 +39,13 @@ def main(continue_game=False, loaded_player=None):
     game_running = True
     end = False
     dungeon = generate_dungeon(player=player)
-    rooms_explored = player.rooms_explored
     
     while game_running and player.is_alive():
         if debug >= 1:
             input()
         clear_screen()
 
-        player.display_dungeon_level(rooms_explored=rooms_explored)
+        player.display_dungeon_level(room_number=player.current_room_number)
        
         player.display_status()
         
@@ -63,10 +61,10 @@ def main(continue_game=False, loaded_player=None):
 
         
         choice = input(f"{Colors.CYAN}Your choice: {Colors.RESET}")
+        logger.info(f"Player choice: {choice}")
         
         if choice == "1":  # Explore a new room
             if not dungeon:
-                                
                 if not player_survived or not player.is_alive():
                     game_over("died in battle")
                     game_running = False
@@ -74,10 +72,11 @@ def main(continue_game=False, loaded_player=None):
                     continue
                 
                 print(f"\n{Colors.GREEN}{Colors.BOLD}Congratulations! You've cleared dungeon level {player.dungeon_level}!{Colors.RESET}")
+                logger.info(f"Player cleared dungeon level {player.dungeon_level}")
                 player.dungeon_level += 1
 
                 # After finishing level 10 dungeon for the first time, 
-                if player.dungeon_level == 11 and player.ng_plus[player.difficulty] == 0:
+                if player.dungeon_level == 11 and player.mode.get_ng_plus() == 0:
                     print(f"\n{Colors.BRIGHT_YELLOW}You have finished level 10 dungeon!{Colors.RESET}")
                     
                     # Unlock the two difficulty:
@@ -97,8 +96,7 @@ def main(continue_game=False, loaded_player=None):
                         time.sleep(2)
                         player.ng_plus[player.difficulty] += 1
                     player.dungeon_level = 1
-                    player.rooms_explored = 0
-                
+                    player.current_room_number = 0
                 
                 if debug >= 1:
                     print(Colors.BLUE, 'DEBUG: No dungeon, generating a new dungeon...', Colors.RESET)
@@ -129,7 +127,8 @@ def main(continue_game=False, loaded_player=None):
                     print(f"{Colors.CYAN}DEBUG: Dungeon size before exploration: {len(dungeon)}{Colors.RESET}")
                 room:Room = dungeon.pop(0)
                 player_survived = room.enter(player)
-                rooms_explored += 1
+                player.current_room_number += 1
+                player.total_rooms_explored += 1
                 
                 # Update quest progress if applicable
                 for quest in player.quests:
@@ -192,7 +191,6 @@ def main(continue_game=False, loaded_player=None):
             player.view_quests()
         
         elif choice == "5":  # Display stats summary
-            player.rooms_explored = rooms_explored
             player.display_stats_summary()
         
         elif choice == "6": # Display Achievement

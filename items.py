@@ -1,4 +1,4 @@
-__version__ = "622.0"
+__version__ = "641.0"
 __creation__ = "09-03-2025"
 
 import random
@@ -6,6 +6,7 @@ import random
 from colors import Colors
 from game_utility import clear_screen
 from data import enemy_sets
+from logger import logger
 
 debug = 0
 
@@ -164,6 +165,7 @@ class Equipment:
         """Équipe un objet dans le slot spécifié et applique ses effets."""
         
         if slot not in self.slots:
+            logger.warning(f"Invalid slot '{slot}' for {item.name} in equip()")
             print(f"{Colors.RED}ERROR: Invalid slot '{slot}' for {item.name}!{Colors.RESET}")
             return
 
@@ -173,7 +175,8 @@ class Equipment:
 
         # Équipe le nouvel objet
         self.slots[slot] = item
-        print(f"{Colors.GREEN}Equipped {item.name} in {slot}.{Colors.RESET}")
+        logger.info(f"Equipped {item.name} in {slot}")
+        print(f"\n{Colors.GREEN}Equipped{Colors.RESET} {item.name} {Colors.GREEN}in {slot}.{Colors.RESET}")
 
         # Met à jour les statistiques du joueur
         player.stats.update_total_stats()
@@ -185,9 +188,11 @@ class Equipment:
         if slot in self.slots and self.slots[slot]:
             removed_item = self.slots[slot]
             self.slots[slot] = None
+            logger.info(f"Unequipped {removed_item.name} from {slot}")
             print(f"{Colors.YELLOW}Unequipped {removed_item.name} from {slot}.{Colors.RESET}")
             player.stats.update_total_stats()
             return removed_item
+        logger.warning(f"No item equipped in {slot} to unequip()")
         print(f"{Colors.RED}No item equipped in {slot}.{Colors.RESET}")
         return None
 
@@ -205,6 +210,7 @@ class Weapon(Gear):
     def __init__(self, name, description, value, damage):
         super().__init__(name, description, value, {"attack": damage})
         self.damage = damage
+        logger.debug(f"Weapon created: {self.name} with damage {self.damage}")
     
     def __str__(self):
         return f"{self.name} - {self.description} (Damage: +{self.damage}, Value: {self.value} gold)"
@@ -233,6 +239,7 @@ class Armor(Gear):
     def __init__(self, name, description, value, defense, armor_type):
         super().__init__(name, description, value, {"defense": defense})
         self.armor_type = armor_type  # "helmet", "chestplate", "leggings", etc.
+        logger.debug(f"Armor created: {self.name} with defense {defense}")
 
     def to_dict(self):
         data = super().to_dict()
@@ -246,6 +253,7 @@ class Shield(Gear):
     def __init__(self, name, description, value, defense, block_chance):
         super().__init__(name, description, value, {"defense": defense})
         self.block_chance = block_chance  # Chance de bloquer une attaque (ex: 20%)
+        logger.debug(f"Shield created: {self.name} with block chance {block_chance}")
 
     def to_dict(self):
         data = super().to_dict()
@@ -258,6 +266,7 @@ class Gauntlets(Gear):
     """Represents an equippable gauntlet that increases strength and defense."""
     def __init__(self, name, description, value, defense, strength_boost):
         super().__init__(name, description, value, {"defense": defense, "strength": strength_boost})
+        logger.debug(f"Gauntlets created: {self.name} with defense {defense} and strength boost {strength_boost}")
     
     def apply_effect(self, player):
         """Applique les effets des gants au joueur."""
@@ -276,6 +285,9 @@ class Amulet(Gear):
     """Represents an equippable amulet with magical bonuses."""
     def __init__(self, name, description, value, effects):
         super().__init__(name, description, value, effects)
+        logger.debug(f"Belt created: {self.name} with effects {effects}")
+        logger.debug(f"Ring created: {self.name} with effects {effects}")
+        logger.debug(f"Amulet created: {self.name} with effects {effects}")
 
 #̶̼͝ B̵̕͜ë̵͕́ẅ̷̙́ä̷̪́r̷͍̈́ë̵͕́:̴̨͝ R̷̞͝i̴̊͜n̸̻̈́g̸̻̿s̸̱̅ m̴̛̠ä̷̪́ÿ̸̡́ c̴̱͝ä̷̪́r̷͍̈́r̷͍̈́ÿ̸̡́ c̴̱͝ŭ̵͇r̷͍̈́s̸̱̅ë̵͕́s̸̱̅ ẗ̴̗́h̵̤͒ä̷̪́ẗ̴̗́ ẗ̴̗́ẅ̷̙́i̴̊͜s̸̱̅ẗ̴̗́ f̷̠͑ä̷̪́ẗ̴̗́ë̵͕́.̵͇̆
 class Ring(Gear):
@@ -317,23 +329,28 @@ class Potion(Item):
         if self.effect_type == "heal":
             old_hp = player.stats.hp
             player.heal(self.effect_value)
+            logger.info("Player used a healing potion.")
             print(f"{Colors.GREEN}You drink the {self.name} and recover {player.stats.hp - old_hp} HP!{Colors.RESET}")
             if debug >= 1:
                 print(f'{Colors.RED}DEBUG: old_hp: {old_hp}\nplayer.stats.hp: {player.stats.hp}')
         elif self.effect_type == "attack_boost":
             player.stats.temporary_stats["attack"] += self.effect_value
+            logger.info(f"Player used an attack boost potion: {self.name}")
             print(f"{Colors.RED}You drink the {self.name} and feel stronger! Attack +{self.effect_value}{Colors.RESET}")
         elif self.effect_type == "defense_boost":
             player.stats.temporary_stats["defense"] += self.effect_value
+            logger.info(f"Player used a defense boost potion: {self.name}")
             print(f"{Colors.BLUE}You drink the {self.name} and feel tougher! Defense +{self.effect_value}{Colors.RESET}")
         elif self.effect_type == "luck_boost":
             player.stats.temporary_stats["luck"] += self.effect_value
+            logger.info(f"Player used a luck boost potion: {self.name}")
             print(f"{Colors.CYAN}You drink the {self.name} and feel luckier! Luck +{self.effect_value}{Colors.RESET}")
         
         # Remove from inventory after use
         try:
             player.inventory.remove(self)
-        except ValueError:
+        except ValueError as e:
+            logger.warning(f"Failed to remove potion from inventory: {e}")
             pass
 
     def __str__(self):
@@ -516,6 +533,7 @@ def generate_random_item(player=None, enemy=None, item_type=None, rarity=None, i
             try:
                 print(rarity_boost)
             except Exception as e:
+                logger.warning(f"Exception caught: {e}")
                 print(e)
         """
         rarity_boost = difficulty.get_rarity_boost()
@@ -681,21 +699,21 @@ def generate_random_item(player=None, enemy=None, item_type=None, rarity=None, i
             return Armor(colored_name, desc, value_base, defense, armor_type)
         
         elif item_type == "ring":
-            effect = {"luck": int(1 * rarity_multiplier[rarity])}
+            effect = {"luck": int((1 + (level // 2)) * rarity_multiplier[rarity])}
             name = f"{prefix} Ring"
             colored_name = rarity_color[rarity](name) if callable(rarity_color[rarity]) else f"{rarity_color[rarity]}{name}{Colors.RESET}"
             desc = f"A magical ring that enhances luck"
             return Ring(colored_name, desc, value_base, effect)
 
         elif item_type == "amulet":
-            effect = {"defense": int(2 * rarity_multiplier[rarity])}
+            effect = {"defense": int((1 + (level // 2)) * rarity_multiplier[rarity])}
             name = f"{prefix} Amulet"
             colored_name = rarity_color[rarity](name) if callable(rarity_color[rarity]) else f"{rarity_color[rarity]}{name}{Colors.RESET}"
             desc = f"A mystical amulet that grants protection"
             return Amulet(colored_name, desc, value_base, effect)
         
         elif item_type == "belt":
-            effect = {"agility": int(1 * rarity_multiplier[rarity])}
+            effect = {"agility": int((1 + (level // 2)) * rarity_multiplier[rarity])}
             name = f"{prefix} Belt"
             colored_name = rarity_color[rarity](name) if callable(rarity_color[rarity]) else f"{rarity_color[rarity]}{name}{Colors.RESET}"
             desc = f"A sturdy belt that enhances movement speed"
@@ -826,7 +844,8 @@ def display_inventory(player):
                         print(f"{Colors.GREEN}You equip the {item.name}.{Colors.RESET}")
                         input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
             
-            except ValueError:
+            except ValueError as e:
+                logger.warning(f"Invalid number input: {e}")
                 print(f"{Colors.RED}Please enter a valid number.{Colors.RESET}")
                 input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
         
@@ -867,6 +886,7 @@ def display_inventory(player):
                         print(f"{Colors.RED}You discard the {item.name}.{Colors.RESET}")
                         input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
             
-            except ValueError:
+            except ValueError as e:
+                logger.warning(f"Invalid number input: {e}")
                 print(f"{Colors.RED}Please enter a valid number.{Colors.RESET}")
                 input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")

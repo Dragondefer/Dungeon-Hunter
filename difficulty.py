@@ -1,5 +1,5 @@
-__version__ = "14.0"
-__creation__ = "09-03-2025"
+__version__ = "50.0"
+__creation__ = "08-05-2025"
 
 import random
 

@@ -1,4 +1,4 @@
-__version__ = "1770.0"
+__version__ = "1819.0"
 __creation__ = "09-03-2025"
 
 # This file contains the core entity classes for the Dungeon Hunter game.
@@ -523,8 +523,24 @@ class Player(Entity):
         self.skills = []
         self.kills = 0
 
-        # Map difficulty string to mode instance
-        self.mode = difficulty if difficulty in [NormalMode, RealisticMode] else NormalMode() and print('Normal mode set by deffault cus diff was:', difficulty)
+        from difficulty import GameMode, NormalMode, RealisticMode, SoulsEnjoyerMode
+
+        if isinstance(difficulty, GameMode):
+            self.mode = difficulty
+        elif isinstance(difficulty, str):
+            diff_lower = difficulty.lower()
+            if diff_lower == "normal":
+                self.mode = NormalMode()
+            elif diff_lower == "realistic":
+                self.mode = RealisticMode()
+            elif diff_lower == "soul_enjoyer" or diff_lower == "souls_enjoyer":
+                self.mode = SoulsEnjoyerMode()
+            else:
+                print(f"Unknown difficulty '{difficulty}', setting to NormalMode by default.")
+                self.mode = NormalMode()
+        else:
+            print(f"Invalid difficulty type '{type(difficulty)}', setting to NormalMode by default.")
+            self.mode = NormalMode()
 
         self.class_name = "Novice"
         self.profession = None
@@ -533,7 +549,8 @@ class Player(Entity):
         self.achievements = achievements
 
         self.dungeon_level = 1
-        self.rooms_explored = 0
+        self.current_room_number = 0
+        self.total_rooms_explored = 0
 
         # New stats for tracking player activities
         self.shops_visited = 0
@@ -552,7 +569,6 @@ class Player(Entity):
 
         self.unlocked_difficulties = {"normal": True, "soul_enjoyer": False, "realistic": False}
         self.finished_difficulties = {"normal": False, "soul_enjoyer": False, "realistic": False}
-        
 
         self.inventory = Inventory(self)
         self.inventory.append(Potion("Minor Health Potion", "Restores some health", 100, "heal", 50))
@@ -562,13 +578,100 @@ class Player(Entity):
         
         # print('DEBUG: Permanant_stats:', self.stats.permanent_stats)
         # input('press enter to continue')
-        """
+
+    def to_dict(self):
+        """Convert the Player object to a dictionary for serialization using a generic serializer.""" 
+        data = {
+            "name": self.name,
+            "level": self.level,
+            "xp": self.xp,
+            "max_xp": self.max_xp,
+            "gold": self.gold,
+            "difficulty": self.difficulty,
+            "class_name": self.class_name,
+            "dungeon_level": self.dungeon_level,
+            "profession": self.profession,
+            "kills": self.kills,
+            "unlocked_difficulties": self.unlocked_difficulties,
+            "finished_difficulties": self.finished_difficulties,
+            "current_room_number": self.current_room_number,
+            "total_rooms_explored": self.total_rooms_explored,
+        }
+
+        # Save stats with equipment converted to dict
+        stats_dict = {}
+        for k, v in self.stats.__dict__.items():
+            if k == "equipment" and isinstance(v, Equipment):
+                stats_dict[k] = v.to_dict()
+            else:
+                stats_dict[k] = v
+        data["stats"] = stats_dict
+
+        # Save inventory
+        data["inventory"] = [item.to_dict() for item in self.inventory]
+
+        # Save equipment
+        if isinstance(self.equipment, Equipment):
+            data["equipment"] = self.equipment.to_dict()
+        else:
+            data["equipment"] = None
+
+        # Save skills
+        data["skills"] = [skill.to_dict() for skill in self.skills]
+
+        # Save quests
+        data["quests"] = [quest.to_dict() for quest in self.quests]
+        data["completed_quests"] = [quest.to_dict() for quest in self.completed_quests]
+
+        return data
+
+    @classmethod
+    def from_dict(cls, data):
+        """Create a Player object from a dictionary.""" 
+        from entity import Player, Equipment, Item, Skill, Quest
+
+        player = cls(data["name"], data["difficulty"])
+        player.level = data["level"]
+        player.xp = data["xp"]
+        player.max_xp = data["max_xp"]
+        player.gold = data["gold"]
+        player.class_name = data["class_name"]
+        player.dungeon_level = data["dungeon_level"]
+        player.profession = data["profession"]
+        player.kills = data["kills"]
+        player.unlocked_difficulties = data["unlocked_difficulties"]
+        player.finished_difficulties = data["finished_difficulties"]
+        player.current_room_number = data.get("current_room_number", 0)
+        player.total_rooms_explored = data.get("total_rooms_explored", 0)
+
+        # Load stats
+        player.stats.__dict__.update(data["stats"])
+
+        # Load inventory
+        player.inventory = [Item.from_dict(item) for item in data["inventory"]]
+
+        # Load equipment
+        if isinstance(data.get("equipment"), dict):
+            player.equipment = Equipment.from_dict(data["equipment"])
+            # Fix: ensure stats.equipment is the Equipment instance, not a dict
+            player.stats.equipment = player.equipment
+        
+        # Load skills
+        player.skills = [Skill.from_dict(skill) for skill in data["skills"]]
+
+        # Load quests
+        player.quests = [Quest.from_dict(quest) for quest in data["quests"]]
+        player.completed_quests = [Quest.from_dict(quest) for quest in data["completed_quests"]]
+
+        return player
+
+    """
     def rest_stamina(self, amount:int):
         self.stats.stamina = min(self.stats.max_stamina, self.stats.stamina + amount)
     
     def regen_mana(self, amount:int):
         self.stats.mana = min(self.stats.max_mana, self.stats.mana + amount)
-        """
+    """
 
     def rest_stamina(self, amount: int):
         """Régénère d'abord la stamina permanente, puis la stamina temporaire."""
@@ -865,7 +968,7 @@ class Player(Entity):
             self.stats.permanent_stats[key] += value
 
         # Remettre les ressources à fond
-        self.stats.permanent_stats["hp"] = self.stats.permanent_stats["max_hp"]
+        self.heal(self.stats.permanent_stats // 4)
         self.stats.permanent_stats["mana"] = self.stats.permanent_stats["max_mana"]
         self.stats.permanent_stats["stamina"] = self.stats.permanent_stats["max_stamina"]
 
@@ -1065,7 +1168,7 @@ class Player(Entity):
         print(f"\r{Colors.YELLOW}║ Difficulty:        {Colors.BRIGHT_MAGENTA}{self.difficulty.capitalize().ljust(box_width - 20)}{Colors.RESET}")
         print(f"\r{Colors.YELLOW}║ NG+:               {Colors.BRIGHT_YELLOW}{str(ng).ljust(box_width - 20)}{Colors.RESET}")
         print(f"\r{Colors.YELLOW}║ Dungeon Level:     {Colors.BRIGHT_BLUE}{str(self.dungeon_level).ljust(box_width - 20)}{Colors.RESET}")
-        print(f"\r{Colors.YELLOW}║ Rooms Explored:    {Colors.BRIGHT_GREEN}{str(self.rooms_explored).ljust(box_width - 20)}{Colors.RESET}")
+        print(f"\r{Colors.YELLOW}║ Rooms Number:      {Colors.BRIGHT_GREEN}{str(player.current_room_number).ljust(box_width - 20)}{Colors.RESET}")
         print(f"\r{Colors.YELLOW}║ Kills:             {Colors.BRIGHT_RED}{str(self.kills).ljust(box_width - 20)}{Colors.RESET}")
         print(f"\r{Colors.YELLOW}║ Bosses Defeated:   {Colors.BRIGHT_CYAN}{str(self.bosses_defeated).ljust(box_width - 20)}{Colors.RESET}")
         print()
@@ -1074,6 +1177,7 @@ class Player(Entity):
         print(f"\r{Colors.YELLOW}║ Damage Dealt:      {Colors.BRIGHT_GREEN}{str(self.damage_dealt).ljust(box_width - 20)}{Colors.RESET}")
         print(f"\r{Colors.YELLOW}║ Damage Taken:      {Colors.BRIGHT_BLUE}{str(self.damage_taken).ljust(box_width - 20)}{Colors.RESET}")
         print()
+        print(f"\r{Colors.YELLOW}║ Total Rooms:       {Colors.BRIGHT_GREEN}{str(player.total_rooms_explored).ljust(box_width - 20)}{Colors.RESET}")
         print(f"\r{Colors.YELLOW}║ Traps Triggered:   {Colors.BRIGHT_RED}{str(self.traps_triggered).ljust(box_width - 20)}{Colors.RESET}")
         print(f"\r{Colors.YELLOW}║ Combat Encounters: {Colors.BRIGHT_MAGENTA}{str(self.combat_encounters).ljust(box_width - 20)}{Colors.RESET}")
         print(f"\r{Colors.YELLOW}║ Shops Visited:     {Colors.BRIGHT_CYAN}{str(self.shops_visited).ljust(box_width - 20)}{Colors.RESET}")
@@ -1083,11 +1187,11 @@ class Player(Entity):
         print('\n')
         input(f'{Colors.YELLOW}Enter to continue...{Colors.RESET}')
 
-    def display_dungeon_level(self, rooms_explored=0):
+    def display_dungeon_level(self, room_number=0):
         # Display dungeon level and explored rooms
         print(f"\n{Colors.BRIGHT_BLUE}{Colors.BOLD}╔══════════════════════════════════╗")
         print(f"║   Dungeon Level: {self.dungeon_level}{' ' * (16 - len(str(self.dungeon_level)))}║")
-        print(f"║   Rooms Explored: {rooms_explored}{' ' * (15 - len(str(rooms_explored)))}║")
+        print(f"║   Rooms Explored: {room_number}{' ' * (15 - len(str(room_number)))}║")
         print(f"╚══════════════════════════════════╝{Colors.RESET}")
 
     def display_status(self):
@@ -1586,6 +1690,7 @@ class Player(Entity):
             print(f"{Colors.GREEN}U. Use/Equip Item{Colors.RESET}")
             print(f"{Colors.YELLOW}E. Unequip Item{Colors.RESET}")
             print(f"{Colors.RED}D. Drop Item(s){Colors.RESET}")
+            print(f"{Colors.MAGENTA}S. Search Items{Colors.RESET}")
             print(f"{Colors.YELLOW}B. Back{Colors.RESET}")
             
             choice = input(f"\n{Colors.CYAN}What would you like to do? {Colors.RESET}").upper()
@@ -1646,6 +1751,37 @@ class Player(Entity):
 
                 except ValueError:
                     print(f"\n{Colors.RED}Please enter valid number(s).{Colors.RESET}")
+
+            elif choice == "S":
+                search_term = input(f"\n{Colors.MAGENTA}Enter search term: {Colors.RESET}").lower()
+                filtered_items = [item for item in self.inventory if search_term in item.name.lower()]
+                if not filtered_items:
+                    print(f"\n{Colors.RED}No items found matching '{search_term}'.{Colors.RESET}")
+                    continue
+
+                print(f"\n{Colors.BRIGHT_CYAN}Search Results:{Colors.RESET}")
+                for i, item in enumerate(filtered_items, 1):
+                    status = ""
+                    if item in self.equipment.__dict__.values():
+                        status = f" {Colors.BRIGHT_RED}[EQUIPPED]{Colors.RESET}"
+                    print(f"{Colors.YELLOW}{i}. {str(item)}{status}{Colors.RESET}")
+
+                try:
+                    item_index = int(input(f"\n{Colors.MAGENTA}Enter item number to use/equip from search results (0 to cancel): {Colors.RESET}")) - 1
+                    if item_index == -1:
+                        continue
+                    if 0 <= item_index < len(filtered_items):
+                        item = filtered_items[item_index]
+                        if isinstance(item, (Weapon, Armor, Ring, Amulet, Belt)):
+                            self.equip_item(item)
+                        elif isinstance(item, Potion):
+                            item.use(self)
+                        else:
+                            print(f"\n{Colors.YELLOW}You can't use this item right now.{Colors.RESET}")
+                    else:
+                        print(f"\n{Colors.RED}Invalid item number.{Colors.RESET}")
+                except ValueError:
+                    print(f"\n{Colors.RED}Please enter a valid number.{Colors.RESET}")
 
             else:
                 print(f"\n{Colors.RED}Invalid choice.{Colors.RESET}")
@@ -1755,7 +1891,7 @@ class Player(Entity):
         for ach in self.achievements:
             if ach.hidden:
                 continue
-            print(f"{Colors.GREEN}  - {ach}{Colors.RESET}")
+            print(f"  - {ach}")
         input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
 
     def save_player(self, filename="player_save.json"):
@@ -1784,88 +1920,6 @@ class Player(Entity):
 
         print(f"{Colors.GREEN}Game saved successfully!{Colors.RESET}")
 
-    def to_dict(self):
-        """Convert the Player object to a dictionary for serialization using a generic serializer.""" 
-        data = {
-            "name": self.name,
-            "level": self.level,
-            "xp": self.xp,
-            "max_xp": self.max_xp,
-            "gold": self.gold,
-            "difficulty": self.difficulty,
-            "class_name": self.class_name,
-            "dungeon_level": self.dungeon_level,
-            "profession": self.profession,
-            "kills": self.kills,
-            "unlocked_difficulties": self.unlocked_difficulties,
-            "finished_difficulties": self.finished_difficulties,
-        }
-
-        # Save stats with equipment converted to dict
-        stats_dict = {}
-        for k, v in self.stats.__dict__.items():
-            if k == "equipment" and isinstance(v, Equipment):
-                stats_dict[k] = v.to_dict()
-            else:
-                stats_dict[k] = v
-        data["stats"] = stats_dict
-
-        # Save inventory
-        data["inventory"] = [item.to_dict() for item in self.inventory]
-
-        # Save equipment
-        if isinstance(self.equipment, Equipment):
-            data["equipment"] = self.equipment.to_dict()
-        else:
-            data["equipment"] = None
-
-        # Save skills
-        data["skills"] = [skill.to_dict() for skill in self.skills]
-
-        # Save quests
-        data["quests"] = [quest.to_dict() for quest in self.quests]
-        data["completed_quests"] = [quest.to_dict() for quest in self.completed_quests]
-
-        return data
-
-    @classmethod
-    def from_dict(cls, data):
-        """Create a Player object from a dictionary."""
-        from entity import Player, Equipment, Item, Skill, Quest
-
-        player = cls(data["name"], data["difficulty"])
-        player.level = data["level"]
-        player.xp = data["xp"]
-        player.max_xp = data["max_xp"]
-        player.gold = data["gold"]
-        player.class_name = data["class_name"]
-        player.dungeon_level = data["dungeon_level"]
-        player.profession = data["profession"]
-        player.kills = data["kills"]
-        player.unlocked_difficulties = data["unlocked_difficulties"]
-        player.finished_difficulties = data["finished_difficulties"]
-
-        # Load stats
-        player.stats.__dict__.update(data["stats"])
-
-        # Load inventory
-        player.inventory = [Item.from_dict(item) for item in data["inventory"]]
-
-        # Load equipment
-        if isinstance(data.get("equipment"), dict):
-            player.equipment = Equipment.from_dict(data["equipment"])
-            # Fix: ensure stats.equipment is the Equipment instance, not a dict
-            player.stats.equipment = player.equipment
-        
-        # Load skills
-        player.skills = [Skill.from_dict(skill) for skill in data["skills"]]
-
-        # Load quests
-        player.quests = [Quest.from_dict(quest) for quest in data["quests"]]
-        player.completed_quests = [Quest.from_dict(quest) for quest in data["completed_quests"]]
-
-        return player
-
 
 def load_player(filename=None):
     """Loads the player's data from a JSON file and reconstructs objects."""
@@ -1878,7 +1932,6 @@ def load_player(filename=None):
         data = json.load(file)
     
     return Player.from_dict(data)
-
 
 def continue_game(filename):
     """Loads a saved game from a file."""
@@ -1894,7 +1947,6 @@ def continue_game(filename):
 
 
 #̶̼͝ T̸̻̈́h̵̤͒ë̵͕́ ë̵͕́n̸̻̈́ë̵͕́m̴̛̠ÿ̸̡́ ẅ̷̙́ä̷̪́ẗ̴̗́c̴̱͝h̵̤͒ë̵͕́s̸̱̅ f̷̠͑r̷͍̈́o̶͙͝m̴̛̠ ẗ̴̗́h̵̤͒ë̵͕́ ď̶̙ä̷̪́r̷͍̈́k̵̢͝n̸̻̈́ë̵͕́s̸̱̅s̸̱̅,̶̼͝ ẅ̷̙́ä̷̪́i̴̊͜ẗ̴̗́i̴̊͜n̸̻̈́g̸̻̿ f̷̠͑o̶͙͝r̷͍̈́ ÿ̸̡́o̶͙͝ŭ̵͇r̷͍̈́ m̴̛̠i̴̊͜s̸̱̅ẗ̴̗́ä̷̪́k̵̢͝ë̵͕́.̵͇̆
-# The enemy watches from the darkness, waiting for your mistake.
 
 class Enemy(Entity):
     """
@@ -2010,14 +2062,10 @@ if __name__ == '__main__':
     player = Player()
     enemy = Enemy(name="Goblin", enemy_type="Goblin", hp=50, attack=10, defense=5, xp_reward=20, gold_reward=10, difficulty=5)
 
-    #̶̼͝ T̸̻̈́h̵̤͒ë̵͕́ ď̶̙ŭ̵͇n̸̻̈́g̸̻̿ë̵͕́o̶͙͝n̸̻̈́ ẅ̷̙́ä̷̪́ẗ̴̗́c̴̱͝h̵̤͒ë̵͕́s̸̱̅.̵͇̆ Y̴̙͝o̶͙͝ŭ̵͇r̷͍̈́ f̷̠͑ä̷̪́ẗ̴̗́ë̵͕́ i̴̊͜s̸̱̅ ẅ̷̙́r̷͍̈́i̴̊͜ẗ̴̗́ẗ̴̗́ë̵͕́n̸̻̈́ i̴̊͜n̸̻̈́ c̴̱͝o̶͙͝r̷͍̈́r̷͍̈́ŭ̵͇p̵̦̆ẗ̴̗́ë̵͕́ď̶̙ c̴̱͝o̶͙͝ď̶̙ë̵͕́.̵͇̆
-    # The dungeon watches. Your fate is written in corrupted code.
-    
+    #̶̼͝ T̸̻̈́h̵̤͒ë̵͕́ ď̶̙ŭ̵͇n̸̻̈́g̸̻̿ë̵͕́o̶͙͝n̸̻̈́ ẅ̷̙́ä̷̪́ẗ̴̗́c̴̱͝h̵̤͒ë̵͕́s̸̱̅.̵͇̆
+    # Y̴̙͝o̶͙͝ŭ̵͇r̷͍̈́ f̷̠͑ä̷̪́ẗ̴̗́ë̵͕́ i̴̊͜s̸̱̅ ẅ̷̙́r̷͍̈́i̴̊͜ẗ̴̗́ẗ̴̗́ë̵͕́n̸̻̈́ i̴̊͜n̸̻̈́ c̴̱͝o̶͙͝r̷͍̈́r̷͍̈́ŭ̵͇p̵̦̆ẗ̴̗́ë̵͕́ď̶̙ c̴̱͝o̶͙͝ď̶̙ë̵͕́.̵͇̆
     #̶̼͝ E̶͍̚r̷͍̈́r̷͍̈́o̶͙͝r̷͍̈́ 4̷̫̈́0̵̢̈́4̷̫̈́:̴̨͝ S̶̤̕ä̷̪́n̸̻̈́i̴̊͜ẗ̴̗́ÿ̸̡́ n̸̻̈́o̶͙͝ẗ̴̗́ f̷̠͑o̶͙͝ŭ̵͇n̸̻̈́ď̶̙.̵͇̆
-    # Error 404: Sanity not found.
-
     #̶̼͝ T̸̻̈́h̵̤͒ë̵͕́ f̷̠͑i̴̊͜n̸̻̈́ä̷̪́l̷̫̈́ b̸̼̅o̶͙͝s̸̱̅s̸̱̅ i̴̊͜s̸̱̅ n̸̻̈́o̶͙͝ẗ̴̗́ ä̷̪́ b̸̼̅o̶͙͝s̸̱̅s̸̱̅.̵͇̆ I̴̡̛ẗ̴̗́'̸̱̅s̸̱̅ ä̷̪́ ẅ̷̙́ä̷̪́ẗ̴̗́c̴̱͝h̵̤͒ë̵͕́r̷͍̈́.̵͇̆
-    # The final boss is not a boss. It's a watcher.
     
     print('enemy_test:', enemy)
     print('player_test:', player)

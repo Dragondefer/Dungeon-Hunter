@@ -1,5 +1,5 @@
 # Changelog
-__version__ = "619.0"
+__version__ = "807.0"
 __creation__ = "23-04-2025"
 
 All notable changes to this project will be documented in this file.
@@ -7,29 +7,20 @@ So log doesn't include every changes but only the main one as there is a huge am
 
 Note: Every logs before version [4.x.x] was made based on the files merges and might include mistakes and oversights
 
-
 Here is the schematic of the logs:
 ---
 ## [x.x.x] : Title - DD-MM-YYYY (creation date)
   - [x.0.0] : Main changes - DD-MM-YYYY (added date)
   - [x.1.0] : Main changes - DD-MM-YYYY (added date)
   ...
-
 ### Added
-
 ### Fixed
-
 ### Changed
-
 ---
 
 
 ## [Unreleased]
 ### Upcomming features
-
-- **Player's features**
-  - Planned: Improve quests such as using them more
-  - Difficulty-based inventory limits may be scale on a stat or level
 
 - **Dungeon environment**
   - Planned: Improve the theme of the dungeon levels
@@ -39,7 +30,8 @@ Here is the schematic of the logs:
   - Boss special attack system with unique abilities
   - Critical hit visualization ?
 
-- New achievement: *"Ten Steps Forward... or is it?"*  
+- **Items**
+  - Artéfacts (Use Point ? Limit of 3 ?) (Increase inv ? live steal)
 
 ---
 
@@ -99,6 +91,7 @@ Here is the schematic of the logs:
 ## [1.x.x] - 11-03-2025
 ### Added
 - Core game architecture with modular system components
+- *A faint whisper echoes in the code, barely noticeable.*
 
 - `Colors` class with ANSI escape codes and text effects:
   - 16 standard and bright terminal colors
@@ -154,10 +147,11 @@ Here is the schematic of the logs:
 
 ### Fixed
 - Initial release - no previous fixes recorded
-
+- *Some errors are better left unfixed.*
 
 ### Changed
 - Initial release - no previous changes to record
+- *The code shifts when no one is looking.*
 
 
 This represents 72+ hours of development work across 2,500+ lines of core game logic for a total of about 3,500 LoQ, featuring 60+ interactive elements and 100+ gameplay variables. The version number follows semantic versioning where 0.0.0 indicates the first production-ready release with complete core (still unstable).
@@ -290,6 +284,7 @@ Tally of tunable parameters like:
     *Choice Puzzle*: Risk/reward potion/lever selection system
   - Puzzle-specific rewards system with 5 reward types (gold/items/stat boosts)
   - Puzzle failure consequences system (damage traps/stat reductions)
+- *Whispers of forgotten puzzles echo faintly in the shadows.*
 
 - **Entity**
   - New Stats class to manage better the stats with dict
@@ -563,14 +558,19 @@ Need to be fixed in the future:
 
 ## [5.x.x] : Echoes of Depth - 05-05-2025
   - [5.0.0] : Save system + player's statistics - 07-05-2025
-  - [5.1.0] : Difficulty core class + Inventory class
-  - [5.2.0] : Progression
+  - [5.1.0] : Difficulty core class + Inventory class 08-05-2025
+  - [5.2.0] : Progression + L̷̻̎o̶͙͝r̷͍̈́ë̵͕́ - 10-05-2025
 
 ### Added
+- **Debug**
+  - Added logger.py to log the whole game, it's really important for me the dev as i can see what's going on like if the combat or items drop are balanced like i wanted or not, and things like that
+
+
 
 - **Breath of the Dungeon**
   - **progression**
     - Added some Events
+    -̸̡̈́ *̶̢͌T̸̻̈́h̵̤͒ë̵͕́ s̸̱̅h̵̤͒ä̷̪́ď̶̙o̶͙͝ẅ̷̙́s̸̱̅ l̷̫̈́i̴̊͜n̸̻̈́g̸̻̿ë̵͕́r̷͍̈́ h̵̤͒ë̵͕́r̷͍̈́ë̵͕́,̶̼͝ ẅ̷̙́ä̷̪́ẗ̴̗́c̴̱͝h̵̤͒i̴̊͜n̸̻̈́g̸̻̿ ÿ̸̡́o̶͙͝ŭ̵͇r̷͍̈́ ë̵͕́v̶̼͝ë̵͕́r̷͍̈́ÿ̸̡́ m̴̛̠o̶͙͝v̶̼͝ë̵͕́.̵͇̆.̵͇̆.̵͇̆*̶̢͌
 
 - **Ascension Protocol**
   - **Player**:
@@ -578,9 +578,13 @@ Need to be fixed in the future:
     - Made the inventory a class `Inventory(list)` and a `inventory.py` file
     - Added a new file progression.py which contain the class: Quest, Achievement and Event
     - Added some Achievements
+    -̸̡̈́ *̶̢͌S̶̤̕o̶͙͝m̴̛̠ë̵͕́ ä̷̪́c̴̱͝h̵̤͒i̴̊͜ë̵͕́v̶̼͝ë̵͕́m̴̛̠ë̵͕́n̸̻̈́ẗ̴̗́s̸̱̅ ä̷̪́r̷͍̈́ë̵͕́ n̸̻̈́o̶͙͝ẗ̴̗́ m̴̛̠ë̵͕́ä̷̪́n̸̻̈́ẗ̴̗́ ẗ̴̗́o̶͙͝ b̸̼̅ë̵͕́ f̷̠͑o̶͙͝ŭ̵͇n̸̻̈́ď̶̙.̵͇̆.̵͇̆.̵͇̆*̶̢͌
     - Added hidden Achievements
 
 - **Fragments of Self**
+  - **L̷̻̎o̶͙͝r̷͍̈́ë̵͕́**:
+    - Added some L̷̻̎o̶͙͝r̷͍̈́ë̵͕́, ready to be used
+    - Added function to display text
 
 ### Fixed
 - **Player**:
@@ -589,29 +593,20 @@ Need to be fixed in the future:
   - the code equips the new item regardless of the user's choice to unequip the old item or not, so now it. Fixed by adding `else` + `return` to cancel the action
   - Fix where the inventory `__init__` was made before the `player.items_collected` was set as the class `Inventory` need the `player.items_collected`, so it need to be init before
   - Rooms Explored in the PLAYER STATS SUMMARY didn't updated cus i did `rooms_explored = player.rooms_explored` and then `rooms_explored += 1` without updating `player.rooms_explored = rooms_explored`
+  - Fixed player.mode who returned a NoneType instead of a difficulty class like NormalMode()
+  - Fixed a wrong gold managment in a puzzle (with the dices) and in shops
 
 ### Changed
 - **Player**:
-  - Modifed the basics functions like `append` and `remove` of the new Inventory(list) class to add
+  - Modifed the basics functions like `append` and `remove` of the new Inventory(list) class
+  - Modified `player.room_explored` to `player.current_room_number` and `player.total_rooms_explored`
+  - Now, player only heal 25% of their max_hp instead of 100% when they level up
 
+- **Enemy**:
+  - Modified some stats coefficients to balance the game a bit more
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+- **Items**:
+  - Reworked base effects of Rings, Belts and Amulets from `int(1  * rarity_multiplier[rarity])` to `int((1 + (level // 2)) * rarity_multiplier[rarity])`
 
 
 
