@@ -968,7 +968,7 @@ class Player(Entity):
             self.stats.permanent_stats[key] += value
 
         # Remettre les ressources à fond
-        self.heal(self.stats.permanent_stats // 4)
+        self.heal(self.stats.permanent_stats.max_hp // 4)
         self.stats.permanent_stats["mana"] = self.stats.permanent_stats["max_mana"]
         self.stats.permanent_stats["stamina"] = self.stats.permanent_stats["max_stamina"]
 
