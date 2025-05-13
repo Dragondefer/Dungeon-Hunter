@@ -76,7 +76,7 @@ def main(continue_game=False, loaded_player=None):
                 player.dungeon_level += 1
 
                 # After finishing level 10 dungeon for the first time, 
-                if player.dungeon_level == 11 and player.mode.get_ng_plus() == 0:
+                if player.dungeon_level == 11 and player.mode.get_ng_plus(player) == 0:
                     print(f"\n{Colors.BRIGHT_YELLOW}You have finished level 10 dungeon!{Colors.RESET}")
                     
                     # Unlock the two difficulty:
