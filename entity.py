@@ -1177,7 +1177,7 @@ class Player(Entity):
         print(f"\r{Colors.YELLOW}║ Damage Dealt:      {Colors.BRIGHT_GREEN}{str(self.damage_dealt).ljust(box_width - 20)}{Colors.RESET}")
         print(f"\r{Colors.YELLOW}║ Damage Taken:      {Colors.BRIGHT_BLUE}{str(self.damage_taken).ljust(box_width - 20)}{Colors.RESET}")
         print()
-        print(f"\r{Colors.YELLOW}║ Total Rooms:       {Colors.BRIGHT_GREEN}{str(player.total_rooms_explored).ljust(box_width - 20)}{Colors.RESET}")
+        print(f"\r{Colors.YELLOW}║ Total Rooms:       {Colors.BRIGHT_GREEN}{str(self.total_rooms_explored).ljust(box_width - 20)}{Colors.RESET}")
         print(f"\r{Colors.YELLOW}║ Traps Triggered:   {Colors.BRIGHT_RED}{str(self.traps_triggered).ljust(box_width - 20)}{Colors.RESET}")
         print(f"\r{Colors.YELLOW}║ Combat Encounters: {Colors.BRIGHT_MAGENTA}{str(self.combat_encounters).ljust(box_width - 20)}{Colors.RESET}")
         print(f"\r{Colors.YELLOW}║ Shops Visited:     {Colors.BRIGHT_CYAN}{str(self.shops_visited).ljust(box_width - 20)}{Colors.RESET}")
