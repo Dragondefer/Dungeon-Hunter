@@ -1,5 +1,5 @@
 # Changelog
-__version__ = "807.0"
+__version__ = "867.0"
 __creation__ = "23-04-2025"
 
 All notable changes to this project will be documented in this file.
@@ -10,6 +10,7 @@ Note: Every logs before version [4.x.x] was made based on the files merges and m
 Here is the schematic of the logs:
 ---
 ## [x.x.x] : Title - DD-MM-YYYY (creation date)
+    - [__version__, __version__ ...]
   - [x.0.0] : Main changes - DD-MM-YYYY (added date)
   - [x.1.0] : Main changes - DD-MM-YYYY (added date)
   ...
@@ -17,13 +18,14 @@ Here is the schematic of the logs:
 ### Fixed
 ### Changed
 ---
+Order of each version: ['colors.py', 'data.py', 'difficulty.py', 'dungeon.py', 'entity.py', 'game_utility.py', 'inventory.py', 'items.py', 'logger.py', 'main.py', 'progression.py', 'story.py']
 
 
 ## [Unreleased]
 ### Upcomming features
 
 - **Dungeon environment**
-  - Planned: Improve the theme of the dungeon levels
+  - Better difficulty managment (game core changement for each separated difficutly)
 
 - **Combat improvement**
   - Planned: Improve combat balancing
@@ -560,12 +562,14 @@ Need to be fixed in the future:
   - [5.0.0] : Save system + player's statistics - 07-05-2025
   - [5.1.0] : Difficulty core class + Inventory class 08-05-2025
   - [5.2.0] : Progression + L̷̻̎o̶͙͝r̷͍̈́ë̵͕́ - 10-05-2025
+    - [51.0, 224.0, 50.0, 1050.0, 1819.0, 340.0, 17.0, 641.0, 4.0, 476.0, 76.0, 34.0]
+  - [5.3.0] : Items + Equipment update - 15-05-2025
+    - [53.0, 228.0, 66.0, 1230.0, 2007.0, 355.0, 21.0, 690.0, 4.0, 594.0, 81.0, 66.0]
 
 ### Added
 - **Debug**
   - Added logger.py to log the whole game, it's really important for me the dev as i can see what's going on like if the combat or items drop are balanced like i wanted or not, and things like that
-
-
+  - Added 2 more options to dev menu: 10. Choose difficulty, 11. Reload dungeon
 
 - **Breath of the Dungeon**
   - **progression**
@@ -580,6 +584,8 @@ Need to be fixed in the future:
     - Added some Achievements
     -̸̡̈́ *̶̢͌S̶̤̕o̶͙͝m̴̛̠ë̵͕́ ä̷̪́c̴̱͝h̵̤͒i̴̊͜ë̵͕́v̶̼͝ë̵͕́m̴̛̠ë̵͕́n̸̻̈́ẗ̴̗́s̸̱̅ ä̷̪́r̷͍̈́ë̵͕́ n̸̻̈́o̶͙͝ẗ̴̗́ m̴̛̠ë̵͕́ä̷̪́n̸̻̈́ẗ̴̗́ ẗ̴̗́o̶͙͝ b̸̼̅ë̵͕́ f̷̠͑o̶͙͝ŭ̵͇n̸̻̈́ď̶̙.̵͇̆.̵͇̆.̵͇̆*̶̢͌
     - Added hidden Achievements
+    - Added some Tutorials !
+    - Added one time Events (can be really basic, e.g: First combat / First Boss...)
 
 - **Fragments of Self**
   - **L̷̻̎o̶͙͝r̷͍̈́ë̵͕́**:
@@ -590,31 +596,28 @@ Need to be fixed in the future:
 - **Player**:
   - **Saves / Load finaly work !!**
   - Fixed skill activation resource deduction to correctly use mana, stamina, or HP based on skill cost.
-  - the code equips the new item regardless of the user's choice to unequip the old item or not, so now it. Fixed by adding `else` + `return` to cancel the action
+  - the code equips the new item regardless of the user's choice to unequip the old item or not, so now it. Fixed by adding `else` + `return` to cancel the action..
   - Fix where the inventory `__init__` was made before the `player.items_collected` was set as the class `Inventory` need the `player.items_collected`, so it need to be init before
   - Rooms Explored in the PLAYER STATS SUMMARY didn't updated cus i did `rooms_explored = player.rooms_explored` and then `rooms_explored += 1` without updating `player.rooms_explored = rooms_explored`
   - Fixed player.mode who returned a NoneType instead of a difficulty class like NormalMode()
   - Fixed a wrong gold managment in a puzzle (with the dices) and in shops
+  - When level up, the new amout of xp req is xp * 1.5. But then, when reaching level 1740, the xp req to level up reached infinite and break the game, so now instead of doing * 1.5, there is an xp limit of 1̸̘̓6̴̨͝6̴̨͝2̴̙͝9̴̗̈́1̸̘̓6̴̨͝2̴̙͝8̸̱̅0̵̢̈́2̴̙͝8̸̱̅0̵̢̈́9̴̗̈́1̸̘̓8̸̱̅4̷̫̈́2̴̙͝6̴̨͝1̸̘̓3̶̢͌0̵̢̈́0̵̢̈́9̴̗̈́0̵̢̈́9̴̗̈́5̸̱̅0̵̢̈́0̵̢̈́9̴̗̈́2̴̙͝6̴̨͝6̴̨͝4̷̫̈́9̴̗̈́5̸̱̅1̸̘̓9̴̗̈́5̸̱̅6̴̨͝7̷͍̈́5̸̱̅7̷͍̈́1̸̘̓9̴̗̈́6̴̨͝6̴̨͝3̶̢͌1̸̘̓2̴̙͝2̴̙͝3̶̢͌1̸̘̓3̶̢͌8̸̱̅8̸̱̅3̶̢͌3̶̢͌8̸̱̅5̸̱̅3̶̢͌6̴̨͝7̷͍̈́2̴̙͝9̴̗̈́1̸̘̓7̷͍̈́0̵̢̈́8̸̱̅1̸̘̓4̷̫̈́8̸̱̅0̵̢̈́4̷̫̈́9̴̗̈́2̴̙͝8̸̱̅7̷͍̈́5̸̱̅7̷͍̈́1̸̘̓0̵̢̈́7̷͍̈́0̵̢̈́3̶̢͌3̶̢͌2̴̙͝7̷͍̈́6̴̨͝9̴̗̈́2̴̙͝5̸̱̅8̸̱̅2̴̙͝3̶̢͌1̸̘̓9̴̗̈́2̴̙͝9̴̗̈́5̸̱̅6̴̨͝6̴̨͝8̸̱̅4̷̫̈́3̶̢͌5̸̱̅8̸̱̅1̸̘̓5̸̱̅0̵̢̈́3̶̢͌2̴̙͝8̸̱̅7̷͍̈́2̴̙͝8̸̱̅3̶̢͌3̶̢͌3̶̢͌7̷͍̈́4̷̫̈́1̸̘̓4̷̫̈́7̷͍̈́7̷͍̈́1̸̘̓5̸̱̅3̶̢͌5̸̱̅0̵̢̈́8̸̱̅6̴̨͝4̷̫̈́5̸̱̅4̷̫̈́5̸̱̅8̸̱̅9̴̗̈́4̷̫̈́6̴̨͝9̴̗̈́4̷̫̈́7̷͍̈́6̴̨͝5̸̱̅0̵̢̈́2̴̙͝0̵̢̈́0̵̢̈́4̷̫̈́1̸̘̓9̴̗̈́1̸̘̓8̸̱̅1̸̘̓0̵̢̈́8̸̱̅7̷͍̈́5̸̱̅2̴̙͝2̴̙͝1̸̘̓4̷̫̈́6̴̨͝2̴̙͝1̸̘̓3̶̢͌4̷̫̈́1̸̘̓1̸̘̓9̴̗̈́7̷͍̈́9̴̗̈́3̶̢͌3̶̢͌1̸̘̓5̸̱̅0̵̢̈́6̴̨͝0̵̢̈́0̵̢̈́6̴̨͝7̷͍̈́8̸̱̅1̸̘̓3̶̢͌2̴̙͝3̶̢͌2̴̙͝5̸̱̅8̸̱̅7̷͍̈́8̸̱̅3̶̢͌9̴̗̈́0̵̢̈́5̸̱̅6̴̨͝2̴̙͝1̸̘̓6̴̨͝2̴̙͝7̷͍̈́9̴̗̈́7̷͍̈́9̴̗̈́4̷̫̈́9̴̗̈́8̸̱̅4̷̫̈́2̴̙͝6̴̨͝4̷̫̈́2̴̙͝9̴̗̈́8̸̱̅6̴̨͝7̷͍̈́7̷͍̈́0̵̢̈́0̵̢̈́2̴̙͝1̸̘̓8̸̱̅2̴̙͝2̴̙͝9̴̗̈́5̸̱̅9̴̗̈́1̸̘̓4̷̫̈́0̵̢̈́7̷͍̈́2̴̙͝5̸̱̅3̶̢͌2̴̙͝1̸̘̓5̸̱̅0̵̢̈́2̴̙͝0̵̢̈́1̸̘̓8̸̱̅2̴̙͝9̴̗̈́4̷̫̈́7̷͍̈́2̴̙͝4̷̫̈́3̶̢͌7̷͍̈́5̸̱̅9̴̗̈́2̴̙͝0̵̢̈́4̷̫̈́5̸̱̅2̴̙͝0̵̢̈́7̷͍̈́8̸̱̅6̴̨͝0̵̢̈́1̸̘̓0̵̢̈́3̶̢͌6̴̨͝3̶̢͌7̷͍̈́7̷͍̈́0̵̢̈́3̶̢͌3̶̢͌1̸̘̓6̴̨͝9̴̗̈́3̶̢͌9̴̗̈́2̴̙͝6̴̨͝7̷͍̈́5̸̱̅4̷̫̈́7̷͍̈́3̶̢͌7̷͍̈́1̸̘̓3̶̢͌1̸̘̓5̸̱̅8̸̱̅7̷͍̈́7̷͍̈́1̸̘̓9̴̗̈́4̷̫̈́6̴̨͝7̷͍̈́8̸̱̅7̷͍̈́7̷͍̈́2̴̙͝1̸̘̓7̷͍̈́0̵̢̈́7̷͍̈́5̸̱̅2̴̙͝
 
 ### Changed
 - **Player**:
   - Modifed the basics functions like `append` and `remove` of the new Inventory(list) class
   - Modified `player.room_explored` to `player.current_room_number` and `player.total_rooms_explored`
   - Now, player only heal 25% of their max_hp instead of 100% when they level up
+  - From now, the two options : "7. Save game" ; "8. Quit game" will be available only in inter-level rooms.
+  - Modified the function `generate_random_item(...)` into more functions to make it more readable and easier.
+  - The WHOLE Equipments Stats core such as how it work and apply to items and stats
 
 - **Enemy**:
   - Modified some stats coefficients to balance the game a bit more
 
 - **Items**:
   - Reworked base effects of Rings, Belts and Amulets from `int(1  * rarity_multiplier[rarity])` to `int((1 + (level // 2)) * rarity_multiplier[rarity])`
-
-
-
-
-
-
-
-
+  - The core functin `generate_random_item(...)` work 100% instead of 80%
 
 
 
