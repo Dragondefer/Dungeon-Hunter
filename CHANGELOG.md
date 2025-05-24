@@ -1,5 +1,5 @@
 # Changelog
-__version__ = "867.0"
+__version__ = "923.0"
 __creation__ = "23-04-2025"
 
 All notable changes to this project will be documented in this file.
@@ -18,7 +18,7 @@ Here is the schematic of the logs:
 ### Fixed
 ### Changed
 ---
-Order of each version: ['colors.py', 'data.py', 'difficulty.py', 'dungeon.py', 'entity.py', 'game_utility.py', 'inventory.py', 'items.py', 'logger.py', 'main.py', 'progression.py', 'story.py']
+Order of each version: ['colors.py', 'data.py', 'difficulty.py', 'dungeon.py', 'entity.py', 'game_utility.py', 'inventory.py', 'items.py', 'main.py', 'progression.py', 'story.py']
 
 
 ## [Unreleased]
@@ -301,7 +301,7 @@ Tally of tunable parameters like:
   - 3 difficulty modes with progression locking:  
     *Normal*: Base experience with safety nets
     *Soul Enjoyer*: Permadeath mode with instant kill traps
-    *Realistic*: Extended dungeons with s#p#c#a#-tier items
+    *Realistic*: Extended dungeons with s̸̱̅p̵̦̆ë̵͕́c̴̱͝i̴̊͜ä̷̪́l̷̫̈́-tier items
   - Difficulty-specific loot tables
 
 - **Debug menu**:
@@ -466,9 +466,7 @@ This 2,800+ line update introduces 40+ new mechanical systems and refines 75+ co
   - [4.4.x] - Items and Quests improvements
   - [4.5.x] - Core function revewiew and bug fixes
 
-Actual version: [4.5.3] - 04/05/2025
-
-GitHub first release: [4.5.3] [here](https://github.com/Dragondefer/Dungeon-Hunter/releases/tag/v4.5.3)
+GitHub first release: [4.5.3] [here](https://github.com/Dragondefer/Dungeon-Hunter/releases/tag/v4.5.3) - 04/05/2025
 GitHub repository: Now public and available [here](https://github.com/Dragondefer/Dungeon-Hunter)
 
 ### Added
@@ -504,7 +502,7 @@ GitHub repository: Now public and available [here](https://github.com/Dragondefe
   - Removed an error when using the update_total_armor() by putting a # in front of it
   - Now, weapons dispaly their stats in the player status such as: "attack: int (+ int)"
   - Correct a bug where your choice in the rest room returned False instead of the user input
-  - Fixed a bug when leveling up where it added + 2 from level up + the equipment stats. Example: If you have 10 attack and a sword that give + 5 attack, when you level up it will add + 2 + 5 instead of just + 2. Now it will add only + 2. Fixed by using `self.stats.permanent_stats["attack"] += 10` instead of `self.stats.attack += 10`.
+  - When leveling up where it added + 2 from level up + the equipment stats and it wasn't supposed to take the equipments stats. e.g: If player have 10 attack and a sword that give + 5 attack, when level up it will add + 2 + 5 instead of just + 2. Fixed by using `self.stats.permanent_stats["attack"] += 10` instead of `self.stats.attack += 10`.
 
 - **Rest**:
   - Fixed a boundary limit to the stealing amount of the gold so it never get under 0 gold.
@@ -562,14 +560,21 @@ Need to be fixed in the future:
   - [5.0.0] : Save system + player's statistics - 07-05-2025
   - [5.1.0] : Difficulty core class + Inventory class 08-05-2025
   - [5.2.0] : Progression + L̷̻̎o̶͙͝r̷͍̈́ë̵͕́ - 10-05-2025
-    - [51.0, 224.0, 50.0, 1050.0, 1819.0, 340.0, 17.0, 641.0, 4.0, 476.0, 76.0, 34.0]
+    - [51.0, 224.0, 50.0, 1050.0, 1819.0, 340.0, 17.0, 641.0, 476.0, 76.0, 34.0]
   - [5.3.0] : Items + Equipment update - 15-05-2025
-    - [53.0, 228.0, 66.0, 1230.0, 2007.0, 355.0, 21.0, 690.0, 4.0, 594.0, 81.0, 66.0]
+    - [53.0, 228.0, 66.0, 1230.0, 2007.0, 355.0, 21.0, 690.0, 594.0, 81.0, 66.0]
+  - [5.4.0] : Magic implementation + Tutorials - 18-05-2025
+    - [53.0, 290.0, 66.0, 1653.0, 2217.0, 465.0, 21.0, 698.0, 650.0, 81.0, 78.0]
 
 ### Added
-- **Debug**
+- **Debug and core**
   - Added logger.py to log the whole game, it's really important for me the dev as i can see what's going on like if the combat or items drop are balanced like i wanted or not, and things like that
   - Added 2 more options to dev menu: 10. Choose difficulty, 11. Reload dungeon
+  - Added terminal managment such as setting it in full screen, get the cols and lines of the terminal...
+
+- **QoL**: (Quality of Life):
+  - Added loading animation
+  - Added two option for displaying dungeon level: top mid or top right
 
 - **Breath of the Dungeon**
   - **progression**
@@ -585,7 +590,7 @@ Need to be fixed in the future:
     -̸̡̈́ *̶̢͌S̶̤̕o̶͙͝m̴̛̠ë̵͕́ ä̷̪́c̴̱͝h̵̤͒i̴̊͜ë̵͕́v̶̼͝ë̵͕́m̴̛̠ë̵͕́n̸̻̈́ẗ̴̗́s̸̱̅ ä̷̪́r̷͍̈́ë̵͕́ n̸̻̈́o̶͙͝ẗ̴̗́ m̴̛̠ë̵͕́ä̷̪́n̸̻̈́ẗ̴̗́ ẗ̴̗́o̶͙͝ b̸̼̅ë̵͕́ f̷̠͑o̶͙͝ŭ̵͇n̸̻̈́ď̶̙.̵͇̆.̵͇̆.̵͇̆*̶̢͌
     - Added hidden Achievements
     - Added some Tutorials !
-    - Added one time Events (can be really basic, e.g: First combat / First Boss...)
+    - Added one time Events (can be really basic, e.g: Help notes...)
 
 - **Fragments of Self**
   - **L̷̻̎o̶͙͝r̷͍̈́ë̵͕́**:
@@ -602,15 +607,18 @@ Need to be fixed in the future:
   - Fixed player.mode who returned a NoneType instead of a difficulty class like NormalMode()
   - Fixed a wrong gold managment in a puzzle (with the dices) and in shops
   - When level up, the new amout of xp req is xp * 1.5. But then, when reaching level 1740, the xp req to level up reached infinite and break the game, so now instead of doing * 1.5, there is an xp limit of 1̸̘̓6̴̨͝6̴̨͝2̴̙͝9̴̗̈́1̸̘̓6̴̨͝2̴̙͝8̸̱̅0̵̢̈́2̴̙͝8̸̱̅0̵̢̈́9̴̗̈́1̸̘̓8̸̱̅4̷̫̈́2̴̙͝6̴̨͝1̸̘̓3̶̢͌0̵̢̈́0̵̢̈́9̴̗̈́0̵̢̈́9̴̗̈́5̸̱̅0̵̢̈́0̵̢̈́9̴̗̈́2̴̙͝6̴̨͝6̴̨͝4̷̫̈́9̴̗̈́5̸̱̅1̸̘̓9̴̗̈́5̸̱̅6̴̨͝7̷͍̈́5̸̱̅7̷͍̈́1̸̘̓9̴̗̈́6̴̨͝6̴̨͝3̶̢͌1̸̘̓2̴̙͝2̴̙͝3̶̢͌1̸̘̓3̶̢͌8̸̱̅8̸̱̅3̶̢͌3̶̢͌8̸̱̅5̸̱̅3̶̢͌6̴̨͝7̷͍̈́2̴̙͝9̴̗̈́1̸̘̓7̷͍̈́0̵̢̈́8̸̱̅1̸̘̓4̷̫̈́8̸̱̅0̵̢̈́4̷̫̈́9̴̗̈́2̴̙͝8̸̱̅7̷͍̈́5̸̱̅7̷͍̈́1̸̘̓0̵̢̈́7̷͍̈́0̵̢̈́3̶̢͌3̶̢͌2̴̙͝7̷͍̈́6̴̨͝9̴̗̈́2̴̙͝5̸̱̅8̸̱̅2̴̙͝3̶̢͌1̸̘̓9̴̗̈́2̴̙͝9̴̗̈́5̸̱̅6̴̨͝6̴̨͝8̸̱̅4̷̫̈́3̶̢͌5̸̱̅8̸̱̅1̸̘̓5̸̱̅0̵̢̈́3̶̢͌2̴̙͝8̸̱̅7̷͍̈́2̴̙͝8̸̱̅3̶̢͌3̶̢͌3̶̢͌7̷͍̈́4̷̫̈́1̸̘̓4̷̫̈́7̷͍̈́7̷͍̈́1̸̘̓5̸̱̅3̶̢͌5̸̱̅0̵̢̈́8̸̱̅6̴̨͝4̷̫̈́5̸̱̅4̷̫̈́5̸̱̅8̸̱̅9̴̗̈́4̷̫̈́6̴̨͝9̴̗̈́4̷̫̈́7̷͍̈́6̴̨͝5̸̱̅0̵̢̈́2̴̙͝0̵̢̈́0̵̢̈́4̷̫̈́1̸̘̓9̴̗̈́1̸̘̓8̸̱̅1̸̘̓0̵̢̈́8̸̱̅7̷͍̈́5̸̱̅2̴̙͝2̴̙͝1̸̘̓4̷̫̈́6̴̨͝2̴̙͝1̸̘̓3̶̢͌4̷̫̈́1̸̘̓1̸̘̓9̴̗̈́7̷͍̈́9̴̗̈́3̶̢͌3̶̢͌1̸̘̓5̸̱̅0̵̢̈́6̴̨͝0̵̢̈́0̵̢̈́6̴̨͝7̷͍̈́8̸̱̅1̸̘̓3̶̢͌2̴̙͝3̶̢͌2̴̙͝5̸̱̅8̸̱̅7̷͍̈́8̸̱̅3̶̢͌9̴̗̈́0̵̢̈́5̸̱̅6̴̨͝2̴̙͝1̸̘̓6̴̨͝2̴̙͝7̷͍̈́9̴̗̈́7̷͍̈́9̴̗̈́4̷̫̈́9̴̗̈́8̸̱̅4̷̫̈́2̴̙͝6̴̨͝4̷̫̈́2̴̙͝9̴̗̈́8̸̱̅6̴̨͝7̷͍̈́7̷͍̈́0̵̢̈́0̵̢̈́2̴̙͝1̸̘̓8̸̱̅2̴̙͝2̴̙͝9̴̗̈́5̸̱̅9̴̗̈́1̸̘̓4̷̫̈́0̵̢̈́7̷͍̈́2̴̙͝5̸̱̅3̶̢͌2̴̙͝1̸̘̓5̸̱̅0̵̢̈́2̴̙͝0̵̢̈́1̸̘̓8̸̱̅2̴̙͝9̴̗̈́4̷̫̈́7̷͍̈́2̴̙͝4̷̫̈́3̶̢͌7̷͍̈́5̸̱̅9̴̗̈́2̴̙͝0̵̢̈́4̷̫̈́5̸̱̅2̴̙͝0̵̢̈́7̷͍̈́8̸̱̅6̴̨͝0̵̢̈́1̸̘̓0̵̢̈́3̶̢͌6̴̨͝3̶̢͌7̷͍̈́7̷͍̈́0̵̢̈́3̶̢͌3̶̢͌1̸̘̓6̴̨͝9̴̗̈́3̶̢͌9̴̗̈́2̴̙͝6̴̨͝7̷͍̈́5̸̱̅4̷̫̈́7̷͍̈́3̶̢͌7̷͍̈́1̸̘̓3̶̢͌1̸̘̓5̸̱̅8̸̱̅7̷͍̈́7̷͍̈́1̸̘̓9̴̗̈́4̷̫̈́6̴̨͝7̷͍̈́8̸̱̅7̷͍̈́7̷͍̈́2̴̙͝1̸̘̓7̷͍̈́0̵̢̈́7̷͍̈́5̸̱̅2̴̙͝
+  - Bonus stats for armor sets finaly work after updating the whole equipment stats and hours of debug... (last fix by changing a 0 by 1...)
+  
 
 ### Changed
 - **Player**:
   - Modifed the basics functions like `append` and `remove` of the new Inventory(list) class
   - Modified `player.room_explored` to `player.current_room_number` and `player.total_rooms_explored`
   - Now, player only heal 25% of their max_hp instead of 100% when they level up
-  - From now, the two options : "7. Save game" ; "8. Quit game" will be available only in inter-level rooms.
+  - From now, the two options : "7. Save game" and "8. Quit game" will be available only in inter-level rooms.
   - Modified the function `generate_random_item(...)` into more functions to make it more readable and easier.
   - The WHOLE Equipments Stats core such as how it work and apply to items and stats
+  - Modified tutorials: no random text poping as it was bothering, instead it's a whole room for specific tutorials.
 
 - **Enemy**:
   - Modified some stats coefficients to balance the game a bit more
@@ -618,13 +626,6 @@ Need to be fixed in the future:
 - **Items**:
   - Reworked base effects of Rings, Belts and Amulets from `int(1  * rarity_multiplier[rarity])` to `int((1 + (level // 2)) * rarity_multiplier[rarity])`
   - The core functin `generate_random_item(...)` work 100% instead of 80%
-
-
-
-
-
-
-
 
 
 
