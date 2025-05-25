@@ -1,4 +1,4 @@
-__version__ = "641.0"
+__version__ = "698.0"
 __creation__ = "09-03-2025"
 
 import random
@@ -24,10 +24,10 @@ class Item:
         __str__() -> str:
             Returns a formatted string representation of the item.
     """
-    def __init__(self, name, description, value):
+    def __init__(self, name:str, description:str, value:int):
         self.name = name
         self.description = description
-        self.value = value
+        self.value = value if value else 0
     
     def __str__(self):
         return f"{self.name} - {self.description} (Value: {self.value} gold)"
@@ -52,7 +52,7 @@ class Item:
 
         if item_type == Armor:
             # Extraction des valeurs spécifiques à l'armure
-            defense = extras.get("bonuses", {}).get("defense", 0)
+            defense = extras.get("effects", {}).get("defense", 0)
             armor_type = extras.get("armor_type", "generic")
             return Armor(data["name"], data["description"], data["value"], defense, armor_type)
 
@@ -77,7 +77,9 @@ class Item:
 
 #̶̼͝ B̵̕͜ë̵͕́ẅ̷̙́ä̷̪́r̷͍̈́ë̵͕́:̴̨͝ G̵̨̽ë̵͕́ä̷̪́r̷͍̈́ m̴̛̠ä̷̪́ÿ̸̡́ b̸̼̅i̴̊͜n̸̻̈́ď̶̙ ÿ̸̡́o̶͙͝ŭ̵͇ ẗ̴̗́o̶͙͝ ä̷̪́ f̷̠͑ä̷̪́ẗ̴̗́ë̵͕́ ẅ̷̙́o̶͙͝r̷͍̈́s̸̱̅ë̵͕́ ẗ̴̗́h̵̤͒ä̷̪́n̸̻̈́ ď̶̙ë̵͕́ä̷̪́ẗ̴̗́h̵̤͒.̵͇̆
 class Gear(Item):
-    """Gère les objets équipables (armes, armures, anneaux, etc.)."""
+    """
+    Gère les objets équipables (armes, armures, anneaux, etc.).
+    """
     def __init__(self, name, description, value, effects=None):
         super().__init__(name, description, value)
         self.effects = effects if effects else {}
@@ -163,7 +165,8 @@ class Equipment:
 
     def equip(self, slot, item, player):
         """Équipe un objet dans le slot spécifié et applique ses effets."""
-        
+        global debug
+
         if slot not in self.slots:
             logger.warning(f"Invalid slot '{slot}' for {item.name} in equip()")
             print(f"{Colors.RED}ERROR: Invalid slot '{slot}' for {item.name}!{Colors.RESET}")
@@ -175,12 +178,14 @@ class Equipment:
 
         # Équipe le nouvel objet
         self.slots[slot] = item
-        logger.info(f"Equipped {item.name} in {slot}")
-        print(f"\n{Colors.GREEN}Equipped{Colors.RESET} {item.name} {Colors.GREEN}in {slot}.{Colors.RESET}")
+        logger.info(f"Equipping {item.name} in {slot}")
+        print(f"\n{Colors.GREEN}Equipping{Colors.RESET} {item.name} {Colors.GREEN}in {slot}.{Colors.RESET}")
+        if debug >= 1:
+            print(f"DEBUG: Item info:\n{item}")
+
 
         # Met à jour les statistiques du joueur
-        player.stats.update_total_stats()
-        player.calculate_set_bonus()
+        player.apply_all_equipment_effects(show_text=True)
 
 
     def unequip(self, slot, player):
@@ -232,12 +237,39 @@ class Weapon(Gear):
             extras.get("damage", 0)
         )
 
+# New weapon subclasses with class bonuses
+class Sword(Weapon):
+    def __init__(self, name, description, value, damage):
+        super().__init__(name, description, value, damage)
+
+    def get_class_bonus(self):
+        # Bonus for Knight class
+        return {"max_hp": 20, "defense": 5}
+
+class Bow(Weapon):
+    def __init__(self, name, description, value, damage):
+        super().__init__(name, description, value, damage)
+
+    def get_class_bonus(self):
+        # Bonus for Archer class
+        return {"attack": 10, "agility": 5}
+
+class Staff(Weapon):
+    def __init__(self, name, description, value, damage):
+        super().__init__(name, description, value, damage)
+
+    def get_class_bonus(self):
+        # Bonus for Mage class
+        return {"magic_damage": 15, "mana": 20}
+
+
 
 #̶̼͝ B̵̕͜ë̵͕́ẅ̷̙́ä̷̪́r̷͍̈́ë̵͕́:̴̨͝ A̷̛͠r̷͍̈́m̴̛̠o̶͙͝r̷͍̈́ m̴̛̠ä̷̪́ÿ̸̡́ ẗ̴̗́r̷͍̈́ä̷̪́p̵̦̆ ẗ̴̗́h̵̤͒ë̵͕́ ẅ̷̙́ë̵͕́ä̷̪́r̷͍̈́ë̵͕́r̷͍̈́ i̴̊͜n̸̻̈́ ë̵͕́ẗ̴̗́ë̵͕́r̷͍̈́n̸̻̈́ä̷̪́l̷̫̈́ ẗ̴̗́o̶͙͝r̷͍̈́m̴̛̠ë̵͕́n̸̻̈́ẗ̴̗́.̵͇̆
 class Armor(Gear):
     """Represents an equippable armor piece that enhances defense."""
-    def __init__(self, name, description, value, defense, armor_type):
+    def __init__(self, name, description, value, defense, armor_type=None):
         super().__init__(name, description, value, {"defense": defense})
+        self.defense = defense
         self.armor_type = armor_type  # "helmet", "chestplate", "leggings", etc.
         logger.debug(f"Armor created: {self.name} with defense {defense}")
 
@@ -300,6 +332,7 @@ class Belt(Gear):
     """Represents an equippable belt that boosts stamina or defense."""
     def __init__(self, name, description, value, effects):
         super().__init__(name, description, value, effects)
+
 
 
 #̶̼͝ B̵̕͜ë̵͕́ẅ̷̙́ä̷̪́r̷͍̈́ë̵͕́:̴̨͝ P̶̺̒o̶͙͝ẗ̴̗́i̴̊͜o̶͙͝n̸̻̈́s̸̱̅ m̴̛̠ä̷̪́ÿ̸̡́ h̵̤͒ä̷̪́v̶̼͝ë̵͕́ s̸̱̅i̴̊͜ď̶̙ë̵͕́ ë̵͕́f̷̠͑f̷̠͑ë̵͕́c̴̱͝ẗ̴̗́s̸̱̅ b̸̼̅ë̵͕́ÿ̸̡́o̶͙͝n̸̻̈́ď̶̙ h̵̤͒ë̵͕́ä̷̪́l̷̫̈́i̴̊͜n̸̻̈́g̸̻̿.̵͇̆
@@ -439,105 +472,22 @@ def random_rest_description():
     "a warm room with the remains of an old campsite"
 ])
 
-
-def generate_random_item(player=None, enemy=None, item_type=None, rarity=None, item_name=None, rarity_boost=None, available_rarities=None, level_boost=0, enemy_type=None):
-    """Generate a specific or random item with customizable attributes.
-
-    Parameters:
-        player (class Player) to get automatically the level and difficulty
-        item_type (str, optional): "weapon", "armor", or "potion". Default is random.
-        rarity (str, optional): Specify rarity ("common", "epic", etc.), or random.
-        item_name (str, optional): Choose a specific item (e.g., "Sword", "Helmet").
-        rarity_boost (float, optional): Adjusts drop rates for rare items. Default is 1.0.
-        available_rarities (list, optional): List of available rarities. Default is ["common", "uncommon", "rare", "epic", "legendary", "divine"]
-        enemy_type (str, optional): 
-            - Goblin / Goblin King
-            - Skeleton / Skeleton Lord
-            - Wolf / Alpha Dire Wolf
-            - Orc / Orc Warlord
-            - Troll / Ancient Troll
-            - Ghost / Spectre Lord
-            - Dark Elf / Dark Elf Queen
-            - Wraith / Wraith King
-            - Golem / Ancient Golem
-            - Dragon Whelp / Elder Dragon
-            - Demon / Dark Lord
-            - Dark Shape / Senessax
-
-    Returns:
-        Item (Weapon, Armor, or Potion)
-    """
-    global debug
-    debug = 0
-
-    level = (player.dungeon_level + level_boost)
-    difficulty = player.difficulty  # Objet, ex: NormalMode()
+def get_available_rarities(player, difficulty, level, rarity=None):
+    """Determine available rarities based on player difficulty and level."""
+    rarities_ls = ["common", "uncommon", "rare", "epic", "legendary", "divine", "???"]
+    available_rarities = difficulty.get_available_rarities()
     
-    if not enemy_type:
-        if enemy:
-            enemy_type = enemy.type
-        else:
-            enemy_type = None
-            if debug >= 1:
-                print(f"{Colors.RED}Not enemy_type{Colors.RESET}")
-    elif enemy_type not in enemy_sets:
-        print(f"{Colors.RED}enemy_type: {enemy_type} not in enemy_sets{Colors.RESET}")
-        enemy_type = None
-    else:
-        if debug >= 1:
-            print(f"{Colors.RED}enemy_type = None")
-        enemy_type = None
+    # Adapt rarities to player level (level 1 max: rare, level 2: max = epic...)
+    if level <= len(available_rarities) and not rarity:  
+        available_rarities = available_rarities[:level + 2]
+    
+    return available_rarities
 
-    if debug >= 1:
-        print('DEBUG: Given item_type:', item_type)
-
-    if available_rarities is None:
-        rarities_ls = ["common", "uncommon", "rare", "epic", "legendary", "divine", "???"]
-
-        """
-        if difficulty == "normal":
-            available_rarities = rarities_ls[:-1]
-        elif difficulty == "soul_enjoyer":
-            available_rarities = rarities_ls[:-2]
-        elif difficulty == "realistic":
-            available_rarities = rarities_ls
-        else:
-            available_rarities = rarities_ls[:-1]
-            print(difficulty)
-            print(available_rarities)
-        """
-        available_rarities = difficulty.get_available_rarities()
-
-        # Adapte les rareté au niveaux (niv 1 on ne peut avoir mieux : rare, niv 2: rareté max = epic...)
-        if level <= len(available_rarities) and not rarity:  
-            available_rarities = available_rarities[:level + 2]  # Assure que la liste ne devient pas vide
-            if debug >= 1:
-                print("rarity penality due to low dungenon level. Available rarity for your dungenon level: ", available_rarities)
-
-
-    elif available_rarities not in ["common", "uncommon", "rare", "epic", "legendary", "divine", "???"]:
-        print('invalid rarity called in generate_random_item\nCalled rarity:', available_rarities)
-
-
-    if rarity_boost is None:
-        """
-        if difficulty == "normal":
-            rarity_boost = 1.0
-        elif difficulty == "soul_enjoyer":
-            rarity_boost = 0.8
-        elif difficulty == "realistic":
-            rarity_boost = 0.5
-        else:
-            print(difficulty)
-            print('Rarity_boost is not none and difficult is invalid (item/def generate_random_item())')
-            try:
-                print(rarity_boost)
-            except Exception as e:
-                logger.warning(f"Exception caught: {e}")
-                print(e)
-        """
-        rarity_boost = difficulty.get_rarity_boost()
-
+def calculate_rarity(available_rarities, rarity_boost, rarity=None):
+    """Calculate item rarity based on available rarities and boost factor."""
+    if rarity:
+        return rarity
+        
     # Adjust rarity weights based on rarity_boost
     rarity_weights = {
         "common": 0.485 / rarity_boost,
@@ -553,23 +503,22 @@ def generate_random_item(player=None, enemy=None, item_type=None, rarity=None, i
     total_weight = sum(rarity_weights.values())
     normalized_weights = {key: value / total_weight for key, value in rarity_weights.items()}
 
-    # Filtrer les raretés disponibles qui existent bien dans les poids normalisés
+    # Filter available rarities that exist in normalized weights
     valid_rarities = [r for r in available_rarities if r in normalized_weights]
 
-    # Vérifier que la liste des raretés disponibles n'est pas vide
+    # Check if valid rarities list is not empty
     if not valid_rarities:
-        print(f"{Colors.RED}ERROR: No valid rarities available! Defaulting to 'common'.{Colors.RESET}")
-        rarity = "common"
-    else:
-        # Sélectionner une rareté avec les probabilités ajustées
-        rarity = random.choices(
-            valid_rarities, 
-            weights=[normalized_weights[r] for r in valid_rarities]
-        )[0]
+        return "common"
+    
+    # Select a rarity with adjusted probabilities
+    return random.choices(
+        valid_rarities, 
+        weights=[normalized_weights[r] for r in valid_rarities]
+    )[0]
 
-
-    # Scaling multipliers for rarities
-    rarity_multiplier = {
+def get_rarity_data():
+    """Return multipliers and color coding for each rarity."""
+    multipliers = {
         "common": 1,
         "uncommon": 1.5,
         "rare": 2,
@@ -578,178 +527,200 @@ def generate_random_item(player=None, enemy=None, item_type=None, rarity=None, i
         "divine": 10,
         "???": 100
     }
-
-    # Color coding for rarity
-    rarity_color = {
+    
+    colors = {
         "common": Colors.WHITE,
         "uncommon": Colors.GREEN,
         "rare": Colors.BLUE,
         "epic": Colors.MAGENTA,
         "legendary": Colors.YELLOW,
         "divine": Colors.rainbow_text,
-        "???": lambda text: Colors.gradient_text(text, (0, 0, 0), (255, 0, 0))  # Black to red gradient
+        "???": lambda text: Colors.gradient_text(text, (0, 0, 0), (255, 0, 0))
     }
-
-    # Base value scaling with level and rarity
-    value_base = int(50 * level * rarity_multiplier[rarity])
-
-    # Prefix based on rarity
-    rarity_prefixes = {
+    
+    prefixes = {
         "common": ["Common", "Basic", "Standard", "Ordinary", "Usual", "Normal"],
-        "uncommon": ["Uncommon","Sharp", "Sturdy", "Reliable", "Balanced"],
+        "uncommon": ["Uncommon", "Sharp", "Sturdy", "Reliable", "Balanced"],
         "rare": ["Rare", "Advanced", "Superior"],
         "epic": ["Epic", "Exceptional", "Impressive", "Masterwork"],
         "legendary": ["Legendary", "Ancient", "Mythical", "Enchanted"],
         "divine": ["Divine", "Holy", "Sacred", "Blessed", "Miraculous", "Supernatural", "Celestial"],
         "???": ["Unknown"]
     }
-    if rarity in rarity_prefixes:
-        prefix = random.choice(rarity_prefixes.get(rarity, [""]))
-    else:
-        prefix = ""
-        print('Rarity in rarity_prefixes, rarity:', rarity, 'not in prefix:',rarity_prefixes)
-        input('enter to continue..')
-
-    # Définir les sets possibles
-    """
-    if enemy:
-        if enemy in enemy_sets:
-            set_type = enemy_sets[enemy]
-            armor_set_type = set_type["armor"]
-            weapon_set_type = set_type["weapon"]
-        elif enemy not in enemy_sets:
-            print(f"{Colors.RED}Enemy \"{enemy}\" not found in enemy_sets{Colors.RESET}")
-            print(enemy_sets)
-            armor_set_type = ""
-            weapon_set_type = ""
-        else:
-            armor_set_type = ""
-            weapon_set_type = ""
-    else:
-        armor_set_type = ""
-        weapon_set_type = ""
-    """
     
+    return {
+        "multipliers": multipliers,
+        "colors": colors,
+        "prefixes": prefixes
+    }
+
+def get_enemy_set_info(enemy_type):
+    """Get armor and weapon set info for a specific enemy type."""
     if enemy_type and enemy_type in enemy_sets:
         set_type = enemy_sets[enemy_type]
-        armor_set_type = set_type.get("armor", "")
-        weapon_set_type = set_type.get("weapon", "")
+        return {
+            "armor": set_type.get("armor", ""),
+            "weapon": set_type.get("weapon", "")
+        }
+    return {"armor": "", "weapon": ""}
+
+def create_weapon(level, rarity, prefix, weapon_type, value_base, rarity_data):
+    """Create a weapon item."""
+    multipliers = rarity_data["multipliers"]
+    colors = rarity_data["colors"]
+    
+    damage = int((1 + level) * multipliers[rarity])
+    name = f"{prefix} {weapon_type}"
+    
+    # Find rarity corresponding to prefix
+    rarity_prefixes = rarity_data["prefixes"]
+    rarity_key = next((key for key, values in rarity_prefixes.items() if prefix in values), rarity)
+    
+    # Apply correct color based on found rarity
+    colored_name = colors[rarity_key](name) if callable(colors[rarity_key]) else f"{colors[rarity_key]}{name}{Colors.RESET}"
+    
+    desc = f"A level {level} {prefix} weapon"
+    return Weapon(colored_name, desc, value_base, damage)
+
+def create_armor(level, rarity, prefix, armor_type, value_base, rarity_data, armor_set_type=""):
+    """Create an armor item."""
+    multipliers = rarity_data["multipliers"]
+    colors = rarity_data["colors"]
+    
+    if armor_set_type:
+        name_prefix = f"{prefix} {armor_set_type}"
     else:
-        if enemy_type:
-            print(f"{Colors.RED}Enemy type \"{enemy_type}\" not found in enemy_sets{Colors.RESET}")
-            print(enemy_sets)
-        armor_set_type = ""
-        weapon_set_type = ""
+        name_prefix = f"{prefix}"
+        
+    defense = int((2 + level) * multipliers[rarity])
+    name = f"{name_prefix} {armor_type}"
+    
+    colored_name = colors[rarity](name) if callable(colors[rarity]) else f"{colors[rarity]}{name}{Colors.RESET}"
+    desc = f"A level {level} {prefix} armor piece"
+    
+    return Armor(colored_name, desc, value_base, defense, armor_type)
 
+def create_accessory(level, rarity, prefix, item_type, value_base, rarity_data):
+    """Create a ring, amulet, or belt item."""
+    multipliers = rarity_data["multipliers"]
+    colors = rarity_data["colors"]
+    
+    if item_type == "ring":
+        effect = {"luck": int((1 + (level // 2)) * multipliers[rarity])}
+        name = f"{prefix} Ring"
+        desc = "A magical ring that enhances luck"
+        colored_name = colors[rarity](name) if callable(colors[rarity]) else f"{colors[rarity]}{name}{Colors.RESET}"
+        return Ring(colored_name, desc, value_base, effect)
+        
+    elif item_type == "amulet":
+        effect = {"defense": int((1 + (level // 2)) * multipliers[rarity])}
+        name = f"{prefix} Amulet"
+        desc = "A mystical amulet that grants protection"
+        colored_name = colors[rarity](name) if callable(colors[rarity]) else f"{colors[rarity]}{name}{Colors.RESET}"
+        return Amulet(colored_name, desc, value_base, effect)
+        
+    elif item_type == "belt":
+        effect = {"agility": int((1 + (level // 2)) * multipliers[rarity])}
+        name = f"{prefix} Belt"
+        desc = "A sturdy belt that enhances movement speed"
+        colored_name = colors[rarity](name) if callable(colors[rarity]) else f"{colors[rarity]}{name}{Colors.RESET}"
+        return Belt(colored_name, desc, value_base, effect)
 
+def create_potion(level, rarity, prefix, item_name, value_base, rarity_data):
+    """Create a potion item."""
+    multipliers = rarity_data["multipliers"]
+    colors = rarity_data["colors"]
+    
+    potion_types = {
+        "Healing Potion":         {"effect_type": "heal",          "effect_value": int(20 * level * multipliers[rarity])},
+        "Strength Elixir":        {"effect_type": "attack_boost",  "effect_value": int(2 * multipliers[rarity])},
+        "Iron Skin Tonic":        {"effect_type": "defense_boost", "effect_value": int(2 * multipliers[rarity])},
+        "Lucky Charm Brew":       {"effect_type": "luck_boost",    "effect_value": int(1 * multipliers[rarity])},
+        "Healing Spring Potion":  {"effect_type": "heal",          "effect_value": int(10 * multipliers[rarity])},
+        "Dragon's Breath Potion": {"effect_type": "fire_damage",   "effect_value": int(1 * multipliers[rarity])}
+    }
+    
+    potion_name = item_name if item_name in potion_types else random.choice(list(potion_types.keys()))
+    potion = potion_types[potion_name]
+    
+    name = f"{prefix} {potion_name}"
+    colored_name = colors[rarity](name) if callable(colors[rarity]) else f"{colors[rarity]}{name}{Colors.RESET}"
+    
+    effect_desc = {
+        "heal": f"Restores {potion['effect_value']} HP",
+        "attack_boost": f"Increases Attack by {potion['effect_value']}",
+        "defense_boost": f"Increases Defense by {potion['effect_value']}",
+        "luck_boost": f"Increases Luck by {potion['effect_value']}"
+    }.get(potion["effect_type"], "")
+    
+    return Potion(colored_name, effect_desc, value_base, potion["effect_type"], potion["effect_value"])
+
+def generate_random_item(player=None, enemy=None, item_type=None, rarity=None, item_name=None, rarity_boost=None, available_rarities=None, level_boost=0, enemy_type=None):
+    """Generate a specific or random item with customizable attributes."""
+    global debug
+    debug = 0
+
+    level = (player.dungeon_level + level_boost)
+    difficulty = player.mode
+    
+    # Determine enemy type
+    if not enemy_type and enemy:
+        enemy_type = enemy.type
+    
+    # Get difficulty-specific rarity boost if not provided
+    if rarity_boost is None:
+        rarity_boost = difficulty.get_rarity_boost()
+    
+    # Determine available rarities based on player and difficulty
+    if available_rarities is None:
+        available_rarities = get_available_rarities(player, difficulty, level, rarity)
+    
+    # Calculate item rarity
+    rarity = calculate_rarity(available_rarities, rarity_boost, rarity)
+    
+    # Get rarity-related data (multipliers, colors, prefixes)
+    rarity_data = get_rarity_data()
+    
+    # Get a random prefix based on rarity
+    prefix = random.choice(rarity_data["prefixes"].get(rarity, [""]))
+    
+    # Get enemy-specific set info
+    enemy_set_info = get_enemy_set_info(enemy_type)
+    armor_set_type = enemy_set_info["armor"]
+    weapon_set_type = enemy_set_info["weapon"]
+    
     # Determine item type if not specified
     if enemy_type:
         item_type = random.choice(["armor", "weapon"])
-        if debug >= 1:
-            print('DEBUG: enemy -> random item_type:', item_type)
-
     elif item_type is None:
         item_type = random.choice(["weapon", "armor", "potion", "ring", "amulet", "belt"])
-        if debug >= 1:
-            print('DEBUG: item_type is None -> random item_type:', item_type)
-
-    if debug >= 1:
-        print('DEBUG: Final item_type:', item_type)
-
+    
+    # Base value scaling with level and rarity
+    value_base = int(50 * level * rarity_data["multipliers"][rarity])
+    
+    # Create different types of items
     if item_type == "weapon":
-        # Default weapon choices
         weapon_types = ["Sword", "Axe", "Dagger", "Mace", "Staff", "Bow"]
-        
         if weapon_set_type:
             weapon_type = weapon_set_type
         else:
-            weapon_type = item_name if item_name in (weapon_types or weapon_set_type) else random.choice(weapon_types)
+            weapon_type = item_name if item_name in weapon_types else random.choice(weapon_types)
+        return create_weapon(level, rarity, prefix, weapon_type, value_base, rarity_data)
         
-        damage = int((1 + level) * rarity_multiplier[rarity])
+    elif item_type == "armor":
+        armor_types = ["Helmet", "Chestplate", "Gauntlets", "Leggings", "Boots", "Shield"]
+        armor_type = item_name if item_name in armor_types else random.choice(armor_types)
+        return create_armor(level, rarity, prefix, armor_type, value_base, rarity_data, armor_set_type)
         
-        name = f"{prefix} {weapon_type}"
-
-        # Trouver la rareté correspondante au préfixe
-        rarity_key = next((key for key, values in rarity_prefixes.items() if prefix in values), rarity)
-        # Appliquer la couleur correcte en fonction de la rareté trouvée
-        colored_name = rarity_color[rarity_key](name) if callable(rarity_color[rarity_key]) else f"{rarity_color[rarity_key]}{name}{Colors.RESET}"
+    elif item_type in ["ring", "amulet", "belt"]:
+        return create_accessory(level, rarity, prefix, item_type, value_base, rarity_data)
         
-        desc = f"A level {level} {prefix} weapon"
-        return Weapon(colored_name, desc, value_base, damage)
-
-    elif item_type in ["armor", "ring", "amulet", "belt"]:
-        if item_type == "armor":
-            # Default armor choices
-            armor_types = [
-                "Helmet", "Chestplate", "Gauntlets",
-                "Leggings", "Boots", "Shield"
-                ]
-            
-            if armor_set_type:
-                name_prefix = f"{prefix} {armor_set_type}"
-            else:
-                name_prefix = f"{prefix}"
-
-            armor_type = item_name if item_name in armor_types else random.choice(armor_types)
-            defense = int((2 + level) * rarity_multiplier[rarity])
-
-            name = f"{name_prefix} {armor_type}"
-            colored_name = rarity_color[rarity](name) if callable(rarity_color[rarity]) else f"{rarity_color[rarity]}{name}{Colors.RESET}"
-            desc = f"A level {level} {prefix} armor piece"
-            return Armor(colored_name, desc, value_base, defense, armor_type)
-        
-        elif item_type == "ring":
-            effect = {"luck": int((1 + (level // 2)) * rarity_multiplier[rarity])}
-            name = f"{prefix} Ring"
-            colored_name = rarity_color[rarity](name) if callable(rarity_color[rarity]) else f"{rarity_color[rarity]}{name}{Colors.RESET}"
-            desc = f"A magical ring that enhances luck"
-            return Ring(colored_name, desc, value_base, effect)
-
-        elif item_type == "amulet":
-            effect = {"defense": int((1 + (level // 2)) * rarity_multiplier[rarity])}
-            name = f"{prefix} Amulet"
-            colored_name = rarity_color[rarity](name) if callable(rarity_color[rarity]) else f"{rarity_color[rarity]}{name}{Colors.RESET}"
-            desc = f"A mystical amulet that grants protection"
-            return Amulet(colored_name, desc, value_base, effect)
-        
-        elif item_type == "belt":
-            effect = {"agility": int((1 + (level // 2)) * rarity_multiplier[rarity])}
-            name = f"{prefix} Belt"
-            colored_name = rarity_color[rarity](name) if callable(rarity_color[rarity]) else f"{rarity_color[rarity]}{name}{Colors.RESET}"
-            desc = f"A sturdy belt that enhances movement speed"
-            return Belt(colored_name, desc, value_base, effect)
-
-
     elif item_type == "potion":
-        # Default potion choices
-        potion_types = {
-            "Healing Potion":         {"effect_type": "heal",          "effect_value": int(20 * level * rarity_multiplier[rarity])},
-            "Strength Elixir":        {"effect_type": "attack_boost",  "effect_value": int(2 * rarity_multiplier[rarity])},
-            "Iron Skin Tonic":        {"effect_type": "defense_boost", "effect_value": int(2 * rarity_multiplier[rarity])},
-            "Lucky Charm Brew":       {"effect_type": "luck_boost",    "effect_value": int(1 * rarity_multiplier[rarity])},
-            "Healing Spring Potion":  {"effect_type": "heal",          "effect_value": int(10 * rarity_multiplier[rarity])},
-            "Dragon's Breath Potion": {"effect_type": "fire_damage",   "effect_value": int(1 * rarity_multiplier[rarity])}
-        }
-
-        # Choose specific potion or random one
-        potion_name = item_name if item_name in potion_types else random.choice(list(potion_types.keys()))
-        potion = potion_types[potion_name]
-
-        name = f"{prefix} {potion_name}"
-        colored_name = rarity_color[rarity](name) if callable(rarity_color[rarity]) else f"{rarity_color[rarity]}{name}{Colors.RESET}"
-        effect_desc = {
-            "heal": f"Restores {potion['effect_value']} HP",
-            "attack_boost": f"Increases Attack by {potion['effect_value']}",
-            "defense_boost": f"Increases Defense by {potion['effect_value']}",
-            "luck_boost": f"Increases Luck by {potion['effect_value']}"
-        }.get(potion["effect_type"], "")
-
-        return Potion(colored_name, effect_desc, value_base, potion["effect_type"], potion["effect_value"])
-
+        return create_potion(level, rarity, prefix, item_name, value_base, rarity_data)
+        
     else:
         print(f"{Colors.RED}Invalid item type: {item_type}{Colors.RESET}")
         return None
-
 
 def generate_item_by_name(name, item_type):
     """Recreate an item based on its name and type from save data."""

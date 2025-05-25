@@ -1,4 +1,4 @@
-__version__ = "476.0"
+__version__ = "650.0"
 __creation__ = "09-03-2025"
 
 import random
@@ -6,12 +6,25 @@ import time
 import os
 
 from colors import Colors
-from game_utility import clear_screen, game_over, choose_difficulty, handle_error, collect_feedback, interactive_bar
-from dungeon import Room, generate_dungeon, debug_menu 
+from game_utility import clear_screen, game_over, choose_difficulty, handle_error, collect_feedback, interactive_bar, move_cursor, maximize_terminal
+from dungeon import Room, Dungeon, generate_dungeon 
 from entity import Player, continue_game
-from data import get_quests_dict
+from data import get_quests_dict, get_random_names
 from story import display_title
 from logger import logger
+
+# Note: You need to be at least beta tester to get the dev tools (as it can easley break everything and also spoil), look at the game's discord: https://discord.gg/3V7xGCvxEP
+try:
+    dev_mode = False
+    if os.path.exists("dev_mod.py"):
+        from dev_mod import debug_menu
+        dev_mode = True
+except Exception as e:
+    logger.warning(f"Error when trying to import dev_mod.py: {e}")
+
+maximize_terminal()
+
+logger.info(f"dev_mode: {dev_mode}")
 debug = 0
 
 def main(continue_game=False, loaded_player=None):
@@ -21,32 +34,36 @@ def main(continue_game=False, loaded_player=None):
     if continue_game == False:
         # Ask player for their name
         name = input(f"\n{Colors.CYAN}Enter your name, brave adventurer: {Colors.RESET}")
-        player = Player(name if name else "Adventurer")
+        player = Player(name if name else get_random_names())
         choose_difficulty(player)
+
+        # Give player a starting quest
+        quests_dict = get_quests_dict()
+        starting_quest = quests_dict.get("Dungeon Explorer")
+        if starting_quest:
+            player.quests.append(starting_quest)
+            
     elif continue_game and loaded_player is not None:
         player:Player = loaded_player
     else:
-        print(f'{Colors.RED} hein? continue_game != False & continue_game and loaded_player IS None')
+        input(f'{Colors.RED} hein? continue_game != False & continue_game and loaded_player IS None')
 
     
-    # Give player a starting quest
-    quests_dict = get_quests_dict()
-    starting_quest = quests_dict.get("Dungeon Explorer")
-    if starting_quest:
-        player.quests.append(starting_quest)
+
     
     # Main game loop
     game_running = True
     end = False
-    dungeon = generate_dungeon(player=player)
+    dungeon = Dungeon()
+    dungeon.extend(generate_dungeon(player=player))
     
     while game_running and player.is_alive():
         if debug >= 1:
             input()
         clear_screen()
 
-        player.display_dungeon_level(room_number=player.current_room_number)
-       
+        player.display_dungeon_level(player.current_room_number)
+        move_cursor(0, 0)
         player.display_status()
         
         print(f"\n{Colors.YELLOW}What would you like to do?{Colors.RESET}")
@@ -88,13 +105,13 @@ def main(continue_game=False, loaded_player=None):
                     choice = input(f"\n{Colors.YELLOW}Do you want to change difficulty ? (y/n): {Colors.RESET}").lower()
                     if choice == "y":
                         print(f"\n{Colors.YELLOW}You can now choose a new difficulty level.{Colors.RESET}")
-                        player.difficulty = choose_difficulty(player)
-                        print(f"\n{Colors.YELLOW}You have chosen {player.difficulty} difficulty.{Colors.RESET}")
+                        player.mode = choose_difficulty(player)
+                        print(f"\n{Colors.YELLOW}You have chosen {player.mode} difficulty.{Colors.RESET}")
                     else:
                         print(f"\n{Colors.YELLOW}You have chosen to make a new game +.{Colors.RESET}")
                         print(f"\n{Colors.YELLOW}Generating a new dungeon...{Colors.RESET}")
                         time.sleep(2)
-                        player.ng_plus[player.difficulty] += 1
+                        player.ng_plus[player.mode.name] += 1
                     player.dungeon_level = 1
                     player.current_room_number = 0
                 
@@ -110,7 +127,7 @@ def main(continue_game=False, loaded_player=None):
                             print(f"\n{Colors.BRIGHT_GREEN}{Colors.BOLD}Quest Completed: {quest.title}!{Colors.RESET}")
 
                 if debug >= 1:
-                    print(player.difficulty)
+                    print(player.mode)
                 
                 # Reward player for clearing a dungeon level
                 player.heal(player.stats.max_hp // 4)
@@ -120,6 +137,8 @@ def main(continue_game=False, loaded_player=None):
                 print(f"{Colors.YELLOW}You receive {level_reward} gold for clearing the dungeon!{Colors.RESET}")
                 player.gold += level_reward
                 player.gain_xp(player.dungeon_level * 50)
+
+                player.current_room_number = 0
                 
                 input(f"\n{Colors.YELLOW}Press Enter to continue to dungeon level {player.dungeon_level}...{Colors.RESET}")
             else:
@@ -170,9 +189,9 @@ def main(continue_game=False, loaded_player=None):
                 player.heal(amount)
                 player.rest_stamina(amount)
                 print(f"\n{Colors.GREEN}You rest for a while and recover:\n{player.stats.hp - old_hp} HP,\n{player.stats.stamina - old_stamina} Stamina.{Colors.RESET}")
-                
+                time.sleep(0.1)
                 # Chance of being robbed by a goblin:
-                if player.difficulty == "Normal":
+                if player.mode == "Normal":
                     amount = random.randint(int(amount * 0.8), int(amount * 1.2))
                 else:
                     amount = random.randint(int(amount * 1), int(amount * 1.5))
@@ -183,7 +202,8 @@ def main(continue_game=False, loaded_player=None):
                 # print(f"{Colors.YELLOW}You spent {amount} gold.{Colors.RESET}")
             else:
                 print(f"\n{Colors.RED}You don't have enough gold to rest.{Colors.RESET}")
-            
+            time.sleep(0.1)
+
             input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
         
 
@@ -213,7 +233,7 @@ def main(continue_game=False, loaded_player=None):
                     print(f"{Colors.RED}Error saving auto-save: {e}{Colors.RESET}")
                 game_running = False
         
-        elif choice == "dev": # activate dev debug test
+        elif choice == "dev" and dev_mode == True: # activate dev debug test
             print(Colors.gradient_text('dev mode activated', (0, 0, 255), (0, 255, 0)))
             debug_menu(player, dungeon)
         
@@ -222,6 +242,17 @@ def main(continue_game=False, loaded_player=None):
             input()
         
         else:
+            # Mode développeur : exécute une commande Python
+            if dev_mode and choice.startswith("!"):
+                try:
+                    result = eval(choice[1:], globals(), locals())
+                    if result is not None:
+                        print(result)
+                        input()
+                except Exception as e:
+                    print(f"[ERROR] {e}")
+                    input()
+                continue
             print(f"{Colors.RED}Invalid choice. Try again.{Colors.RESET}")
             time.sleep(1)
     
@@ -311,10 +342,10 @@ if __name__ == '__main__':
                                     main()
                             else:
                                 print(f"{Colors.RED}Invalid save selection.{Colors.RESET}")
-                                time.sleep(2)
+                                time.sleep(1)
                         except ValueError:
                             print(f"{Colors.RED}Invalid input.{Colors.RESET}")
-                            time.sleep(2)
+                            time.sleep(1)
                     elif action == "new_game":
                         main()
                     elif action == "quit":

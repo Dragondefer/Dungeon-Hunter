@@ -1,4 +1,4 @@
-__version__ = "1050.0"
+__version__ = "1653.0"
 __creation__ = "09-03-2025"
 
 import time
@@ -6,9 +6,14 @@ import random
 
 from game_utility import (clear_screen, typewriter_effect,
                           dice_animation, handle_error,
-                          timed_input_pattern)
+                          timed_input_pattern,
+                          timed_input,
+                          choose_difficulty,
+                          loading,
+                          execute_command,
+                          )
 from colors import Colors
-from entity import Player, generate_enemy, load_player
+from entity import Player, Enemy, generate_enemy, load_player
 from items import Armor, Weapon, Potion, generate_random_item
 from data import room_descriptions, puzzle_choices, rest_events
 from logger import logger
@@ -74,15 +79,21 @@ class Room:
         handle_dice_puzzle(player: Player) -> bool:
             Manages dice roll puzzles with rewards based on outcomes.
     """
-    def __init__(self, room_type, description, enemies=None, items=None, trap=None):
+    def __init__(self, room_type, description:str, enemies=None, items=None, trap=None):
         self.available_room_type = ["combat", "treasure", "shop", "rest", "puzzle"] # and "boss"
         self.room_type = room_type  # "combat", "treasure", "shop", "rest", "boss", "puzzle", etc.
         self.description = description
-        self.enemies = enemies or []
+        self.enemies : list[Enemy] = enemies or []
         self.items = items or []
         self.trap = trap
         self.visited = False
-    
+
+    def __str__(self): # str lisible
+        return f"\nDEBUG: Room type: {Colors.YELLOW}{self.room_type}{Colors.RESET}, Description: {Colors.MAGENTA}{self.description}{Colors.RESET}, Enemies: {Colors.RED}{self.enemies}{Colors.RESET}, Items: {Colors.GREEN}{self.items}{Colors.RESET}, Trap: {Colors.BLUE}{self.trap}{Colors.RESET}"
+
+    def __repr__(self): # str brut / techinique pour debug
+        return f"\nRoom(type={self.room_type}, description={self.description}, enemies={self.enemies}, items={self.items}, trap={self.trap})"
+
     def enter(self, player):
         global debug
         if debug >= 1:
@@ -92,10 +103,12 @@ class Room:
             
             splited_desc = self.description.split('\n') if '\n' in self.description else [self.description]
 
+            print()
             for i, desc_part in enumerate(splited_desc):
                 if i > 0:  # Ajoute une pause uniquement après la première ligne
                     input()
                 typewriter_effect(f"{Colors.CYAN}{desc_part}{Colors.RESET}", 0.02, end='')
+            print()
             self.visited = True
         else:
             print(f"\n{Colors.CYAN}You've returned to {self.description}{Colors.RESET}")
@@ -129,11 +142,11 @@ class Room:
                 stat = self.trap["stat"]
                 value = self.trap["value"]
                 if stat == "attack":
-                    player.stats.modify_stat(stat_name="attack", value=-value, permanent=False)
+                    player.stats.modify_stat(stat_name="attack", value=-value, stat_type="temporary")
                     logger.info(f"Player's attack temporarily reduced by {value} due to trap.")
                     print(f"{Colors.RED}Your attack is temporary reduced by {value}!{Colors.RESET}")
                 elif stat == "defense":
-                    player.stats.modify_stat(stat_name="defense", value=-value, permanent=False)
+                    player.stats.modify_stat(stat_name="defense", value=-value, stat_type="temporary")
                     logger.info(f"Player's defense temporarily reduced by {value} due to trap.")
                     print(f"{Colors.RED}Your defense is temporary reduced by {value}!{Colors.RESET}")
         
@@ -145,44 +158,62 @@ class Room:
         if debug >= 1:
             print(f"\n{Colors.YELLOW}DEBUG: Entering handle_room() for \"{self.room_type}\"{Colors.RESET}")
         logger.debug(f"handle_room() called for room type \"{self.room_type}\"")
+        
         if self.room_type == "combat":
             if debug >= 1:
                 print(f"{Colors.RED}DEBUG: Combat room detected!{Colors.RESET}")
             logger.info("Combat room detected.")
             return self.handle_combat(player)
+        
         elif self.room_type == "treasure":
             if debug >= 1:
                 print(f"{Colors.GREEN}DEBUG: Treasure room detected!{Colors.RESET}")
             logger.info("Treasure room detected.")
             return self.handle_treasure(player)
+        
         elif self.room_type == "shop":
             if debug >= 1:
                 print(f"{Colors.CYAN}DEBUG: Shop room detected!{Colors.RESET}")
             logger.info("Shop room detected.")
             return self.handle_shop(player)
+        
         elif self.room_type == "rest":
             if debug >= 1:
                 print(f"{Colors.BLUE}DEBUG: Rest room detected!{Colors.RESET}")
             logger.info("Rest room detected.")
             return self.handle_rest(player)
+        
         elif self.room_type == "boss":
             if debug >= 1:
                 print(f"{Colors.RED}DEBUG: Boss room detected!{Colors.RESET}")
             logger.info("Boss room detected.")
             return self.handle_combat(player, True)
+        
         elif self.room_type == "puzzle":
             if debug >= 1:
                 print(f"{Colors.MAGENTA}DEBUG: Puzzle room detected!{Colors.RESET}")
             logger.info("Puzzle room detected.")
             return self.handle_puzzle(player)
+        
+        elif self.room_type == "inter_level":
+            if debug >= 1:
+                print(f"{Colors.CYAN}DEBUG: Inter-level room detected!{Colors.RESET}")
+            logger.info("Inter-level room detected.")
+            return self.handle_inter_level(player)
+
+        else: # Checking for tutorials
+            if debug >= 1:
+                print(f"{Colors.CYAN}DEBUG: Trying tutorials type rooms{Colors.RESET}")
+            logger.info("Trying tutorials room.")
+            return self.handle_tutorial(player)
 
         if debug >= 1:
             print(f"{Colors.YELLOW}DEBUG: Room type not triggering any event.{Colors.RESET}")
         logger.debug("Room type not triggering any event.")
         return True  # Continue exploration si rien ne se passe
 
-    
-    def handle_puzzle(self, player:Player):
+
+    def handle_puzzle(self, player:Player, tutorial=False):
         """Handles the puzzle room, allowing the player to solve various types of puzzles."""
         player.puzzles_solved += 1
         puzzle_types = ["riddle", "number", "sequence", "choice", "dice"]
@@ -190,6 +221,13 @@ class Room:
         
         logger.info(f"Player encountered a puzzle of type: {puzzle_type}")
         print(f"\n{Colors.CYAN}You encounter a puzzle.{Colors.RESET}")
+
+        if tutorial is True:
+            typewriter_effect(f"\n[Assistant] {Colors.GREEN}This is a puzzle room, you need to solve it to proceed.{Colors.RESET}", 0.03)
+            time.sleep(1)
+            typewriter_effect(f"[Assistant] {Colors.GREEN}But be carful, {Colors.RESET}", 0.05, "")
+            time.sleep(0.5)
+            typewriter_effect(f"{Colors.GREEN}these ancient mechanisms can reveal traps.. or even forgotten knowledge.{Colors.RESET}", 0.05)
         
         result = False
         if puzzle_type == "riddle":
@@ -264,7 +302,7 @@ class Room:
 
         # Le joueur a 3 tentatives
         for attempt in range(3):
-            answer = input(f"\n{Colors.YELLOW}Your response (attempt {attempt+1}/3) : {Colors.RESET}").lower().strip()
+            answer = input(f"\r{Colors.YELLOW}Your response (attempt {attempt+1}/3) : {Colors.RESET}").lower().strip()
 
             if answer == riddle["answer"]:
                 print(f"\n{Colors.GREEN}Correct! A secret passage opens up.{Colors.RESET}")
@@ -323,12 +361,12 @@ class Room:
                 if dice1 == dice2 == dice3:
                     prize = generate_random_item(player=player)
                     player.inventory.append(prize)
-                    print(f"\n{Colors.RAINBOW}JACKPOT! You won a special prize!{Colors.RESET}")
+                    print("\n",Colors.rainbow_text("JACKPOT! You won a special prize !"))
                     print(f"{Colors.GREEN}You received: {prize.name}!{Colors.RESET}")
                 elif total > 10:
                     gold_won = random.randint(15, 30)
                     player.gold += gold_won
-                    print(f"\n{Colors.GREEN}Congratulations! You won {gold_won} gold!{Colors.RESET}")
+                    print(f"\n{Colors.GREEN}Congratulations ! You won {gold_won} gold !{Colors.RESET}")
                 else:
                     print(f"\n{Colors.RED}Sorry, you lose.{Colors.RESET}")
                 
@@ -404,9 +442,14 @@ class Room:
         # Le joueur a 3 tentatives
         for attempt in range(3):
             try:
-                answer = int(input(f"\n{Colors.YELLOW}Your response (attempt {attempt+1}/3) : {Colors.RESET}"))
+                print(f"{Colors.RED}You have 10 seconds, be quick!{Colors.RESET}")
+                answer = timed_input(f"\n{Colors.YELLOW}Your response (attempt {attempt+1}/3) : {Colors.RESET}", 10, "")
+                if answer == "":
+                    print(f"{Colors.RED}No input received. Please try again.{Colors.RESET}")
+                    continue
+                answer_int = int(answer)
 
-                if answer == sequence[-1]:
+                if answer_int == sequence[-1]:
                     print(f"\n{Colors.GREEN}Correct answer! A secret compartment opens.{Colors.RESET}")
 
                     # Récompense aléatoire
@@ -442,11 +485,11 @@ class Room:
 
                     return True
                 else:
-                    print(f"{Colors.RED}Wrong answer! You're left with {2 - attempt} attempt.{Colors.RESET}")
+                    print(f"{Colors.RED}Wrong answer! You're left with {2 - attempt} attempt(s).{Colors.RESET}")
             except ValueError as e:
                 logger.warning(f"ValueError in number puzzle guess input: {e}")
                 print(f"{Colors.RED}Please enter a valid number.{Colors.RESET}")
-                attempt -= 1  # Ne pas compter une entrée invalide comme une tentative
+                # Do not decrement attempt here to allow retry on invalid input
 
         print(f"\n{Colors.RED}You have failed to solve the riddle. The mechanism triggers a trap !{Colors.RESET}")
         damage = random.randint(5, 10) * player.dungeon_level
@@ -455,7 +498,7 @@ class Room:
 
         return True
 
-    def handle_combat(self, player:Player, is_boss_room=False):
+    def handle_combat(self, player:Player, is_boss_room=False, tutorial=False):
         """Gère un combat, normal ou contre un boss, de manière optimisée avec timing-based mechanic et UI améliorée."""
         player.combat_encounters += 1
         import math
@@ -486,6 +529,7 @@ class Room:
             print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # Enemy HP Bar Placeholder
             print(f"{Colors.YELLOW}╚{'═' * (box_len + 1)}╝{Colors.RESET}")
 
+
             # Move cursor back up to fill in the details (number of lines + 1)
             print("\033[14A")
 
@@ -498,19 +542,19 @@ class Room:
 
             # HP
             hp_text = f"HP: {player.stats.hp}/{player.stats.max_hp}"
-            hp_bar = create_bar(player.stats.hp, player.stats.max_hp, color=Colors.RED)
+            hp_bar = create_bar(player.stats.hp, player.stats.max_hp, length=45, color=Colors.RED)
             print(f"\r{Colors.YELLOW}║ {Colors.RED}{hp_text.ljust(box_len)}{Colors.RESET}")
             print(f"\r{Colors.YELLOW}║ {hp_bar.ljust(box_len)}{Colors.RESET}")
 
             # Stamina
             stamina_text = f"Stamina: {player.stats.stamina}/{player.stats.max_stamina}"
-            stamina_bar = create_bar(player.stats.stamina, player.stats.max_stamina, color=Colors.YELLOW)
+            stamina_bar = create_bar(player.stats.stamina, player.stats.max_stamina, length=45, color=Colors.YELLOW)
             print(f"\r{Colors.YELLOW}║ {Colors.YELLOW}{stamina_text.ljust(box_len)}{Colors.RESET}")
             print(f"\r{Colors.YELLOW}║ {stamina_bar.ljust(box_len)}{Colors.RESET}")
 
             # Mana
             mana_text = f"Mana: {player.stats.mana}/{player.stats.max_mana}"
-            mana_bar = create_bar(player.stats.mana, player.stats.max_mana, color=Colors.BRIGHT_BLUE)
+            mana_bar = create_bar(player.stats.mana, player.stats.max_mana, length=45, color=Colors.BRIGHT_BLUE)
             print(f"\r{Colors.YELLOW}║ {Colors.BRIGHT_BLUE}{mana_text.ljust(box_len)}{Colors.RESET}")
             print(f"\r{Colors.YELLOW}║ {mana_bar.ljust(box_len)}{Colors.RESET}")
 
@@ -525,7 +569,7 @@ class Room:
 
             # Enemy HP
             enemy_hp_text = f"HP: {enemy.stats.hp}/{enemy.stats.max_hp}"
-            enemy_hp_bar = create_bar(enemy.stats.hp, enemy.stats.max_hp, color=Colors.RED)
+            enemy_hp_bar = create_bar(enemy.stats.hp, enemy.stats.max_hp, length=45, color=Colors.RED)
             print(f"\r{Colors.YELLOW}║ {Colors.RED}{enemy_hp_text.ljust(box_len)}{Colors.RESET}")
             print(f"\r{Colors.YELLOW}║ {enemy_hp_bar.ljust(box_len)}{Colors.RESET}")
 
@@ -534,9 +578,36 @@ class Room:
             # Bottom border
             print(f"{Colors.YELLOW}╚{'═' * (box_len + 1)}╝{Colors.RESET}")
 
-        if not self.enemies:
+        if tutorial is True and not self.enemies:
+            if is_boss_room is False:
+                if debug>=1: print("tutorial enemy generating")
+                self.enemies.append(generate_enemy(player.dungeon_level, False, player))
+                self.enemies[0].name = "Tutorial Goblin"
+                self.enemies[0].stats.max_hp *= 2
+                self.enemies[0].stats.hp *= 2
+                self.enemies[0].stats.update_total_stats()
+                if debug>=1: print("enemy generated:", self.enemies)
+            
+            elif is_boss_room is True:
+                if debug>=1: print("tutorial boss generating")
+                self.enemies.append(generate_enemy(player.dungeon_level, True, player))
+                if debug>=1: print("boss generated:", self.enemies)
+
+        elif not self.enemies and tutorial is False:
             print(f"{Colors.GREEN}The room is empty.{Colors.RESET}")
             return True
+        
+        if tutorial is True:
+            if is_boss_room is False:
+                typewriter_effect(f"\n[ASSISTANT] {Colors.GREEN}In this tutorial, you will learn the basics of combat{Colors.RESET}", 0.03)
+                time.sleep(0.5)
+                typewriter_effect(f"[ASSISTANT] {Colors.GREEN}During combat, you have to manage your Health, Stamuina and Mana.{Colors.RESET}", 0.04)
+                time.sleep(0.5)
+            else:
+                typewriter_effect(f"\n[ASSISTANT] {Colors.GREEN}This is your first combat against a boss.{Colors.RESET}", 0.05)
+                time.sleep(0.5)
+                typewriter_effect(f"\n[ASSISTANT] {Colors.GREEN}Don't worry, i will help you if needed.{Colors.RESET}", 0.05)
+                time.sleep(0.5)
 
         enemy = self.enemies[0]
         input(f'\n{Colors.BOLD}{Colors.RED}Press enter to begin the combat{Colors.RESET}')
@@ -554,9 +625,29 @@ class Room:
             logger.info(f"Enemy enconter: {enemy.name}")
             print(f"\n{Colors.RED}A {enemy.name} appears!{Colors.RESET}")
             time.sleep(0.5)
+        
+        one_time_message = True
 
         while enemy.is_alive() and player.is_alive():
             display_combat_status()
+
+            if tutorial is True and one_time_message is True:
+                if is_boss_room is False:
+                    typewriter_effect(f"\n[Assistant] {Colors.GREEN}You can attack, use skills, or items during your turn.{Colors.RESET}", 0.03)
+                    time.sleep(0.5)
+                    typewriter_effect(f"[Assistant] {Colors.GREEN}You can also try to run away from the fight.{Colors.RESET}", 0.03)
+                else:
+                    typewriter_effect(f"\n[Assistant] {Colors.GREEN}The boss is strong, be careful.{Colors.RESET}", 0.03)
+                    time.sleep(0.5)
+                    """
+                    typewriter_effect(f"[Assistant] {Colors.GREEN}You arn't alone..{Colors.RESET}", 0.03, "")
+                    time.sleep(0.5)
+                    typewriter_effect(f"{Colors.GREEN}for now.{Colors.RESET}", 0.03)
+                    time.sleep(0.5)
+                    """
+                one_time_message = False
+                time.sleep(1)
+
 
             # Player turn
             print(f"\n{Colors.CYAN}Your turn :{Colors.RESET}")
@@ -566,6 +657,27 @@ class Room:
             print(f"{Colors.GREEN}3. Use Item{Colors.RESET}")
             if not is_boss_room:
                 print(f"{Colors.BRIGHT_YELLOW}4. Try to Run{Colors.RESET}")
+
+            if tutorial is True:
+                if player.stats.hp < player.stats.max_hp / 2:
+                    typewriter_effect(f"\n[Assistant] {Colors.RED}You are low on health, be carful.{Colors.RESET}", 0.03)
+                    typewriter_effect(f"[Assistant] {Colors.BLUE}Requesting permission..{Colors.RESET}", 0.05)
+                    loading(2)
+                    typewriter_effect(f"[Assistant] {Colors.GREEN}Permission allowed, executing command....{Colors.RESET}\n", 0.03)
+                    time.sleep(1)
+                    execute_command("player.heal(999)", allowed=True, prnt=True, context={"player": player})
+                    time.sleep(0.5)
+                    typewriter_effect(f"\n[Assistant] {Colors.GREEN}Player healed successfully..{Colors.RESET}", 0.03)
+                if player.stats.stamina < player.stats.max_stamina / 2:
+                    typewriter_effect(f"\n[Assistant] {Colors.RED}You seem exausted.{Colors.RESET}", 0.03)
+                    typewriter_effect(f"[Assistant] {Colors.BLUE}Requesting permission..{Colors.RESET}", 0.05)
+                    loading(2)
+                    typewriter_effect(f"[Assistant] {Colors.GREEN}Permission allowed, executing command....{Colors.RESET}\n", 0.03)
+                    time.sleep(1)
+                    execute_command("player.rest_stamina(999)", allowed=True, prnt=True, context={"player": player})
+                    time.sleep(0.5)
+                    typewriter_effect(f"\n[Assistant] {Colors.GREEN}Player rested successfully...{Colors.RESET}", 0.03)
+                    
 
             choice = input(f"\n{Colors.CYAN}What will you do? {Colors.RESET}")
 
@@ -577,6 +689,7 @@ class Room:
                 if critical:
                     base_damage *= 2
                     print(f"{Colors.BRIGHT_YELLOW}{Colors.BOLD}CRITICAL HIT!{Colors.RESET}")
+                    time.sleep(0.1)
 
                 # Stamina cost
                 if player.equipment.main_hand:
@@ -594,6 +707,7 @@ class Room:
 
                 damage, absorbed_damage = enemy.stats.take_damage(base_damage)
                 actual_damage = damage + absorbed_damage
+                player.damage_dealt += actual_damage
                 logger.info(f"Player attack: {'critical hit' if critical else ''} {actual_damage} dmg, {stamina_cost} stm")
                 print(f"You deal {Colors.RED}{math.ceil(actual_damage)}{Colors.RESET} damage to {enemy.name}!")
 
@@ -622,10 +736,10 @@ class Room:
 
             elif choice == "4" and not is_boss_room:  # Try to run
                 if random.random() < (0.3 + player.stats.luck * 0.03):
-                    print(f"{Colors.GREEN}You successfully escape!{Colors.RESET}")
+                    print(f"{Colors.GREEN}You successfully escape !{Colors.RESET}")
                     return True
                 else:
-                    print(f"{Colors.RED}You failed to escape!{Colors.RESET}")
+                    print(f"{Colors.RED}You failed to escape !{Colors.RESET}")
 
             else:
                 print(f"{Colors.RED}Invalid choice. Please try again.{Colors.RESET}")
@@ -633,13 +747,14 @@ class Room:
 
             # Check if enemy defeated
             if not enemy.is_alive():
+                if is_boss_room: player.bosses_defeated += 1
                 player.kills += 1
                 player.souls += 1
                 player.gold += enemy.gold_reward
-                print(f"\n{Colors.GREEN}You defeated the {enemy.name}!{Colors.RESET}\n")
+                print(f"\n{Colors.GREEN}You defeated the {enemy.name} !{Colors.RESET}\n")
                 player.gain_xp(enemy.xp_reward)
-                print(f"{Colors.YELLOW}You gain {enemy.gold_reward} gold!{Colors.RESET}")
-                print(f"{Colors.BRIGHT_BLACK}You gain 1 souls!{Colors.RESET}\n")
+                print(f"{Colors.YELLOW}You gain {enemy.gold_reward} gold !{Colors.RESET}")
+                print(f"{Colors.BRIGHT_BLACK}You gain 1 souls !{Colors.RESET}\n")
 
                 # Item drop
                 if is_boss_room:
@@ -648,7 +763,7 @@ class Room:
                 elif random.random() < (0.2 + player.stats.luck * 0.02):
                     dropped_item = generate_random_item(player=player, enemy=enemy)
                     player.inventory.append(dropped_item)
-                    print(f"{Colors.GREEN}The {enemy.name} dropped: {dropped_item.name}!{Colors.RESET}")
+                    print(f"{Colors.GREEN}The {enemy.name} dropped: {dropped_item.name} !{Colors.RESET}")
                     time.sleep(2)
 
                 self.enemies.remove(enemy)
@@ -665,31 +780,37 @@ class Room:
 
                 if self.enemies:
                     enemy = self.enemies[0]
-                    print(f"\n{Colors.RED}A {enemy.name} appears!{Colors.RESET}")
+                    print(f"\n{Colors.RED}A {enemy.name} appears !{Colors.RESET}")
                     time.sleep(0.5)
                 else:
                     return True
 
             # Enemy turn
             if enemy.is_alive():
-                print(f"\n{Colors.RED}{enemy.name} attacks!{Colors.RESET}")
-                time.sleep(0.5)
+                print(f"\n{Colors.RED}{enemy.name} attacks !{Colors.RESET}")
+                time.sleep(1.5)
                 if random.random() < (player.stats.luck * 0.01 + player.stats.agility * 0.02):
-                    print(f"{Colors.GREEN}You dodged the attack!{Colors.RESET}")
+                    print(f"{Colors.GREEN}You dodged the attack !{Colors.RESET}")
                 else:
                     enemy.attack_player(player)
-                time.sleep(0.5)
+                time.sleep(1.5)
         return player.is_alive()
 
     
-    def handle_treasure(self, player:Player):
+    def handle_treasure(self, player:Player, tutorial=False):
         """Handles treasure room interactions."""
         player.treasures_found += 1
+
+        if tutorial is True:
+            self.items.append(generate_random_item(player))
+            typewriter_effect(f"\n[ASSISTANT] {Colors.GREEN}In treasure room, you can up to 2 random items.{Colors.RESET}", 0.03)
+            typewriter_effect(f"[ASSISTANT] {Colors.GREEN}For now, everything is unlocked..{Colors.RESET}", 0.075)
+        
         if not self.items:
-            print(f"{Colors.YELLOW}You've already collected all treasure from this room.{Colors.RESET}")
+            print(f"\n{Colors.YELLOW}You've already collected all treasure from this room.{Colors.RESET}")
             return True
         
-        print(f"\n{Colors.GREEN}You found a treasure!{Colors.RESET}")
+        print(f"\n{Colors.GREEN}You found a treasure!{Colors.RESET}\n")
 
         time.sleep(0.5)
         
@@ -708,7 +829,7 @@ class Room:
         
         return True
     
-    def handle_shop(self, player:Player, box=False):
+    def handle_shop(self, player:Player, box=False, tutorial=False):
         player.shops_visited += 1
         def print_box(title, lines, color_title=Colors.BRIGHT_CYAN, color_border=Colors.BRIGHT_CYAN, color_text=Colors.RESET):
             width = max(len(line) for line in lines + [title]) + 2
@@ -737,7 +858,7 @@ class Room:
             print(f"{Colors.BRIGHT_CYAN}╚{'═' * dialogue_width}╝{Colors.RESET}")
 
         def print_shop_box(gold_line, items_lines):
-            width = max(len(gold_line), max((len(line) for line in items_lines), default=0)) + 2
+            width = max(len(gold_line), max((len(line) for line in items_lines), default=0))
             # Top border
             print(f"{Colors.BRIGHT_YELLOW}╔{'═' * width}╗{Colors.RESET}")
             # Gold line
@@ -762,15 +883,19 @@ class Room:
 
         # Generate shop inventory
         shop_inventory = []
-        for _ in range(player.difficulty.get_shop_item_num()):
+        for _ in range(player.mode.get_shop_item_num()):
             shop_inventory.append(generate_random_item(player=player))
 
         shop_inventory.sort(key=lambda item: item.value, reverse=True)
 
+        one_time_message = True
+        tutorial_items_bought = 0
+
+
         shopping = True
         while shopping:
             # Player gold and shop items box with colors and horizontal separator
-            gold_line = f"{Colors.YELLOW}Your gold: {player.gold}{Colors.RESET}"
+            gold_line = f"\n{Colors.YELLOW}Your gold: {player.gold}{Colors.RESET}"
             items_lines = [f"{Colors.YELLOW}{i}. {item} - {Colors.BRIGHT_YELLOW}{item.value} gold{Colors.RESET}" for i, item in enumerate(shop_inventory, 1)]
 
             if box:
@@ -779,6 +904,11 @@ class Room:
                 print(gold_line)
                 for line in items_lines:
                     print(line)
+                
+            if tutorial is True and one_time_message is True:
+                typewriter_effect(f"\n[ASSISTANT] {Colors.GREEN}In the shop, you can buy and sell items.{Colors.RESET}", 0.03)
+                typewriter_effect(f"[ASSISTANT] {Colors.GREEN}For this time, you are allowed to buy one item for free.{Colors.RESET}", 0.05)
+                one_time_message = False
 
             print(f"\n{Colors.BRIGHT_CYAN}What would you like to do?{Colors.RESET}")
             print(f"{Colors.YELLOW}1-{len(shop_inventory)}. Buy item{Colors.RESET}")
@@ -795,16 +925,21 @@ class Room:
             else:
                 try:
                     item_index = int(choice) - 1
+                    # Grant one free item if in tutorial mode
                     if 0 <= item_index < len(shop_inventory):
                         item = shop_inventory[item_index]
-                        if player.gold >= item.value:
+                        if tutorial and tutorial_items_bought ==0:
+                            tutorial_items_bought += 1
+                            item_index = 0
+                            print(f"\n{Colors.GREEN}You bought {shop_inventory[item_index].name} for free!{Colors.RESET}")
+                        elif player.gold >= item.value:
                             player.gold -= item.value
                             player.gold_spent += item.value
-                            player.inventory.append(item)
-                            shop_inventory.remove(item)
                             print(f"\n{Colors.GREEN}You bought {item.name} for {item.value} gold.{Colors.RESET}")
                         else:
                             print(f"\n{Colors.RED}You don't have enough gold!{Colors.RESET}")
+                        player.inventory.append(item)
+                        shop_inventory.remove(item)
                     else:
                         print(f"\n{Colors.RED}Invalid choice.{Colors.RESET}")
                 except ValueError as e:
@@ -854,15 +989,23 @@ class Room:
             print(f"\n{Colors.RED}Please enter a number.{Colors.RESET}")
 
 
-    def handle_rest(self, player:Player):
+    def handle_rest(self, player:Player, tutorial=False):
         """Gère le repos du joueur, permettant de récupérer des PV, de la mana et de l'endurance."""
         player.rest_rooms_visited += 1
         print(f"\n{Colors.CYAN}You find a safe place to rest.{Colors.RESET}")
+
+        if tutorial is True:
+            typewriter_effect(f"\n[ASSISTANT] {Colors.GREEN}In the rest room, you can recover your health, mana and stamina.{Colors.RESET}", 0.03)
+            time.sleep(0.5)
+            typewriter_effect(f"[ASSISTANT] {Colors.GREEN}You can also meditate to improve your stats.{Colors.RESET}", 0.03)
+            time.sleep(0.5)
+            typewriter_effect(f"[ASSISTANT] {Colors.GREEN}There is rumors who said that wierd things can happend in your sleep...{Colors.RESET}\n", 0.05)
+            time.sleep(1)
         
         options = [
             "Rest and recover HP, stamina and some mana",
             "Meditate and recover a small amount of HP while training",
-            "Examine your inventory"
+            "Examine your inventory",
             "Continue"
         ]
         
@@ -936,15 +1079,15 @@ class Room:
             color, message = possible_boosts[stat_boost]
 
             if stat_boost == "max_hp":
-                player.stats.modify_stat(stat_boost, 5, permanent=True)
+                player.stats.modify_stat(stat_boost, 5)
             else:
-                player.stats.modify_stat(stat_boost, 1, permanent=True)
+                player.stats.modify_stat(stat_boost, 1)
             
             print(f"{color}{message}{Colors.RESET}")
 
 
         elif choice == "3":
-            player.manage_inventory(player)
+            player.manage_inventory()
             
         else:
             print(f"{Colors.RED}Your choice:{Colors.RESET}", choice)
@@ -977,6 +1120,113 @@ class Room:
             else:
                 print(f"{Colors.YELLOW}You gained {rest_event['value']} gold!{Colors.RESET}")
 
+
+    def handle_inter_level(self, player:Player):
+        clear_screen()
+        time.sleep(1)
+        typewriter_effect(f"{Colors.GREEN}...\n{Colors.RESET}", 0.3)
+        time.sleep(1)
+        typewriter_effect(f"{Colors.BRIGHT_BLACK}It feel empty for now..\nSeems that this room is currently under construction.{Colors.RESET}", 0.1)
+        time.sleep(1)
+        return True
+
+    @staticmethod
+    def get_with_tutorial(player, room_type):
+        key = f"{room_type}_tutorial"
+        if not player.tutorial_rooms_shown.get(key, False):
+            player.tutorial_rooms_shown[key] = True
+            return Room(
+                room_type=f"{room_type}_tutorial",
+                description=f"You enter a special tutorial room for {room_type}.",
+                enemies=[],
+                items=[],
+                trap=None,
+            )
+        return None
+    
+
+    def handle_tutorial(self, player:Player):
+        """Manage the tutorials for the player."""
+        global debug
+
+        if debug >= 1:
+            print(f"\n{Colors.YELLOW}DEBUG: Entering handle_tutorial() for \"{self.room_type}\"{Colors.RESET}")
+        logger.debug(f"handle_tutorial() called for room type \"{self.room_type}\"")
+
+
+        if self.room_type == "combat_tutorial":
+            if debug >= 1:
+                print(f"{Colors.RED}DEBUG: Combat tutorial room detected!{Colors.RESET}")
+            logger.info("Combat tutorial room detected.")
+            return self.handle_combat(player, tutorial=True)
+        
+        elif self.room_type == "shop_tutorial":
+            if debug >= 1:
+                print(f"{Colors.RED}DEBUG: Shop tutorial room detected!{Colors.RESET}")
+            logger.info("Shop tutorial room detected.")
+            return self.handle_shop(player, tutorial=True)
+        
+        elif self.room_type == "rest_tutorial":
+            if debug >= 1:
+                print(f"{Colors.RED}DEBUG: Rest tutorial room detected!{Colors.RESET}")
+            logger.info("Rest tutorial room detected.")
+            return self.handle_rest(player, tutorial=True)
+        
+        elif self.room_type == "puzzle_tutorial":
+            if debug >= 1:
+                print(f"{Colors.RED}DEBUG: Puzzle tutorial room detected!{Colors.RESET}")
+            logger.info("Puzzle tutorial room detected.")
+            return self.handle_puzzle(player, tutorial=True)
+        
+        elif self.room_type == "treasure_tutorial":
+            if debug >= 1:
+                print(f"{Colors.RED}DEBUG: Treasure tutorial room detected!{Colors.RESET}")
+            logger.info("Treasure tutorial room detected.")
+            return self.handle_treasure(player, tutorial=True)
+        
+        elif self.room_type == "boss_tutorial":
+            if debug >= 1:
+                print(f"{Colors.RED}DEBUG: Boss tutorial room detected!{Colors.RESET}")
+            logger.info("Boss tutorial room detected.")
+            return self.handle_combat(player, is_boss_room=True, tutorial=True)
+        
+        elif self.room_type == "inter_level_tutorial":
+            if debug >= 1:
+                print(f"{Colors.RED}DEBUG: Inter-level tutorial room detected!{Colors.RESET}")
+            logger.info("Inter-level tutorial room detected.")
+            return self.handle_inter_level(player)
+
+        
+        # If no specific tutorial room type is detected, continue exploration   
+
+        if debug >= 1:
+            print(f"{Colors.YELLOW}DEBUG: Tutorials room type not triggering any event.{Colors.RESET}")
+        logger.debug("Tutorials room type not triggering any event.")
+        
+        return True  # Continue exploration si rien ne se passe
+
+
+
+class Dungeon(list):
+    """
+    A class representing a dungeon, which is a collection of rooms.
+    Inherits from list to allow for easy manipulation of rooms.
+    """
+    def __init__(self):
+        super().__init__()
+        self.rooms = []
+        self.current_room = 0
+        self.level = 1
+    
+    def get_numbers_of_rooms(self):
+        return len(self.rooms)
+
+    def __str__(self):
+        return "\n".join(str(rm) for rm in self.rooms)
+    
+    def append(self, object):
+        return super().append(object)
+
 def generate_shop_inventory(level):
     logger.info(f"Generating shop inventory for level {level}")
     shop_items = [
@@ -992,7 +1242,7 @@ def generate_shop_inventory(level):
     return random.sample(shop_items, min(len(shop_items), 5))  # Randomly pick 5 items for sale
 
 
-def generate_random_room(player, room_type=None, is_boss_room=False):
+def generate_random_room(player, room_type=None, is_boss_room=False, tutorial=False):
     """Generate a random room for the given dungeon level"""
     global debug
 
@@ -1008,6 +1258,7 @@ def generate_random_room(player, room_type=None, is_boss_room=False):
     if is_boss_room:
         room_type = "boss"
         logger.info("Generating boss room")
+
     
     description = random.choice(room_descriptions[room_type])
     
@@ -1046,13 +1297,19 @@ def generate_random_room(player, room_type=None, is_boss_room=False):
         print(f"{Colors.YELLOW}DEBUG: Trap generated: {trap}{Colors.RESET}")
     logger.info(f"Trap generated: {trap}")
     
-    return Room(room_type, description, enemies, items, trap)
+    room = Room(room_type, description, enemies, items, trap)
+
+    tutorial_room = room.get_with_tutorial(player, room_type)
+    if tutorial_room:
+        return tutorial_room
+
+    return room
 
 def generate_dungeon(player:Player):
     """Generates a dungeon with rooms based on the level and difficulty."""
     global debug
     dungeon_level = player.dungeon_level
-    difficulty = player.difficulty
+    difficulty = player.mode
     rooms = []
     if debug >= 1:
         print(f"{Colors.YELLOW}DEBUG: Generating dungeon level {dungeon_level} with difficulty {difficulty}{Colors.RESET}")
@@ -1072,7 +1329,7 @@ def generate_dungeon(player:Player):
         num_rooms = random.randint(5, 8)
         input()
     """
-    num_rooms = player.difficulty.get_room_count()
+    num_rooms = player.mode.get_room_count()
     logger.debug(f"Number of rooms to generate: {num_rooms}")
     
     if debug >= 1:
@@ -1091,9 +1348,10 @@ def generate_dungeon(player:Player):
         if debug >= 1:
             print(f"{Colors.YELLOW}DEBUG: Inter-level room added{Colors.RESET}")
 
-    for i in range(1, num_rooms):
+    for i in range(1, num_rooms): # not +1 because of boss room
         rooms.append(generate_random_room(player=player))
         logger.debug(f"Room generated: {rooms[i]}")
+
     
     if debug >= 1:
         print(f"{Colors.YELLOW}DEBUG: Generated {len(rooms)} rooms :{Colors.RESET}")
@@ -1435,216 +1693,3 @@ def generate_dungeon(player:Player):
             },
         ]
 """
-
-def debug_menu(player, dungeon):
-    """
-    Opens a debug menu to modify player stats, give items, change dungeon level, or test game mechanics.
-    
-    Parameters:
-        player (Player): The current player instance.
-        dungeon (Dungeon): The current dungeon instance.
-    
-    Options:
-        1. Give Item
-        2. Modify Player Stats
-        3. Set Dungeon Level
-        4. Teleport to Room
-        5. Spawn Enemies in Current Room
-        6. Instantly Complete a Quest
-        7. Heal Player
-        8. Save Game
-        9. Load Game
-        0. Exit Debug Menu
-    """
-
-    while True:
-        print(f"\n{Colors.MAGENTA}=== DEBUG MENU ==={Colors.RESET}")
-        print(f"{Colors.YELLOW}1.{Colors.RESET} Give Item")
-        print(f"{Colors.YELLOW}2.{Colors.RESET} Modify Player Stats")
-        print(f"{Colors.YELLOW}3.{Colors.RESET} Set Dungeon Level")
-        print(f"{Colors.YELLOW}4.{Colors.RESET} Teleport to Room")
-        print(f"{Colors.YELLOW}5.{Colors.RESET} Spawn Enemies in Current Room")
-        print(f"{Colors.YELLOW}6.{Colors.RESET} Instantly Complete a Quest")
-        print(f"{Colors.YELLOW}7.{Colors.RESET} Heal Player")
-        print(f"{Colors.YELLOW}8.{Colors.RESET} Save Game")
-        print(f"{Colors.YELLOW}9.{Colors.RESET} Load Game")
-        print(f"{Colors.RED}0. Exit Debug Menu{Colors.RESET}")
-
-        choice = input("\nEnter choice: ")
-
-        if choice == "1":
-            try:
-                # Give Item
-                enemy_type = input(f"{Colors.CYAN}Enter enemy name (Goblin/Sqeleton/Wolf/Orc...): {Colors.RESET}")
-                item_type = input(f"{Colors.CYAN}Enter item type (weapon/armor/potion/all): {Colors.RESET}").lower()
-                rarity = input(f"{Colors.CYAN}Enter rarity (common/uncommon/rare/epic/legendary/divine/??? or 'random'): {Colors.RESET}").lower()
-                item_name = input(f"{Colors.CYAN}Enter specific item name (or 'random' to pick a random one): {Colors.RESET}").title()
-                rarity_boost = float(input(f"{Colors.CYAN}Enter rarity boost (1.0 = normal, higher = better items): {Colors.RESET}"))
-                level_boost = int(input(f"{Colors.CYAN}Enter rarity boost (level = dungeon_level + level_boost) /!\ HAS TO BE AN INT /!\: {Colors.RESET}"))
-
-                # Convert inputs to proper values
-                item_type = None if item_type == "all" else item_type
-                rarity = None if rarity == "random" else rarity
-                item_name = None if item_name.lower() == "random" else item_name
-
-                # Generate item with specified parameters
-                item = generate_random_item(player=player, enemy_type=enemy_type.capitalize(), item_type=item_type, rarity=rarity, item_name=item_name, rarity_boost=rarity_boost, level_boost=level_boost)
-            except ValueError as e:
-                logger.warning(f"ValueError in give item input: {e}")
-                print(f"{Colors.RED}Invalid input: {e}{Colors.RESET}")
-                handle_error()
-                item = None
-            except Exception as e:
-                logger.warning(f"Exception in give item input: {e}")
-                print(f"{Colors.RED}Error : {e}{Colors.RESET}")
-                handle_error()
-                item = None
-            finally:
-                if item:
-                    player.inventory.append(item)
-                    print(f"{Colors.GREEN}Added item: {item.name}{Colors.RESET}")
-                else:
-                    print(f"{Colors.RED}Failed to generate item! Check your input.{Colors.RESET}")
-
-        elif choice == "2":
-            try:
-                # Modify Player Stats
-                player.stats.permanent_stats["hp"] = int(input(f"{Colors.CYAN}Set HP: {Colors.RESET}") or player.stats["hp"])
-                player.stats.permanent_stats["max_hp"] = int(input(f"{Colors.CYAN}Set Max HP: {Colors.RESET}") or player.stats["max_hp"])
-                player.stats.permanent_stats["attack"] = int(input(f"{Colors.CYAN}Set Attack: {Colors.RESET}") or player.stats["attack"])
-                player.stats.permanent_stats["defense"] = int(input(f"{Colors.CYAN}Set Defense: {Colors.RESET}") or player.stats["defense"])
-                player.stats.permanent_stats["luck"] = int(input(f"{Colors.CYAN}Set Luck: {Colors.RESET}") or player.stats["luck"])
-                player.xp = int(input(f"{Colors.CYAN}Set XP: {Colors.RESET}") or player.xp)
-                player.gold = int(input(f"{Colors.CYAN}Set Gold: {Colors.RESET}") or player.gold)
-                for i in range(int(input(f"{Colors.CYAN}Set Level: {Colors.RESET}") or 0)):
-                    player.level_up()
-                print(f"{Colors.GREEN}Player stats updated!{Colors.RESET}")
-            except ValueError as e:
-                logger.warning(f"ValueError in modify player stats input: {e}")
-                print(f"{Colors.RED}Invalid input: {e}{Colors.RESET}")
-                handle_error()
-            except Exception as e:
-                logger.warning(f"Exception caught: {e}")
-                print(f"{Colors.RED}Error : {e}{Colors.RESET}")
-                handle_error()
-
-        elif choice == "3":
-            try:
-                # Set Dungeon Level
-                new_level = int(input(f"{Colors.CYAN}Set new dungeon level: {Colors.RESET}"))
-                player.dungeon_level = new_level
-                print(f"{Colors.GREEN}Dungeon level set to {new_level}{Colors.RESET}")
-            except ValueError as e:
-                logger.warning(f"ValueError in set dungeon level input: {e}")
-                print(f"{Colors.RED}Invalid input: {e}{Colors.RESET}")
-                handle_error()
-            except Exception as e:
-                logger.warning(f"Exception caught: {e}")
-                print(f"{Colors.RED}Error : {e}{Colors.RESET}")
-                handle_error()
-
-        elif choice == "4":
-            if input('Generate or Teleport ? (G/T)').upper() == "G":
-                try:
-                    lvl = int(input('Level room: '))
-                except ValueError as e:
-                    logger.warning(f"ValueError in teleport input: {e}")
-                    print('Invalid input')
-                    continue
-                except TypeError as e:
-                    logger.warning(f"TypeError in teleport input: {e}")
-                    print('Invalid input')
-                    continue
-                rtype = input('Room type ("combat", "treasure", "shop", "rest", "puzzle"): ')
-                if rtype not in ["combat", "treasure", "shop", "rest", "puzzle"]:
-                    print('Room type not in list, Room Type = None (random room)')
-                    rtype = None
-                if input('Boss Room (y/n): ') == "y":
-                    isboss = True
-                else:
-                    isboss = False
-                dungeon.rooms.insert(generate_random_room(player=player, room_type=rtype, is_boss_room=isboss))
-            # Teleport to a Room
-            room = dungeon.rooms
-            print("rooms:", room)
-            room_type = input(f"{Colors.CYAN}Enter room type (combat/shop/treasure/boss/puzzle/trap): {Colors.RESET}")
-            if room:
-                dungeon.current_room_index
-                print(f"{Colors.GREEN}Teleported to {room_type} room.{Colors.RESET}")
-            else:
-                print(f"{Colors.RED}No room of that type found.{Colors.RESET}")
-
-        elif choice == "5":
-            try:
-                # Spawn Enemies in Current Room
-                num_enemies = int(input(f"{Colors.CYAN}Enter number of enemies to spawn: {Colors.RESET}"))
-                for _ in range(num_enemies):
-                    # ask for enemy level:
-                    enemy_level = int(input(f"{Colors.CYAN}Enter enemy level: {Colors.RESET}"))
-                    # ask if enemy a boss:
-                    is_boss = input(f"{Colors.CYAN}Is enemy a boss (y/n): {Colors.RESET}")
-                    enemy = generate_enemy(enemy_level, is_boss, player)
-                    dungeon.rooms.append(enemy)
-                    print(f"{Colors.RED}Spawned enemy: {enemy.name}{Colors.RESET}")
-            except ValueError as e:
-                logger.warning(f"ValueError in spawn enemies input: {e}")
-                print(f"{Colors.RED}Invalid input: {e}{Colors.RESET}")
-            except Exception as e:
-                logger.warning(f"Exception caught: {e}")
-                print(f"{Colors.RED}Error : {e}{Colors.RESET}")
-
-        elif choice == "6":
-            try:
-                # Complete a Quest Instantly
-                if player.quests:
-                    for i, quest in enumerate(player.quests):
-                        print(f"{Colors.YELLOW}{i+1}. {quest.title}{Colors.RESET}")
-                    quest_choice = int(input(f"{Colors.CYAN}Enter quest number to complete: {Colors.RESET}")) - 1
-                    if 0 <= quest_choice < len(player.quests):
-                        player.quests[quest_choice].completed = True
-                        player.completed_quests.append(player.quests.pop(quest_choice))
-                        print(f"{Colors.GREEN}Quest completed!{Colors.RESET}")
-                    else:
-                        print(f"{Colors.RED}Invalid choice.{Colors.RESET}")
-                else:
-                    print(f"{Colors.RED}No active quests.{Colors.RESET}")
-            except ValueError as e:
-                logger.warning(f"ValueError in complete quest input: {e}")
-                print(f"{Colors.RED}Invalid input: {e}{Colors.RESET}")
-            except Exception as e:
-                logger.warning(f"Exception caught: {e}")
-                print(f"{Colors.RED}Error : {e}{Colors.RESET}")
-
-        elif choice == "7":
-            # Heal Player
-            player.stats.hp = player.stats.max_hp
-            print(f"{Colors.GREEN}Player fully healed!{Colors.RESET}")
-
-        elif choice == "8":
-            try:
-                # Save Game
-                save_name = input(f"{Colors.YELLOW}Enter save name: {Colors.RESET}")
-                player.save_player(save_name)
-                print(f"{Colors.GREEN}Game saved!{Colors.RESET}")
-            except Exception as e:
-                logger.warning(f"Exception caught during save game: {e}")
-                print(f"{Colors.RED}Error saving game: {e}{Colors.RESET}")
-
-        elif choice == "9":
-            try:
-                # Load Game
-                loaded_player = load_player()
-                if loaded_player:
-                    player = loaded_player
-                    print(f"{Colors.GREEN}Game loaded!{Colors.RESET}")
-            except Exception as e:
-                logger.warning(f"Exception caught during load game: {e}")
-                print(f"{Colors.RED}Error loading game: {e}{Colors.RESET}")
-
-        elif choice == "0":
-            # Exit Debug Menu
-            print(f"{Colors.RED}Exiting Debug Menu...{Colors.RESET}")
-            break
-
-        else:
-            print(f"{Colors.RED}Invalid choice! Try again.{Colors.RESET}")

@@ -1,4 +1,4 @@
-__version__ = "1819.0"
+__version__ = "2217.0"
 __creation__ = "09-03-2025"
 
 # This file contains the core entity classes for the Dungeon Hunter game.
@@ -11,37 +11,51 @@ import random
 import time
 import json
 import os
+import shutil
 
 from colors import Colors
-from game_utility import clear_screen, handle_error, typewriter_effect, glitch_text, random_glitch_text, ancient_text, glitch_burst, timed_input_pattern
+from game_utility import (clear_screen, handle_error, typewriter_effect, glitch_text, random_glitch_text, ancient_text, glitch_burst, timed_input_pattern, strip_ansi)
 from items import Item, Equipment, Gear, Weapon, Armor, Ring, Amulet, Belt, Potion
 from data import armor_sets, enemy_types, boss_types, achievements
 from inventory import Inventory
+from spells import Spell, Scroll
 
 debug = 0
 
-class StatContainer: # Pas encore utilsé
+class PlayerClass:
+    def __init__(self, name:str, bonuses:dict, skill_name:str):
+        self.name = name
+        self.bonuses = bonuses  # dict of stat bonuses
+        self.skill_name = skill_name
+
+    def apply_to_player(self, player):
+        # Apply bonuses to player's stats
+        for stat, value in self.bonuses.items():
+            player.stats.modify_stat(stat, value)
+        # Add skill to player if available
+        if self.skill_name in skills_dict:
+            player.skills.append(skills_dict[self.skill_name])
+        else:
+            print(f"Warning: Skill {self.skill_name} not found in skills_dict.")
+
+
+class StatContainer: # Pas utilsé
     """Classe pour gérer les stats permanentes et temporaires avec accès en notation pointée."""
     def __init__(self, base_stats):
         self.__dict__.update({key: 0 for key in base_stats})
-
     def __getitem__(self, key):
         return self.__dict__[key]
-
     def __setitem__(self, key, value):
         self.__dict__[key] = value
-
     def __repr__(self):
         return str(self.__dict__)
 
 
 #̶̼͝ T̸̻̈́h̵̤͒ë̵͕́ s̸̱̅h̵̤͒ä̷̪́ď̶̙o̶͙͝ẅ̷̙́s̸̱̅ m̴̛̠ä̷̪́n̸̻̈́i̴̊͜p̵̦̆ŭ̵͇l̷̫̈́ä̷̪́ẗ̴̗́ë̵͕́ ÿ̸̡́o̶͙͝ŭ̵͇r̷͍̈́ v̶̼͝ë̵͕́r̷͍̈́ÿ̸̡́ ë̵͕́s̸̱̅s̸̱̅ë̵͕́n̸̻̈́c̴̱͝ë̵͕́.̵͇̆.̵͇̆.̵͇̆
-# The shadows manipulate your very essence...
 class Stats:
     """Gère les stats du joueur avec des effets permanents et temporaires."""
-    def __init__(self, equipment=None, **kwargs):
+    def __init__(self, **kwargs):
         """Initialisation des stats avec gestion des erreurs."""
-        self.equipment = equipment # Stockage de l'équipment
         self.permanent_stats = {
             "hp": 100, "max_hp": 100,
             "attack": 10, "defense": 5,
@@ -52,13 +66,17 @@ class Stats:
             "critical_chance": 5
         }
 
+
         # Appliquer les valeurs passées en argument
         for key, value in kwargs.items():
             if key in self.permanent_stats and isinstance(value, (int, float)):
                 self.permanent_stats[key] = value  # Assure que seules les valeurs valides sont appliquées
 
+
         # Initialisation des stats temporaires
         self.temporary_stats = {key: 0 for key in self.permanent_stats}
+        self.equipment_stats = {key: 0 for key in self.permanent_stats}
+
 
         # Vérification pour éviter toute corruption des stats permanentes
         for key, value in self.permanent_stats.items():
@@ -66,35 +84,24 @@ class Stats:
                 print(f"{Colors.RED}ERROR: permanent_stats[{key}] has an invalid type ({type(value)}). Resetting to 0.{Colors.RESET}")
                 self.permanent_stats[key] = 0  
 
+
         # Vérification pour éviter toute corruption des stats temporaires
         if not isinstance(self.temporary_stats, dict):
             print(f"{Colors.RED}ERROR: temporary_stats is corrupted! Resetting...{Colors.RESET}")
             self.temporary_stats = {key: 0 for key in self.permanent_stats}
 
+
         # Initialisation des stats visibles
         self.update_total_stats()
 
-        # print(f"DEBUG: Permanent stats: {self.permanent_stats}")
-        # print(f"DEBUG: Temporary stats: {self.temporary_stats}")
 
     def __repr__(self):
         """Affiche les stats avec permanent, temporaire et équipement."""
-        equipment_bonuses = {key: 0 for key in self.permanent_stats}
-
-        if hasattr(self, "equipment") and isinstance(self.equipment, Equipment):
-            for slot, item in self.equipment.slots.items():
-                if isinstance(item, Gear):  
-                    for stat, value in item.effects.items():
-                        if stat in equipment_bonuses:
-                            equipment_bonuses[stat] += value
-                        else:
-                            equipment_bonuses[stat] = value
-
         # Affichage structuré
         return (
             f"Permanent: {self.permanent_stats}\n"
             f"Temporary: {self.temporary_stats}\n"
-            f"Equipment: {equipment_bonuses}\n"
+            f"Equipment: {self.equipment_stats}\n"
         )
 
     
@@ -111,112 +118,92 @@ class Stats:
         else:
             super().__setattr__(key, value)  # Utilisation normale pour les autres attributs
 
+
     def update_total_stats(self):
-        """Met à jour les stats visibles en combinant les permanentes, temporaires et équipements."""
+        """Met à jour les stats visibles en combinant permanent, temporaire et équipement."""
         global debug
 
-        # Vérification stricte des stats de base
+        # Vérifie les dictionnaires
         if not isinstance(self.permanent_stats, dict):
             print(f"{Colors.RED}ERROR: permanent_stats is corrupted! Resetting...{Colors.RESET}")
-            if debug >= 1:
-                print(f"DEBUG: Stats: {self.permanent_stats}")
             self.permanent_stats = {
                 "hp": 100, "max_hp": 100, "attack": 10, "defense": 5,
                 "magic_damage": 1, "magic_defense": 1, "agility": 5, "luck": 5,
                 "mana": 20, "max_mana": 20, "stamina": 50, "max_stamina": 50,
                 "critical_chance": 5
             }
-            if debug >= 1:
-                print(f"DEBUG: Stats: {self.permanent_stats}")
 
         if not isinstance(self.temporary_stats, dict):
             print(f"{Colors.RED}ERROR: temporary_stats is corrupted! Resetting...{Colors.RESET}")
-            if debug >= 1:
-                print(f"DEBUG: Stats: {self.permanent_stats}")
             self.temporary_stats = {key: 0 for key in self.permanent_stats}
-            if debug >= 1:
-                print(f"DEBUG: Stats: {self.permanent_stats}")
 
-        # Vérification des types des stats
+        if not isinstance(self.equipment_stats, dict):
+            print(f"{Colors.RED}ERROR: equipment_stats is corrupted! Resetting...{Colors.RESET}")
+            self.equipment_stats = {key: 0 for key in self.permanent_stats}
+
+        # Vérifie les types des valeurs
         for key in self.permanent_stats:
             if not isinstance(self.permanent_stats[key], (int, float)):
-                print(f"{Colors.RED}ERROR: permanent_stats[{key}] is invalid ({type(self.permanent_stats[key])}). Resetting to 0.{Colors.RESET}")
+                print(f"{Colors.RED}ERROR: permanent_stats[{key}] invalid. Reset to 0.{Colors.RESET}")
                 self.permanent_stats[key] = 0
-
             if not isinstance(self.temporary_stats.get(key, 0), (int, float)):
-                print(f"{Colors.RED}ERROR: temporary_stats[{key}] is invalid ({type(self.temporary_stats.get(key, 0))}). Resetting to 0.{Colors.RESET}")
+                print(f"{Colors.RED}ERROR: temporary_stats[{key}] invalid. Reset to 0.{Colors.RESET}")
                 self.temporary_stats[key] = 0
+            if not isinstance(self.equipment_stats.get(key, 0), (int, float)):
+                print(f"{Colors.RED}ERROR: equipment_stats[{key}] invalid. Reset to 0.{Colors.RESET}")
+                self.equipment_stats[key] = 0
 
-        # STOCKAGE GLOBAL DES BONUS D'ÉQUIPEMENT
-        self.equipment_bonuses = {key: 0 for key in self.permanent_stats}
-
-        # Vérifier si l'équipement existe
-        if debug >= 1:
-            print('self: ',self)
-            print('self.equipment: ', self.equipment, 'self.equipment type:', type(self.equipment))
-        # Vérifier que self.equipment est un dictionnaire
-        if isinstance(self.equipment, Equipment) and isinstance(self.equipment.slots, dict):
-            if debug >= 1:
-                print(f"{Colors.CYAN}DEBUG: Equipment found, processing bonuses...{Colors.RESET}")  
-
-            # Appliquer TOUS les effets des équipements
-            for slot, item in self.equipment.slots.items():
-                if item is None:
-                    if debug >= 1:
-                        print(f"{Colors.YELLOW}DEBUG: Slot {slot} is empty (None). Skipping...{Colors.RESET}")
-                    continue  # Ignorer les slots vides
-                
-                if isinstance(item, Gear):  # Vérifier que c'est bien un objet Gear
-                    if debug >= 1:
-                        print(f"{Colors.CYAN}DEBUG: Processing {slot}: {item.name}...{Colors.RESET}")  
-
-                    for stat, value in item.effects.items():
-                        if debug >= 1:
-                            print(f"{Colors.CYAN}DEBUG: {slot} gives {stat}: +{value}{Colors.RESET}")  
-
-                        if stat in self.equipment_bonuses:
-                            self.equipment_bonuses[stat] += value
-                        else:
-                            self.equipment_bonuses[stat] = value  # Si la stat n'existait pas encore
-                else:
-                    print(f"{Colors.RED}ERROR: Unexpected item in {slot}: {item} (Type: {type(item)}){Colors.RESET}")
-
-            if debug >= 1:
-                print(f"{Colors.GREEN}DEBUG: Final Equipment Bonuses -> {self.equipment_bonuses}{Colors.RESET}")  
-        elif self.equipment is None:
-            if debug >= 1:
-                print(f"{Colors.YELLOW}DEBUG: No equipment found. Skipping...{Colors.RESET}")
-        else:
-            print(f"{Colors.RED}ERROR: self.equipment is not a dictionary! Type: {type(self.equipment)}{Colors.RESET}")
-
-
-        # MISE À JOUR DES STATS VISIBLES
-        self.__dict__.update({
-            key: self.permanent_stats[key] + self.temporary_stats.get(key, 0) + self.equipment_bonuses.get(key, 0)
+        # Mise à jour des stats totales
+        self.total_stats = {
+            key: self.permanent_stats.get(key, 0)
+                + self.temporary_stats.get(key, 0)
+                + self.equipment_stats.get(key, 0)
             for key in self.permanent_stats
-        })
+        }
+
+        # Injection dans self pour accès direct
+        self.__dict__.update(self.total_stats)
 
         if debug >= 1:
-            print(f"{Colors.CYAN}DEBUG: Updated total stats -> {self.__dict__}{Colors.RESET}")
-            print(f"{Colors.YELLOW}DEBUG: Equipment Bonuses Stored -> {self.equipment_bonuses}{Colors.RESET}")
+            print(f"{Colors.CYAN}DEBUG: Total Stats Calculated -> {self.total_stats}{Colors.RESET}")
+            print(f"{Colors.YELLOW}DEBUG: Equipment Stats -> {self.equipment_stats}{Colors.RESET}")
             input()
 
-    def modify_stat(self, stat_name, value, permanent=True):
-        """Modifie une stat de façon permanente ou temporaire."""
+    def modify_stat(self, stat_name, value, stat_type="permanent"):
+        """
+        Modifie une stat de façon permanente, temporaire ou équipement.
+        :param stat_name: Nom de la stat à modifier.
+        :param value: Valeur à ajouter ou soustraire.
+        :param stat_type: Type de stat à modifier ("permanent", "temporary", "equipment").
+        """
         global debug
-        if stat_name in self.permanent_stats:
-            if permanent:
+        if stat_type == "permanent":
+            if stat_name in self.permanent_stats:
                 self.permanent_stats[stat_name] += value
             else:
-                self.temporary_stats[stat_name] += value  # Ajout temporaire
-            
-            # Mise à jour des stats visibles
-            self.update_total_stats()
-
-            if debug >= 1:
-                print(f"{Colors.GREEN}{stat_name.capitalize()} changed by {value}! (Now {self.__dict__[stat_name]}){Colors.RESET}")
+                print(f"{Colors.RED}Stat {stat_name} does not exist in permanent stats!{Colors.RESET}")
+                return
+        elif stat_type == "temporary":
+            if stat_name in self.temporary_stats:
+                self.temporary_stats[stat_name] += value
+            else:
+                print(f"{Colors.RED}Stat {stat_name} does not exist in temporary stats!{Colors.RESET}")
+                return
+        elif stat_type == "equipment":
+            if stat_name in self.equipment_stats:
+                self.equipment_stats[stat_name] += value
+            else:
+                print(f"{Colors.RED}Stat {stat_name} does not exist in equipment stats!{Colors.RESET}")
+                return
         else:
-            print(f"{Colors.RED}Stat {stat_name} does not exist!{Colors.RESET}")
+            print(f"{Colors.RED}Invalid stat_type '{stat_type}'! Must be 'permanent', 'temporary', or 'equipment'.{Colors.RESET}")
+            return
+        
+        # Mise à jour des stats visibles
+        self.update_total_stats()
+
+        if debug >= 1:
+            print(f"{Colors.GREEN}{stat_name.capitalize()} changed by {value} in {stat_type}! (Now {self.__dict__.get(stat_name, 'N/A')}){Colors.RESET}")
 
     def remove_temporary_effects(self):
         """Réinitialise toutes les stats temporaires à 0 et met à jour les stats visibles."""
@@ -232,6 +219,9 @@ class Stats:
         self.update_total_stats()
         if debug >= 1:
             print(f"{Colors.YELLOW}DEBUG: Temporary effects removed. Stats updated.{Colors.RESET}")
+
+    def reset_equipment_stats(self):
+        self.equipment_stats = {key: 0 for key in self.permanent_stats}
 
     def take_damage(self, damage):
         """Gère la prise de dégâts en priorisant les points de vie temporaires et conserve les HP max temporaires."""
@@ -277,9 +267,8 @@ class Stats:
         # return total damage
         return damage, damage_absorbed
 
-#̶̼͝ E̶͍̚v̶̼͝ë̵͕́r̷͍̈́ÿ̸̡́ s̸̱̅k̵̢͝i̴̊͜l̷̫̈́l̷̫̈́ h̵̤͒ä̷̪́s̸̱̅ ä̷̪́ p̵̦̆r̷͍̈́i̴̊͜c̴̱͝ë̵͕́.̵͇̆.̵͇̆.̵͇̆ s̸̱̅o̶͙͝m̴̛̠ë̵͕́ m̴̛̠o̶͙͝r̷͍̈́ë̵͕́ ẗ̴̗́h̵̤͒ä̷̪́n̸̻̈́ o̶͙͝ẗ̴̗́h̵̤͒ë̵͕́r̷͍̈́s̸̱̅.̵͇̆
-# Every skill has a price... some more than others.
 
+#̶̼͝ E̶͍̚v̶̼͝ë̵͕́r̷͍̈́ÿ̸̡́ s̸̱̅k̵̢͝i̴̊͜l̷̫̈́l̷̫̈́ h̵̤͒ä̷̪́s̸̱̅ ä̷̪́ p̵̦̆r̷͍̈́i̴̊͜c̴̱͝ë̵͕́.̵͇̆.̵͇̆.̵͇̆ s̸̱̅o̶͙͝m̴̛̠ë̵͕́ m̴̛̠o̶͙͝r̷͍̈́ë̵͕́ ẗ̴̗́h̵̤͒ä̷̪́n̸̻̈́ o̶͙͝ẗ̴̗́h̵̤͒ë̵͕́r̷͍̈́s̸̱̅.̵͇̆
 class Skill:
     """
     Represents a special skill with:
@@ -301,6 +290,17 @@ class Skill:
     def to_dict(self):
         """Convertit l'objet Skill en dictionnaire automatiquement."""
         return self.__dict__.copy()
+    
+    @classmethod
+    def from_dict(cls, data):
+        return cls(
+            name=data["name"],
+            description=data["description"],
+            level=data.get("level", 1),
+            damage_multiplier=data.get("damage_multiplier", 1),
+            temporary_bonus=data.get("temporary_bonus", {}),
+            cost=data.get("cost", {})
+        )
 
     def __str__(self):
         cost_str = ", ".join(f"{k}: {v}" for k, v in self.cost.items()) if self.cost else "No cost"
@@ -345,7 +345,7 @@ class Skill:
                         
         # Appliquer les bonus temporaires
         for stat, bonus in self.temporary_bonus.items():
-            player.modify_stat(stat, bonus)
+            player.modify_stat(stat, bonus, "temporary")
 
         print(f"{Colors.GREEN}{self.name} activated!{Colors.RESET}")
         return self.damage_multiplier * input_multiplier
@@ -452,7 +452,6 @@ class Entity:
 """
 
 #̶̼͝ T̸̻̈́h̵̤͒ë̵͕́ p̵̦̆l̷̫̈́ä̷̪́ÿ̸̡́ë̵͕́r̷͍̈́’s̸̱̅ f̷̠͑ä̷̪́ẗ̴̗́ë̵͕́ i̴̊͜s̸̱̅ ẅ̷̙́r̷͍̈́i̴̊͜ẗ̴̗́ẗ̴̗́ë̵͕́n̸̻̈́ i̴̊͜n̸̻̈́ b̸̼̅l̷̫̈́o̶͙͝o̶͙͝ď̶̙ ä̷̪́n̸̻̈́ď̶̙ c̴̱͝o̶͙͝ď̶̙ë̵͕́.̵͇̆
-# The player’s fate is written in blood and code.
 
 from difficulty import GameMode, NormalMode, RealisticMode
 
@@ -497,11 +496,14 @@ class Player(Entity):
         """Initialise le joueur avec des stats de base et un équipement vide."""
         super().__init__(name, 100, 100, 5, 5)  # Héritage de la classe Entity
 
+        self.difficulty_data = {}
+
         self.level = 1
         self.xp = 0
         self.max_xp = 100
         self.gold = 50
         self.souls = 0
+        self.sin = 0
 
         # Équipement initialisé avant les stats (pour pouvoir l'envoyer dans Stats)
         self.equipment = Equipment(
@@ -510,16 +512,17 @@ class Player(Entity):
             ring=None, amulet=None, belt=None
         )
 
+        # Add tutorial_completed attribute to track tutorial completion
+        self.tutorial_completed = False
 
         # Création des stats en incluant l'équipement
-        self.stats = Stats(equipment=self.equipment, 
-                        hp=100, max_hp=100, attack=5, defense=5,
-                        magic_damage=1, magic_defense=1, agility=5, luck=5,
-                        mana=20, max_mana=20, stamina=50, max_stamina=50,
-                        critical_chance=5)
+        self.stats = Stats(hp=100, max_hp=100, attack=5, defense=5,
+                           magic_damage=1, magic_defense=1, agility=5, luck=5,
+                           mana=20, max_mana=20, stamina=50, max_stamina=50,
+                           critical_chance=5)
 
-        self.total_armor = 0
         self.set_bonuses = {}
+        self.displayed_set_bonuses = set()
         self.skills = []
         self.kills = 0
 
@@ -547,6 +550,16 @@ class Player(Entity):
         self.quests = []
         self.completed_quests = []
         self.achievements = achievements
+        self.seen_events = set()
+
+        self.tutorial_rooms_shown = {
+            "combat_tutorial": False,
+            "treasure_tutorial": False,
+            "shop_tutorial": False,
+            "puzzle_tutorial": False,
+            "rest_tutorial": False,
+            }
+
 
         self.dungeon_level = 1
         self.current_room_number = 0
@@ -573,95 +586,159 @@ class Player(Entity):
         self.inventory = Inventory(self)
         self.inventory.append(Potion("Minor Health Potion", "Restores some health", 100, "heal", 50))
 
+        self.known_spells: list[Spell] = []
+
         # Met à jour les stats avec l'équipement initial (même s'il est vide)
         self.stats.update_total_stats()
+        self.apply_all_equipment_effects()
         
         # print('DEBUG: Permanant_stats:', self.stats.permanent_stats)
         # input('press enter to continue')
 
-    def to_dict(self):
-        """Convert the Player object to a dictionary for serialization using a generic serializer.""" 
-        data = {
-            "name": self.name,
+    def learn_spell(self, spell: Spell):
+        """Add a spell to the player's known spells."""
+        if spell not in self.known_spells:
+            self.known_spells.append(spell)
+            print(f"{Colors.GREEN}You have learned the spell: {spell.name}!{Colors.RESET}")
+        else:
+            print(f"{Colors.YELLOW}You already know the spell: {spell.name}.{Colors.RESET}")
+
+    def cast_spell(self, spell_name: str, target):
+        """Cast a known spell by name on a target."""
+        spell = next((s for s in self.known_spells if s.name.lower() == spell_name.lower()), None)
+        if not spell:
+            print(f"{Colors.RED}You don't know the spell '{spell_name}'.{Colors.RESET}")
+            return False
+        return spell.cast(self, target)
+
+    def use_scroll(self, scroll: Scroll, target):
+        """Use a scroll item to cast its spell."""
+        if scroll in self.inventory:
+            return scroll.use(self, target)
+        else:
+            print(f"{Colors.RED}You don't have the scroll '{scroll.name}' in your inventory.{Colors.RESET}")
+            return False
+
+    def save_difficulty_data(self):
+        """Save current difficulty's inventory, gold, level, stats, and other relevant data."""
+        diff_name = self.mode.name
+        self.difficulty_data[diff_name] = {
+            "inventory": [item.to_dict() for item in self.inventory],
+            "gold": self.gold,
             "level": self.level,
             "xp": self.xp,
             "max_xp": self.max_xp,
-            "gold": self.gold,
-            "difficulty": self.difficulty,
-            "class_name": self.class_name,
+            "stats": self.stats.permanent_stats.copy(),
+            "equipment": self.equipment.to_dict() if self.equipment else None,
+            "skills": [skill.to_dict() for skill in self.skills],
             "dungeon_level": self.dungeon_level,
-            "profession": self.profession,
-            "kills": self.kills,
-            "unlocked_difficulties": self.unlocked_difficulties,
-            "finished_difficulties": self.finished_difficulties,
-            "current_room_number": self.current_room_number,
-            "total_rooms_explored": self.total_rooms_explored,
+            "class_name": self.class_name,
+            # Add other per-difficulty data as needed
         }
 
-        # Save stats with equipment converted to dict
-        stats_dict = {}
-        for k, v in self.stats.__dict__.items():
-            if k == "equipment" and isinstance(v, Equipment):
-                stats_dict[k] = v.to_dict()
+    def load_difficulty_data(self, difficulty_name):
+        """Load inventory, gold, level, stats, and other data for the given difficulty."""
+        data = self.difficulty_data.get(difficulty_name)
+        if data:
+            from items import Item
+            from entity import Equipment, Skill
+
+            self.inventory.clear()
+            for item_data in data["inventory"]:
+                item = Item.from_dict(item_data)
+                self.inventory.append(item)
+
+            self.gold = data["gold"]
+            self.level = data["level"]
+            self.xp = data["xp"]
+            self.max_xp = data["max_xp"]
+
+            self.stats.permanent_stats.update(data["stats"])
+            self.stats.update_total_stats()
+
+            if data["equipment"]:
+                self.equipment = Equipment.from_dict(data["equipment"])
+                self.stats.equipment = self.equipment
             else:
-                stats_dict[k] = v
-        data["stats"] = stats_dict
+                self.equipment = Equipment()
+                self.stats.equipment = self.equipment
 
-        # Save inventory
-        data["inventory"] = [item.to_dict() for item in self.inventory]
+            self.skills = [Skill.from_dict(skill_data) for skill_data in data["skills"]]
 
-        # Save equipment
-        if isinstance(self.equipment, Equipment):
-            data["equipment"] = self.equipment.to_dict()
+            self.dungeon_level = data.get("dungeon_level", 1)
+            self.class_name = data.get("class_name", "Novice")
+
         else:
-            data["equipment"] = None
+            # Initialize default values for new difficulty
+            self.inventory.clear()
+            self.gold = 0
+            self.level = 1
+            self.xp = 0
+            self.max_xp = 100
+            self.stats.permanent_stats = {
+                "hp": 100, "max_hp": 100,
+                "attack": 5, "defense": 5,
+                "magic_damage": 1, "magic_defense": 1,
+                "agility": 5, "luck": 5,
+                "mana": 20, "max_mana": 20,
+                "stamina": 50, "max_stamina": 50,
+                "critical_chance": 5
+            }
+            self.stats.update_total_stats()
+            self.equipment = Equipment()
+            self.stats.equipment = self.equipment
+            self.skills = []
+            self.dungeon_level = 1
+            self.class_name = "Novice"
 
-        # Save skills
+    def to_dict(self):
+        data = self.__dict__.copy()
+
+        # Nettoyage / conversions spécifiques
+        data["equipment"] = self.equipment.to_dict() if self.equipment else None
+        data["inventory"] = [item.to_dict() for item in self.inventory]
         data["skills"] = [skill.to_dict() for skill in self.skills]
-
-        # Save quests
         data["quests"] = [quest.to_dict() for quest in self.quests]
         data["completed_quests"] = [quest.to_dict() for quest in self.completed_quests]
+        data["achievements"] = [ach.to_dict() for ach in self.achievements]
+        data["stats"] = {k: v for k, v in self.stats.__dict__.items() if k != "equipment"}
+        data["seen_events"] = list(self.seen_events)
+        data["mode"] = self.mode.to_dict()
+        data["displayed_set_bonuses"] = list(self.displayed_set_bonuses) if hasattr(self, "displayed_set_bonuses") else []
 
         return data
 
     @classmethod
     def from_dict(cls, data):
-        """Create a Player object from a dictionary.""" 
-        from entity import Player, Equipment, Item, Skill, Quest
+        from entity import Equipment, Item, Skill, Potion
+        from progression import Quest, Achievement
+        from difficulty import GameMode
 
-        player = cls(data["name"], data["difficulty"])
-        player.level = data["level"]
-        player.xp = data["xp"]
-        player.max_xp = data["max_xp"]
-        player.gold = data["gold"]
-        player.class_name = data["class_name"]
-        player.dungeon_level = data["dungeon_level"]
-        player.profession = data["profession"]
-        player.kills = data["kills"]
-        player.unlocked_difficulties = data["unlocked_difficulties"]
-        player.finished_difficulties = data["finished_difficulties"]
-        player.current_room_number = data.get("current_room_number", 0)
-        player.total_rooms_explored = data.get("total_rooms_explored", 0)
+        player = cls(data.get("name", "Adventurer"), GameMode.from_dict(data.get("mode", {})))
 
-        # Load stats
-        player.stats.__dict__.update(data["stats"])
+        # Remplissage générique
+        for key, value in data.items():
+            if key in ("equipment", "inventory", "skills", "quests", "completed_quests", "achievements", "stats", "mode", "seen_events", "displayed_set_bonuses"):
+                continue  # On gère ceux-là à part
+            setattr(player, key, value)
 
-        # Load inventory
-        player.inventory = [Item.from_dict(item) for item in data["inventory"]]
+        # Champs complexes
+        player.stats.__dict__.update(data.get("stats", {}))
+        player.inventory = [Item.from_dict(i) for i in data.get("inventory", [])]
+        player.equipment = Equipment.from_dict(data["equipment"]) if data.get("equipment") else None
+        player.skills = [Skill.from_dict(s) for s in data.get("skills", [])]
+        player.quests = [Quest.from_dict(q) for q in data.get("quests", [])]
+        player.completed_quests = [Quest.from_dict(q) for q in data.get("completed_quests", [])]
 
-        # Load equipment
-        if isinstance(data.get("equipment"), dict):
-            player.equipment = Equipment.from_dict(data["equipment"])
-            # Fix: ensure stats.equipment is the Equipment instance, not a dict
-            player.stats.equipment = player.equipment
-        
-        # Load skills
-        player.skills = [Skill.from_dict(skill) for skill in data["skills"]]
+        # Achievements avec condition_mapping
+        condition_map = {ach.id: ach.condition for ach in player.achievements}
+        player.achievements = [Achievement.from_dict(a, condition_map) for a in data.get("achievements", [])]
 
-        # Load quests
-        player.quests = [Quest.from_dict(quest) for quest in data["quests"]]
-        player.completed_quests = [Quest.from_dict(quest) for quest in data["completed_quests"]]
+        player.seen_events = set(data.get("seen_events", []))
+        player.displayed_set_bonuses = set(data.get("displayed_set_bonuses"))
+
+        if player.equipment:
+            player.apply_all_equipment_effects()
 
         return player
 
@@ -871,70 +948,161 @@ class Player(Entity):
             print(f"\n{Colors.RED}Please enter a valid number.{Colors.RESET}")
 
 
-    def update_total_armor(self):
-        """Recalculates the player's total armor based on equipped items."""
+    def get_equipment_stats(self):
+        global debug
 
-        for slot, item in self.equipment.slots.items():
-            if item and hasattr(item, "defense"):  # Vérifie si l'item a une stat de défense
-                self.total_armor += item.defense
+        total_stats = {}
 
-        for slot in self.equipment.__dict__.items():
-            item = self.equipment.slots[slot]
-            if item and hasattr(item, "effects"):
-                for effect, value in item.effects.items():
-                    setattr(self.stats, effect, getattr(self.stats, effect, 0) + value)
+        if debug >= 1:
+            print(f"{Colors.YELLOW}DEBUG: Calculating equipment stats...{Colors.RESET}")
 
-        self.update_stats_with_bonus()
-
-
-    def calculate_set_bonus(self):
-        """Calcule et applique les bonus de set en fonction des pièces d'armure équipées."""
-
-        equipped_pieces = {}  # Dictionnaire pour compter les pièces équipées par set
-
-        # Vérifie toutes les pièces d'armure équipées
-        for slot in ["helmet", "chest", "gauntlets", "leggings", "boots"]:
-            item = self.equipment.slots[slot]
+        for item in self.equipment.slots.values():
             if item:
-                armor_prefix = item.name.split()[0]
-                if armor_prefix in armor_sets:
-                    equipped_pieces[armor_prefix] = equipped_pieces.get(armor_prefix, 0) + 1
+                if debug >= 1:
+                    print(f"{Colors.CYAN}DEBUG: Processing item: {item.name}{Colors.RESET}")
+                if hasattr(item, "stats"):
+                    for stat, value in item.stats.items():
+                        total_stats[stat] = total_stats.get(stat, 0) + value
+                        if debug >= 1:
+                            print(f"{Colors.CYAN}DEBUG: Adding {stat}: {value}{Colors.RESET}")
 
+        if debug >= 1:
+            print(f"{Colors.GREEN}DEBUG: Total equipment stats: {total_stats}{Colors.RESET}")
+
+        return total_stats
+
+    def get_set_bonus_stats(self):
+        global debug
+
+        if debug >= 1:
+            print(f"{Colors.YELLOW}DEBUG: Calculating set bonus stats...{Colors.RESET}")
+
+        equipped_sets = {}
+
+        for item in self.equipment.slots.values():
+            if item and hasattr(item, "set_name"):
+                equipped_sets[item.set_name] = equipped_sets.get(item.set_name, 0) + 1
+                if debug >= 1:
+                    print(f"{Colors.CYAN}DEBUG: Counting set {item.set_name}: {equipped_sets[item.set_name]}{Colors.RESET}")
+
+        total_bonus = {}
+
+        for set_name, count in equipped_sets.items():
+            if set_name not in armor_sets:
+                if debug >= 1:
+                    print(f"{Colors.RED}DEBUG: Set {set_name} not found in armor_sets!{Colors.RESET}")
+                continue
+            set_data = armor_sets[set_name]
+            for threshold, bonus_name in set_data["bonus_thresholds"].items():
+                if count >= threshold:
+                    bonus_effects = set_data["effects"][bonus_name]
+                    for stat, value in bonus_effects.items():
+                        total_bonus[stat] = total_bonus.get(stat, 0) + value
+                        if debug >= 1:
+                            print(f"{Colors.CYAN}DEBUG: Adding set bonus {stat}: {value} from {bonus_name}{Colors.RESET}")
+
+        if debug >= 1:
+            print(f"{Colors.GREEN}DEBUG: Total set bonus stats: {total_bonus}{Colors.RESET}")
+
+        return total_bonus
+
+
+    def apply_all_equipment_effects(self, show_text=False):
+        global debug
+        if debug >= 1:
+            print(f"{Colors.YELLOW}DEBUG: Recalculating equipment + set effects...{Colors.RESET}")
+
+        # Reset anciens effets
+        self.stats.remove_temporary_effects()
+        self.stats.reset_equipment_stats()
         self.set_bonuses.clear()
 
-        # Applique les nouveaux bonus selon le nombre de pièces équipées
-        for set_name, count in equipped_pieces.items():
+        # Remove bonuses that are no longer active from displayed_set_bonuses
+        current_active_bonuses = set()
+
+        if debug >= 1:
+            print(f"{Colors.CYAN}DEBUG: Cleared temporary effects and set bonuses.{Colors.RESET}")
+
+        # Dictionnaire cumulé des stats
+        total_stats = {}
+
+        # --- 1. Stats des items équipés ---
+        for slot, item in self.equipment.slots.items():
+            if item:
+                if debug >= 1:
+                    print(f"{Colors.CYAN}DEBUG: Processing item in slot {slot}: {item.name}{Colors.RESET}")
+                # Effets d’objets (sous forme de dict)
+                if hasattr(item, "effects"):
+                    for stat, value in item.effects.items():
+                        total_stats[stat] = total_stats.get(stat, 0) + value
+                        if debug >= 1:
+                            print(f"{Colors.GREEN}DEBUG: Adding effect {stat}: {value}{Colors.RESET}")
+
+        # --- 2. Calcul des bonus de set ---
+        equipped_sets = {}
+        for slot in ["helmet", "chest", "gauntlets", "leggings", "boots"]:
+            item = self.equipment.slots.get(slot)
+            if item:
+                # prefix = item.name.split()[1] # here, we assume the prefix is the second word in the name so it can be wrong as if it's in pos 1
+                prefix = next((prefix for prefix in armor_sets if prefix in item.name), None)
+                if debug >= 1:
+                    print(f"{Colors.CYAN}DEBUG: Prefix: {prefix}{Colors.RESET}")
+                if prefix in armor_sets:
+                    equipped_sets[prefix] = equipped_sets.get(prefix, 0) + 1
+                    if debug >= 1:
+                        print(f"{Colors.CYAN}DEBUG: Counting set {Colors.YELLOW}{prefix}: {equipped_sets[prefix]}{Colors.RESET}")
+
+        if debug >= 1:
+            print(f"{Colors.CYAN}DEBUG: Equipped sets: {Colors.YELLOW}{equipped_sets}{Colors.RESET}")
+
+        for set_name, count in equipped_sets.items():
             set_data = armor_sets[set_name]
             for threshold, bonus_name in sorted(set_data["bonus_thresholds"].items()):
                 if count >= threshold:
-                    self.set_bonuses[bonus_name] = set_data["effects"][bonus_name]
+                    current_active_bonuses.add(bonus_name)
+                    if show_text is True and bonus_name not in self.displayed_set_bonuses:
+                        typewriter_effect(f"{Colors.YELLOW}You feel a strange power emanating from the armor.{Colors.RESET}", 0.1)
+                        self.displayed_set_bonuses.add(bonus_name)
+                    bonus_effects = set_data["effects"][bonus_name]
+                    self.set_bonuses[bonus_name] = bonus_effects
+                    if debug >= 1:
+                        print(f"{Colors.GREEN}DEBUG: Applying set bonus {bonus_name} with effects {bonus_effects}{Colors.RESET}")
+                    for stat, value in bonus_effects.items():
+                        total_stats[stat] = total_stats.get(stat, 0) + value
+                        if debug >= 1:
+                            print(f"{Colors.CYAN}DEBUG: Adding set bonus effect {stat}: {value}{Colors.RESET}")
 
-        self.update_stats_with_bonus()
+        # Remove bonuses that are no longer active from displayed_set_bonuses
+        self.displayed_set_bonuses.intersection_update(current_active_bonuses)
 
+        # --- 3. Application des stats cumulées ---
+        for stat, value in total_stats.items():
+            if hasattr(self.stats, stat):
+                if debug >= 1:
+                    print(f"{Colors.CYAN}DEBUG: Modifying stat {stat} by {value} (equipment){Colors.RESET}")
+                self.stats.modify_stat(stat, value, stat_type="equipment")
+            else:
+                print(f"{Colors.RED}Stat {stat} does not exist in player stats!{Colors.RESET}")
 
-    def update_stats_with_bonus(self):
-        """Applies set bonuses to player stats."""
-        
-        # Reset les stats à leurs valeurs de base
-        self.stats.remove_temporary_effects()
-
-        # Applique les bonus de set
-        for bonus_name, effects in self.set_bonuses.items():
-            for stat, value in effects.items():
-                if stat in self.stats.__dict__:
-                    self.stats.__dict__[stat] += value  # Applique les bonus
-                else:
-                    print(f"{Colors.RED}Stat {stat} does not exist in player stats!{Colors.RESET}")
+        # --- 4. Mise à jour finale ---
         self.stats.update_total_stats()
+        self.total_armor = total_stats.get("defense", 0)
+
+        if debug >= 1:
+            print(f"{Colors.CYAN}DEBUG: Final applied equipment stats: {total_stats}{Colors.RESET}")
+            print(f"{Colors.CYAN}DEBUG: Equipment stats: {self.stats.equipment_stats}{Colors.RESET}")
+
 
 
     def total_domage(self, base_damage=True):
-        base_damage = self.stats.attack
+        global debug
+        
         damage_main = getattr(self.equipment.main_hand, "damage", 0) or 0
         damage_off = getattr(self.equipment.off_hand, "damage", 0) or 0
         total_domage = 0
 
-        if base_damage:
+        if base_damage is True:
+            base_damage = self.stats.attack
             if self.equipment.main_hand and self.equipment.off_hand:
                 total_domage = base_damage + (damage_main + damage_off) // 1.5  # Réduction pour équilibrer
             else:
@@ -944,6 +1112,10 @@ class Player(Entity):
                 total_domage = base_damage + (damage_main + damage_off) // 1.5  # Réduction pour équilibrer
             else:
                 total_domage = base_damage + damage_main + damage_off
+
+        if debug >= 1:
+            print(f"{Colors.CYAN}DEBUG: Total damage calculated: {total_domage}{Colors.RESET}")
+
         return total_domage
 
     def level_up(self):
@@ -1007,37 +1179,27 @@ class Player(Entity):
         print(f"╚══════════════════════════════════════════╝{Colors.RESET}")
         
         classes = {
-            "1": {"name": "Warrior", "hp": 30, "attack": 5, "defense": 8, "agility": 3, "skill": "Berserk Rage"},
-            "2": {"name": "Rogue", "hp": 15, "attack": 8, "defense": 3, "agility": 8, "skill": "Shadow Strike"},
-            "3": {"name": "Mage", "hp": 10, "attack": 10, "defense": 0, "agility": 2, "skill": "Arcane Blast"},
-            "4": {"name": "Knight", "hp": 25, "attack": 3, "defense": 10, "agility": 5, "skill": "Divine Shield"}
+            "1": PlayerClass("Warrior", {"max_hp": 30, "attack": 5, "defense": 8, "agility": 3}, "Berserk Rage"),
+            "2": PlayerClass("Archer", {"max_hp": 15, "attack": 8, "defense": 3, "agility": 8}, "Shadow Strike"),
+            "3": PlayerClass("Mage", {"max_hp": 10, "attack": 10, "defense": 0, "agility": 2}, "Arcane Blast"),
+            "4": PlayerClass("Knight", {"max_hp": 25, "attack": 3, "defense": 10, "agility": 5}, "Divine Shield")
         }
         
-        for key, cls_data in classes.items():
-            print(f"\n{Colors.CYAN}[{key}] {cls_data['name']}{Colors.RESET}")
-            print(f"  {Colors.GREEN}+{cls_data['hp']} Max HP{Colors.RESET}")
-            print(f"  {Colors.RED}+{cls_data['attack']} Attack{Colors.RESET}")
-            print(f"  {Colors.BLUE}+{cls_data['defense']} Defense{Colors.RESET}")
-            print(f"  Skill: {Colors.MAGENTA}{cls_data['skill']}{Colors.RESET}")
+        for key, player_class in classes.items():
+            print(f"\n{Colors.CYAN}[{key}] {player_class.name}{Colors.RESET}")
+            print(f"  {Colors.GREEN}+{player_class.bonuses.get('max_hp', 0)} Max HP{Colors.RESET}")
+            print(f"  {Colors.RED}+{player_class.bonuses.get('attack', 0)} Attack{Colors.RESET}")
+            print(f"  {Colors.BLUE}+{player_class.bonuses.get('defense', 0)} Defense{Colors.RESET}")
+            print(f"  Skill: {Colors.MAGENTA}{player_class.skill_name}{Colors.RESET}")
         
         while True:
             choice = input(f"\n{Colors.YELLOW}Choose your class (1-4): {Colors.RESET}")
             if choice in classes:
-                cls_data = classes[choice]
-                self.class_name = cls_data["name"]
-                self.stats.modify_stat("max_hp", cls_data["hp"])
-                self.heal(cls_data["hp"])
-                self.stats.modify_stat("attack", cls_data["attack"])
-                self.stats.modify_stat("defense", cls_data["defense"])
-                self.stats.modify_stat("agility", cls_data["agility"])
-                # Ajout du Skill correspondant via le dictionnaire skills_dict
-                skill_name = cls_data["skill"]
-                if skill_name in skills_dict:
-                    self.skills.append(skills_dict[skill_name])
-                else:
-                    print(f"{Colors.RED}Error: Skill {skill_name} not found.{Colors.RESET}")
+                self.player_class = classes[choice]
+                self.class_name = self.player_class.name
+                self.player_class.apply_to_player(self)
                 print(f"\n{Colors.BRIGHT_GREEN}You are now a {self.class_name}!{Colors.RESET}")
-                print(f"You've learned the {Colors.MAGENTA}{cls_data['skill']}{Colors.RESET} skill!")
+                print(f"You've learned the {Colors.MAGENTA}{self.player_class.skill_name}{Colors.RESET} skill!")
                 input(f"\n{Colors.YELLOW}Press Enter to continue your adventure...{Colors.RESET}")
                 break
             else:
@@ -1137,6 +1299,7 @@ class Player(Entity):
         total_damage = int(base_damage * multiplier)
         damage, absorbed_damage = target.stats.take_damage(base_damage)
         total_damage = damage + absorbed_damage
+        self.damage_dealt += total_damage
         print(f"You deal {Colors.RED}{total_damage}{Colors.RESET} damage to {target.name}!")
 
         # Si le skill avait des bonus temporaires, il faudrait les retirer après l'attaque
@@ -1150,22 +1313,22 @@ class Player(Entity):
         """Displays player stats: kills, rooms explored, dungeon level, difficulty, and ng_plus in a nice box.""" 
         box_width = 40
         title = "PLAYER STATS SUMMARY"
-        ng = self.ng_plus.get(self.difficulty, 0)
+        ng = self.ng_plus.get(self.mode, 0)
 
         def print_box_template():
             print(f"\n{Colors.YELLOW}╔{'═' * (box_width)}╗{Colors.RESET}")
             print(f"{Colors.YELLOW}║{Colors.BRIGHT_CYAN}{Colors.BOLD}{title.center(box_width)}{Colors.RESET}{Colors.YELLOW}║{Colors.RESET}")
             print(f"{Colors.YELLOW}╠{'═' * (box_width)}╣{Colors.RESET}")
-            for _ in range(18):
+            for _ in range(19):
                 print(f"{Colors.YELLOW}║{' ' * box_width}║{Colors.RESET}")
             print(f"{Colors.YELLOW}╚{'═' * (box_width)}╝{Colors.RESET}")
 
         print_box_template()
 
         # Move cursor up to start filling the box
-        print(f"\033[20A")  # Move cursor up 20 lines
+        print(f"\033[21A")  # Move cursor up 21 lines
 
-        print(f"\r{Colors.YELLOW}║ Difficulty:        {Colors.BRIGHT_MAGENTA}{self.difficulty.capitalize().ljust(box_width - 20)}{Colors.RESET}")
+        print(f"\r{Colors.YELLOW}║ Difficulty:        {Colors.BRIGHT_MAGENTA}{self.mode.capitalize().ljust(box_width - 20)}{Colors.RESET}")
         print(f"\r{Colors.YELLOW}║ NG+:               {Colors.BRIGHT_YELLOW}{str(ng).ljust(box_width - 20)}{Colors.RESET}")
         print(f"\r{Colors.YELLOW}║ Dungeon Level:     {Colors.BRIGHT_BLUE}{str(self.dungeon_level).ljust(box_width - 20)}{Colors.RESET}")
         print(f"\r{Colors.YELLOW}║ Rooms Number:      {Colors.BRIGHT_GREEN}{str(self.current_room_number).ljust(box_width - 20)}{Colors.RESET}")
@@ -1187,12 +1350,30 @@ class Player(Entity):
         print('\n')
         input(f'{Colors.YELLOW}Enter to continue...{Colors.RESET}')
 
-    def display_dungeon_level(self, room_number=0):
-        # Display dungeon level and explored rooms
-        print(f"\n{Colors.BRIGHT_BLUE}{Colors.BOLD}╔══════════════════════════════════╗")
-        print(f"║   Dungeon Level: {self.dungeon_level}{' ' * (16 - len(str(self.dungeon_level)))}║")
-        print(f"║   Rooms Explored: {room_number}{' ' * (15 - len(str(room_number)))}║")
-        print(f"╚══════════════════════════════════╝{Colors.RESET}")
+    def display_dungeon_level(self, room_number=0, limit=60):
+        # Texte à afficher
+        lines = [
+            f"{Colors.BRIGHT_BLUE}{Colors.BOLD}╔═════════════════════════════╗{Colors.RESET}",
+            f"{Colors.BRIGHT_BLUE}{Colors.BOLD}║  Dungeon Level: {self.dungeon_level:<12}║{Colors.RESET}",
+            f"{Colors.BRIGHT_BLUE}{Colors.BOLD}║  Rooms Explored: {room_number:<11}║{Colors.RESET}",
+            f"{Colors.BRIGHT_BLUE}{Colors.BOLD}╚═════════════════════════════╝{Colors.RESET}"
+        ]
+
+        columns = shutil.get_terminal_size().columns
+        line_count = len(lines)
+
+        # Revenir en haut du bloc si déjà imprimé
+        print(f"\033[{line_count}A\r")
+
+        for line in lines:
+            if columns // 2 >= limit:
+                # Centrer
+                padding = (columns - len(strip_ansi(line))) // 2
+            else:
+                # Aligner à droite
+                padding = columns - len(strip_ansi(line)) - 1
+            print(" " * max(padding, 0) + line)
+
 
     def display_status(self):
         """Displays all player stats dynamically with proper formatting.""" 
@@ -1273,7 +1454,7 @@ class Player(Entity):
             print(f"{Colors.YELLOW}╚{'═' * (box_len + 1)}╝{Colors.RESET}")
 
         # Clear screen and print box template
-        print("\033[2J\033[H")  # Clear screen and move cursor to top
+        #print("\033[2J\033[H")  # Clear screen and move cursor to top
         print_box_template()
 
         # Move cursor back up to fill in the details (adding 1 for the initial newline)
@@ -1289,10 +1470,9 @@ class Player(Entity):
         content_lines.append("")
         
         # Level and NG+
-        ng = self.difficulty.get_ng_plus(self)
-        ng_text = f"{Colors.RED}NG+{ng}{Colors.RESET}" if ng != 0 else ""
-        content_lines.append(f"{Colors.YELLOW}║ {Colors.GREEN}{Colors.UNDERLINE}Level: {self.level}{Colors.RESET}{' ' * (38 - len(ng_text))}{ng_text}".ljust(46))
-
+        ng = self.mode.get_ng_plus(self)
+        ng_text = f"{Colors.RED}NG+{ng}{Colors.RESET}" if ng != 0 else f"{Colors.RED}{Colors.RESET}" # and not "" because idk why but it would make a hole in the box border right after it
+        content_lines.append(f"{Colors.YELLOW}║ {Colors.GREEN}{Colors.UNDERLINE}Level: {self.level}{Colors.RESET}{' ' * (46 - len(ng_text))}{ng_text}".ljust(46))
         
         # HP
         content_lines.append(f"{Colors.YELLOW}║ {stat_colors['hp']}HP: {self.stats.hp}/{self.stats.max_hp}".ljust(46))
@@ -1320,22 +1500,6 @@ class Player(Entity):
         # Skip separator line
         content_lines.append("")
 
-        """
-            # Calculate equipment effects
-            if stat == "attack":
-                effects_value = 0
-                if self.total_domage():
-                    effects_value += self.total_domage(base_damage=False) - self.stats.attack
-            elif stat == "defense":
-                effects_value = sum(item.effects.get("defense", 0) if hasattr(item, "effects") else getattr(item, stat, 0)
-                                for item in self.equipment.__dict__.values() if item)
-            else:
-                effects_value = sum(item.effects.get(stat, 0) if hasattr(item, "effects") else getattr(item, stat, 0)
-                                for item in self.equipment.__dict__.values() if item)
-
-            effects_text = f" (+{effects_value:>3})"
-        """
-
         # Additional Stats
         stat_count = 0
         for stat, base_value in self.stats.__dict__.items():
@@ -1349,7 +1513,7 @@ class Player(Entity):
 
             # Calculate equipment effects
             # equip_bonus = getattr(self.stats.equipment, stat, 0)
-            equip_bonus = self.stats.equipment_bonuses.get(stat, 0)
+            equip_bonus = self.stats.equipment_stats.get(stat, 0)
             temp_bonus = self.stats.temporary_stats.get(stat, 0)
             total_bonus = equip_bonus + temp_bonus
 
@@ -1370,7 +1534,10 @@ class Player(Entity):
                 if isinstance(item, Weapon):
                     extra = f" ({stat_colors.get('attack', Colors.RESET)}{item.damage}{Colors.RESET})"
                 elif isinstance(item, Armor):
-                    defense_value = item.effects.get('defense', 0)
+                    if hasattr(item, "defense"):
+                        defense_value = item.defense
+                    else:
+                        defense_value = item.effects.get("defense", 0)
                     extra = f" ({stat_colors.get('defense', Colors.RESET)}{defense_value}{Colors.RESET})"
                 elif isinstance(item, (Ring, Amulet, Belt)):
                     effects_str = ", ".join(f"{stat_colors.get(k, Colors.RESET)}{v}{Colors.RESET}" for k, v in item.effects.items())
@@ -1388,7 +1555,7 @@ class Player(Entity):
                 """
                 
                 # Format with proper spacing
-                item_display = f"{item_name:<20} {extra}"
+                item_display = f"{item_name:<28} {extra}"
                 
                 # Truncate if too long
                 item_display = truncate_text(item_display, 46)
@@ -1522,7 +1689,7 @@ class Player(Entity):
         content_lines.append("")
         
         # Level and NG+
-        ng = self.ng_plus[self.difficulty]
+        ng = self.ng_plus[self.mode]
         ng_text = f"{Colors.RED}NG+{ng}{Colors.RESET}" if ng != 0 else ""
         content_lines.append(f"{Colors.YELLOW}║ {Colors.GREEN}{Colors.UNDERLINE}{glitch_text('Level: ' + str(self.level))}{Colors.RESET}{' ' * (38 - len(ng_text))}{ng_text}".ljust(46))
 
@@ -1596,7 +1763,7 @@ class Player(Entity):
 
             # Calculate equipment effects
             # equip_bonus = getattr(self.stats.equipment, stat, 0)
-            equip_bonus = self.stats.equipment_bonuses.get(stat, 0)
+            equip_bonus = self.stats.equipment_stats.get(stat, 0)
             temp_bonus = self.stats.temporary_stats.get(stat, 0)
             total_bonus = equip_bonus + temp_bonus
 
@@ -1662,23 +1829,42 @@ class Player(Entity):
         """Handles inventory management: equip, use, unequip, or drop items dynamically."""
 
         if not self.inventory:
-            print(f"\n{Colors.RED}Your inventory is empty!{Colors.RESET}", end="")
+            print(f"\n{Colors.RED}Your inventory is empty!{Colors.RESET}")
             input(f'{Colors.YELLOW}Enter to continue...{Colors.RESET}')
             return
         
+        # Default sorting criteria
+        sort_criteria = ["equipped", "name", "value"]
+
+        def get_sort_key(item, criterion):
+            if criterion == "name":
+                return item.name.lower()
+            elif criterion == "value":
+                return -getattr(item, "value", 0)
+            elif criterion == "stats":
+                effects = getattr(item, "effects", {})
+                if isinstance(effects, dict):
+                    return -sum(effects.values())
+                return 0
+            elif criterion == "armor_set":
+                set_name = getattr(item, "set_name", None)
+                if set_name:
+                    return set_name.lower()
+                armor_type = getattr(item, "armor_type", "")
+                return armor_type.lower() if armor_type else ""
+            elif criterion == "equipped":
+                return 0 if item in self.equipment.__dict__.values() else 1
+            else:
+                return 0
+
         managing = True
         while managing:
             print(f"\n{Colors.BRIGHT_CYAN}Your Inventory:{Colors.RESET}")
 
-            # Multi-criteria sorting: equipped first, then alphabetically, then by item value descending
-            sorted_inventory = sorted(
-                self.inventory,
-                key=lambda item: (
-                    item not in self.equipment.__dict__.values(),
-                    item.name.lower(),
-                    -getattr(item, 'value', 0)
-                )
-            )
+            def multi_key(item):
+                return tuple(get_sort_key(item, crit) for crit in sort_criteria)
+
+            sorted_inventory = sorted(self.inventory, key=multi_key)
 
             for i, item in enumerate(sorted_inventory, 1):
                 status = ""
@@ -1691,6 +1877,7 @@ class Player(Entity):
             print(f"{Colors.YELLOW}E. Unequip Item{Colors.RESET}")
             print(f"{Colors.RED}D. Drop Item(s){Colors.RESET}")
             print(f"{Colors.MAGENTA}S. Search Items{Colors.RESET}")
+            print(f"{Colors.BLUE}O. Set Sort Order{Colors.RESET}")
             print(f"{Colors.YELLOW}B. Back{Colors.RESET}")
             
             choice = input(f"\n{Colors.CYAN}What would you like to do? {Colors.RESET}").upper()
@@ -1698,6 +1885,29 @@ class Player(Entity):
             if choice == "B":
                 managing = False
             
+            elif choice == "O":
+                print("\nChoose inventory sorting criteria in order. Enter numbers separated by commas.")
+                print("Available criteria:")
+                print(f"{Colors.CYAN}1.{Colors.RESET} Name (alphabetical)")
+                print(f"{Colors.CYAN}2.{Colors.RESET} Value (descending)")
+                print(f"{Colors.CYAN}3.{Colors.RESET} Stats (total stat value descending)")
+                print(f"{Colors.CYAN}4.{Colors.RESET} Armor Set (group by set name)")
+                print(f"{Colors.CYAN}5.{Colors.RESET} Equipped status (equipped items first)")
+                input_str = input("Enter criteria numbers in order (e.g. 5,4,3,1): ")
+                selected = [c.strip() for c in input_str.split(",") if c.strip() in {"1","2","3","4","5"}]
+                criteria_map = {
+                    "1": "name",
+                    "2": "value",
+                    "3": "stats",
+                    "4": "armor_set",
+                    "5": "equipped"
+                }
+                if not selected:
+                    print("No valid criteria selected. Keeping previous sorting.")
+                else:
+                    sort_criteria = [criteria_map[c] for c in selected]
+                    print(f"Inventory sorting criteria set to: {', '.join(sort_criteria)}")
+
             elif choice == "U":
                 try:
                     item_index = int(input(f"\n{Colors.CYAN}Enter item number to use/equip: {Colors.RESET}")) - 1
@@ -1894,6 +2104,13 @@ class Player(Entity):
             print(f"  - {ach}")
         input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
 
+
+    def trigger_event_once(self, event_id, action):
+        if event_id not in self.seen_events:
+            action()
+            self.seen_events.add(event_id)
+    
+
     def save_player(self, filename="player_save.json"):
         """Saves the player's data to a JSON file.""" 
 
@@ -1941,6 +2158,7 @@ def continue_game(filename):
         return player
     except Exception as e:
         print(f"{Colors.RED}Error loading saved game: {e}{Colors.RESET}")
+        handle_error()
         return None
 
 
@@ -1975,11 +2193,11 @@ class Enemy(Entity):
         """Enemy attacks the player, considering total armor defense."""
         global debug
 
-        # player.update_total_armor()
+        player.apply_all_equipment_effects()
         damage = max(1, self.stats.attack - (player.stats.defense + player.total_armor))
         if debug >= 1:
             print(damage)
-        damage = int(self.stats.attack * (10 / (10 + player.stats.defense + player.total_armor)))
+        damage = int(self.stats.attack * (100 / (100 + player.stats.defense + player.total_armor)))
         if debug >= 1:
             print(damage)
         
@@ -1987,6 +2205,7 @@ class Enemy(Entity):
             print('DEBUG: player hp:', player.stats.hp)
             
         player.stats.take_damage(damage)
+        player.damage_taken += damage
 
         print(f"{self.name} attacks you for {Colors.RED}{damage}{Colors.RESET} damage!")
         
@@ -2021,7 +2240,7 @@ def generate_enemy(level:int, is_boss:bool, player: Player):
 
     # Définition des stats de base
     base_hp = 20 + level * 10
-    base_attack = 10 + level * 2
+    base_attack = 5 + level * 2
     base_defense = 2 + level
 
     # Application des modificateurs de l'ennemi
@@ -2036,8 +2255,7 @@ def generate_enemy(level:int, is_boss:bool, player: Player):
         defense = int(defense * 1.5)
 
     # Apply NG+ difficulty multiplier to enemy stats, starting at NG+0 (multiplier >= 1)
-    # diff_mltp = 1 + (player.ng_plus[player.difficulty] * 0.1)
-    diff_mltp = 1 + player.difficulty.get_ng_plus(player) * 0.1 # 10% increase per NG+ level
+    diff_mltp = max(1, player.mode.get_ng_plus(player) * 0.1) # 10% increase per NG+ level
     hp = int(hp * diff_mltp)
     attack = int(attack * diff_mltp)
     defense = int(defense * diff_mltp)
