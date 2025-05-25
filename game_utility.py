@@ -1,4 +1,4 @@
-__version__ = "340.0"
+__version__ = "465.0"
 __creation__ = "09-03-2025"
 
 import os
@@ -18,6 +18,64 @@ else:
     import select
     import termios
     import tty
+
+
+def set_windows_terminal_size(cols=120, lines=40):
+    os.system(f"mode con: cols={cols} lines={lines}")
+    # Plein écran (Alt+Entrée simulation non fiable)
+
+def set_unix_terminal_size(cols=120, rows=40):
+    sys.stdout.write(f"\x1b[8;{rows};{cols}t")
+    sys.stdout.flush()
+
+import platform
+
+def normalize_terminal(cols=210, lines=52):
+    if platform.system() == "Windows":
+        os.system(f"mode con: cols={cols} lines={lines}")
+    else:
+        sys.stdout.write("\x1b[8;40;120t")
+        sys.stdout.flush()
+
+def move_cursor(row, col):
+    print(f"\x1b[{row};{col}H", end='')
+
+def clear_line():
+    print("\x1b[2K", end='')
+
+import ctypes
+
+def maximize_terminal():
+    if platform.system() == "Windows":
+        # Get console window handle
+        hwnd = ctypes.windll.kernel32.GetConsoleWindow()
+        if hwnd != 0:
+            # SW_MAXIMIZE = 3
+            ctypes.windll.user32.ShowWindow(hwnd, 3)
+
+from shutil import get_terminal_size
+cols, rows = get_terminal_size()
+
+
+def strip_ansi(text):
+    """Supprime les codes ANSI pour un calcul précis de longueur"""
+    import re
+    return re.sub(r'\x1b\[[0-9;]*m', '', text)
+
+def execute_command(cmd, allowed=False, prnt=True, context=None):
+    if context is None:
+        context = {}
+    try:
+        result = eval(cmd, globals(), context)
+        if prnt:
+            time.sleep(0.1)
+            print('>', cmd)
+            time.sleep(0.1)
+            print(result)
+        return f"{Colors.GREEN}Command executed{Colors.RESET}"
+    except Exception as e:
+        return f"{Colors.RED}Error: {e}{Colors.RESET}"
+
 
 def timed_input_pattern(difficulty=1.0, return_type='bool', peak_int_min=0, peak_int_max=10):
     """
@@ -116,11 +174,104 @@ def timed_input_pattern(difficulty=1.0, return_type='bool', peak_int_min=0, peak
     else:
         return 0
 
+
+def timed_input(prompt, timeout, default=None):
+    """
+    Prompt the user for input, but timeout after a specified number of seconds.
+    Displays a countdown timer alongside the prompt.
+
+    Parameters:
+    - prompt (str): The prompt message to display.
+    - timeout (float): The number of seconds to wait for input before timing out.
+    - default (str or None): The value to return if the timeout expires without input.
+
+    Returns:
+    - str: The user's input if entered within the timeout, otherwise the default value.
+    """
+    if os.name == 'nt':
+        import msvcrt
+        start_time = time.time()
+        input_str = ''
+        prompt_displayed = False
+        while True:
+            elapsed = time.time() - start_time
+            remaining = max(0, int(timeout - elapsed))
+            if not prompt_displayed:
+                # Display prompt once
+                sys.stdout.write(prompt)
+                sys.stdout.flush()
+                prompt_displayed = True
+            # Clear the line and display timer and input string on the same line
+            sys.stdout.write('\r\033[K')  # Clear line
+            sys.stdout.write(f'{prompt} {Colors.RED}[{remaining}s]{Colors.RESET} ' + input_str + ' ')
+            sys.stdout.flush()
+
+            if msvcrt.kbhit():
+                char = msvcrt.getwch()
+                if char == '\r':  # Enter key
+                    print()
+                    return input_str
+                elif char == '\b':  # Backspace
+                    if len(input_str) > 0:
+                        input_str = input_str[:-1]
+                        sys.stdout.write('\b \b')
+                        sys.stdout.flush()
+                else:
+                    input_str += char
+            if elapsed > timeout:
+                print()
+                return default
+            time.sleep(0.05)
+    else:
+        import select
+        import termios
+        import tty
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+        try:
+            tty.setraw(fd)
+            input_str = ''
+            start_time = time.time()
+            prompt_displayed = False
+            while True:
+                elapsed = time.time() - start_time
+                remaining = max(0, int(timeout - elapsed))
+                if not prompt_displayed:
+                    # Display prompt once
+                    sys.stdout.write(prompt)
+                    sys.stdout.flush()
+                    prompt_displayed = True
+                # Clear the line and display timer and input string on the same line
+                sys.stdout.write('\r\033[K')  # Clear line
+                sys.stdout.write(f'{prompt} [{remaining}s] ' + input_str + ' ')
+                sys.stdout.flush()
+
+                rlist, _, _ = select.select([sys.stdin], [], [], max(0, timeout - elapsed))
+                if rlist:
+                    char = sys.stdin.read(1)
+                    if char == '\n':
+                        print()
+                        return input_str
+                    elif char == '\x7f':  # Backspace
+                        if len(input_str) > 0:
+                            input_str = input_str[:-1]
+                            sys.stdout.write('\b \b')
+                            sys.stdout.flush()
+                    else:
+                        input_str += char
+                else:
+                    # Timeout expired
+                    print()
+                    return default
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
+
 # Game utility functions
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
 
-def typewriter_effect(text, delay=0.02, end=None):
+def typewriter_effect(text, delay=0.02, end="\n"):
     """Affiche du texte avec un effet de machine à écrire sans retour à la ligne forcé."""
     for char in text:
         sys.stdout.write(char)
@@ -273,11 +424,77 @@ def progress_bar(current, total, length=40, fill='█', empty='░'):
     return f"{Colors.GREEN}{bar}{Colors.RESET} {Colors.YELLOW}{int(100 * percent)}%{Colors.RESET}"
 
 
+def loading(duration=4):
+    """
+    Improved loading animation displayed at the bottom right corner of the terminal.
+    Animates a spinner with dots for the given duration in seconds.
+    Adds a box around the loading text.
+    """
+    import sys
+    import time
+    from shutil import get_terminal_size
+
+    spinner = ['|', '/', '-', '\\']
+    start_time = time.time()
+
+    while True:
+        elapsed = time.time() - start_time
+        if elapsed > duration:
+            break
+
+        cols, rows = get_terminal_size()
+        loading_text = f"{Colors.YELLOW}Loading{Colors.RESET} "
+        spinner_char = spinner[int(elapsed * 10) % len(spinner)]
+        dots_count = int((elapsed * 2) % 4)
+        dots = '.' * dots_count + ' ' * (3 - dots_count)
+        text = f"{loading_text}{spinner_char} {dots}"
+
+        box_width = len(text)  # padding for box sides
+        box_top = '┌' + '─' * box_width + '┐'
+        box_bottom = '└' + '─' * box_width + '┘'
+        box_middle = '│  ' + text + ' ' * 6 + ' │'
+
+        # Calculate position: bottom row, right aligned
+        x = cols - box_width - 1
+        y = rows - 2  # box is 3 lines tall
+
+        # Move cursor to position and print box
+        sys.stdout.write(f"\033[s")  # Save cursor position
+
+        # Print top border
+        sys.stdout.write(f"\033[{y};{x}H{box_top}")
+        # Print middle with text
+        sys.stdout.write(f"\033[{y+1};{x}H{box_middle}")
+        # Print bottom border
+        sys.stdout.write(f"\033[{y+2};{x}H{box_bottom}")
+
+        sys.stdout.write(f"\033[u")  # Restore cursor position
+        sys.stdout.flush()
+
+        time.sleep(0.1)
+
+    # Clear the box after done
+    clear_str = ' ' * (box_width + 2)
+    sys.stdout.write(f"\033[s")
+    for i in range(3):
+        sys.stdout.write(f"\033[{y + i};{x}H{clear_str}")
+    sys.stdout.write(f"\033[u")
+    sys.stdout.flush()
+
+
 def choose_difficulty(player):
     """
     Allows the player to select a difficulty mode with suspense effect.
     """
+    logger.debug("Choosing difficulty mode...")
     from difficulty import NormalMode, SoulsEnjoyerMode, RealisticMode
+    try:
+        player.save_difficulty_data()
+    except AttributeError as AE:
+        print(f"{Colors.RED}Attribute Error:", AE, Colors.RESET)
+    except Exception as e:
+        print(f"{Colors.RED}ERROR:", e, Colors.RESET)
+
     clear_screen()
     print(f"\n{Colors.YELLOW}{Colors.BOLD}CHOOSE YOUR DIFFICULTY MODE{Colors.RESET}")
 
@@ -302,25 +519,45 @@ def choose_difficulty(player):
         choice = input("Please retry: ")
 
     if choice == "1":
-        player.difficulty = NormalMode()
+        player.mode = NormalMode()
     elif choice == "2" and player.unlocked_difficulties["soul_enjoyer"]:
-        player.difficulty = SoulsEnjoyerMode()
+        player.mode = SoulsEnjoyerMode()
     elif choice == "3" and player.unlocked_difficulties["realistic"]:
-        player.difficulty = RealisticMode()
+        player.mode = RealisticMode()
     else:
         print(f"{Colors.RED}Mode locked or invalid choice! Defaulting to Normal.{Colors.RESET}")
-        player.difficulty = NormalMode()
+        player.mode = NormalMode()
         print(Colors.BLUE, 'Press enter to continue...', Colors.RESET, end="")
         input()
 
-    logger.debug(f"Difficulty chosed: {player.difficulty}")    
-    return player.difficulty
+    logger.debug(f"Difficulty chosed: {player.mode}")  
 
+    loading()
+
+    return player.mode
+
+
+def display_game_over():
+    title = """
+
+  ▄████  ▄▄▄       ███▄ ▄███▓▓█████     ▒█████   ██▒   █▓▓█████  ██▀███   ▐██▌ 
+ ██▒ ▀█▒▒████▄    ▓██▒▀█▀ ██▒▓█   ▀    ▒██▒  ██▒▓██░   █▒▓█   ▀ ▓██ ▒ ██▒ ▐██▌ 
+▒██░▄▄▄░▒██  ▀█▄  ▓██    ▓██░▒███      ▒██░  ██▒ ▓██  █▒░▒███   ▓██ ░▄█ ▒ ▐██▌ 
+░▓█  ██▓░██▄▄▄▄██ ▒██    ▒██ ▒▓█  ▄    ▒██   ██░  ▒██ █░░▒▓█  ▄ ▒██▀▀█▄   ▓██▒ 
+░▒▓███▀▒ ▓█   ▓██▒▒██▒   ░██▒░▒████▒   ░ ████▓▒░   ▒▀█░  ░▒████▒░██▓ ▒██▒ ▒▄▄  
+ ░▒   ▒  ▒▒   ▓▒█░░ ▒░   ░  ░░░ ▒░ ░   ░ ▒░▒░▒░    ░ ▐░  ░░ ▒░ ░░ ▒▓ ░▒▓░ ░▀▀▒ 
+  ░   ░   ▒   ▒▒ ░░  ░      ░ ░ ░  ░     ░ ▒ ▒░    ░ ░░   ░ ░  ░  ░▒ ░ ▒░ ░  ░ 
+░ ░   ░   ░   ▒   ░      ░      ░      ░ ░ ░ ▒       ░░     ░     ░░   ░     ░ 
+      ░       ░  ░       ░      ░  ░       ░ ░        ░     ░  ░   ░      ░    
+                                                     ░                         
+        """
+    print(Colors.gradient_text(Colors.BOLD + title, (200, 0, 0), (255, 0, 50)), end="\n\n")
 
 def game_over(describtion=None):
+    clear_screen()
     if describtion:
         print(Colors.RED, describtion, Colors.RESET)
-    print(f"\n{Colors.RED}{Colors.BOLD}GAME OVER!{Colors.RESET}")
+    display_game_over()
     logger.info(f"Game Over - {describtion}")
     input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
 
@@ -334,6 +571,7 @@ def handle_error():
 
 def collect_feedback(player=None, ask=True):
     """Collect player feedback about game experience"""
+    logger.debug("Collecting feedback")
     if ask == False:
         return
     if input(f'{Colors.YELLOW}Do you want to send a quick feedback ? It would really help (y/n) : {Colors.RESET}') != "y":
@@ -464,9 +702,11 @@ def interactive_bar(min_value=0, max_value=100, default_value=50, allow_beyond=F
 
 if __name__ == '__main__':
     clear_screen()
-    print(f"\n{Colors.YELLOW}{Colors.BOLD}╔══════════════════════════════════════════╗")
-    print(f"║         GAME UTILITY TESTING             ║")
-    print(f"╚══════════════════════════════════════════╝{Colors.RESET}")
+    title = "GAME UTILITY TESTING"
+    half_space = ' ' * (cols // 2 - len(title) // 2 - 1)
+    print(f"\n{Colors.YELLOW}{Colors.BOLD}╔{'═' * (cols - 2)}╗")
+    print(f"║{half_space}{title}{half_space}║")
+    print(f"╚{'═' * (cols - 2)}╝{Colors.RESET}")
     while True:
         while (choice:=input(f"\n{Colors.CYAN}1. Glitch Text\n2. Ancient Text\n3. Random Glitch Text\n4. Burst Glitch\n5. Try Everything{Colors.RESET}\n\nYour choice: ")) not in ('1', '2', '3', '4', '5'):
             print('Invalid choice, please retry.')
@@ -497,6 +737,15 @@ if __name__ == '__main__':
         ('ancient_text', ancient_text, ['This is a test 123 ABC ù^*/']),
         ('timed_input_pattern', timed_input_pattern, [1.0, 'bool', 0, 10]),
         ('interactive_bar', interactive_bar, [0, 100, 50, True, 1, Colors.GREEN, 40]),
+        ('timed_input', timed_input, ['Enter something: ', 5, 'default']),
+        ('collect_feedback', collect_feedback, [None, False]),
+        ('random_glitch_text', random_glitch_text, ['This is a test 123 ABC ù^*/']),
+        ('glitch_burst', glitch_burst, ['This is a test 123 ABC ù^*/']),
+        ('choose_difficulty', choose_difficulty, [None]),
+        ('handle_error', handle_error, []),
+        ('logger.debug', logger.debug, ['Debug message']),
+        ('logger.info', logger.info, ['Info message']),
+        ('logger.warning', logger.warning, ['Warning message']),
     ]
 
     for name, func, args in test_functions:
