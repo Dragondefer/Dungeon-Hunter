@@ -1,4 +1,4 @@
-__version__ = "224.0"
+__version__ = "290.0"
 __creation__ = "16-03-2025"
 
 import random
@@ -16,7 +16,7 @@ room_descriptions = {
     "treasure": [
         "a foreboding cave with ancient carvings on the walls.",
         "a narrow corridor with a faint glow emanating from the end.",
-        "a small vault with a ornate chest in the center",
+        "a small vault with an ornate chest in the center",
         "a hidden alcove with gleaming objects",
         "an abandoned storeroom with scattered valuables",
         "a noble's personal treasury, long forgotten",
@@ -83,6 +83,19 @@ puzzle_choices = [
 ]
 
 # Player
+
+# Random names for player
+def get_random_names():
+    player_name_list = [
+        "Adventurer",
+        "Grim",
+        "Dragondefer",
+    ]
+    # Add weights
+    player_name_weights = [0.9, 0.05, 0.05]
+    player_name = random.choices(player_name_list, weights=player_name_weights, k=1)[0]
+    return player_name
+
 
 # Player's quests
 def get_quests_dict():
@@ -170,6 +183,8 @@ achievements = [
     Achievement("collector", "Collector", "Get 10 items.", lambda p: p.items_collected >= 10),
     Achievement("hoarder", "Trunk rat", "Get 1000 gold.", lambda p: p.gold >= 1000),
     Achievement("still_alive", "I'm still standing !", "Having 1% HP", lambda p: round((p.stats.hp/p.stats.max_hp), 2) <= 0.01),
+    Achievement("treasure_hunter", "Treasure Hunter", "Find 10 treasures.", lambda p: p.treasures_found >= 10),
+    Achievement("puzzle_solver", "Puzzle Solver", "Solve 5 puzzles.", lambda p: p.puzzles_solved >= 5),
     Achievement("explorer", "Explorer", "Explore 100 rooms.", lambda p: p.total_rooms_explored >= 100),
     Achievement("10_steps", "Ten Steps Forward... or is it?", "Reach level 10", lambda p: p.dungeon_level == 10)
 ]
@@ -186,6 +201,7 @@ def healing_waters(player):
     player.stats.permanent_stats["hp"] = player.stats.max_hp
     print("Les eaux guérissantes restaurent tous vos PV.")
 
+
 EVENTS = [
     Event("Blood Moon", "Une lune rouge illumine la salle...", blood_moon_effect),
     Event("Healing Fountain", "Une fontaine magique vous soigne entièrement.", healing_waters),
@@ -198,7 +214,7 @@ enemy_types = [
     {"name": "Goblin",       "type": "Goblin",     "hp_mod": 0.8, "atk_mod": 0.9, "def_mod": 0.7, "min_level": 1},
     {"name": "Skeleton",     "type": "Skeleton",   "hp_mod": 0.7, "atk_mod": 1.0, "def_mod": 0.5, "min_level": 1},
     {"name": "Wolf",         "type": "Wolf",       "hp_mod": 0.6, "atk_mod": 1.2, "def_mod": 0.6, "min_level": 1},
-    {"name": "Orc",          "type": "Orc",        "hp_mod": 1.2, "atk_mod": 1.1, "def_mod": 0.9, "min_level": 2},
+    {"name": "Orc",          "type": "Orc",        "hp_mod": 1.0, "atk_mod": 1.4, "def_mod": 0.9, "min_level": 2},
     {"name": "Troll",        "type": "Troll",      "hp_mod": 1.5, "atk_mod": 1.3, "def_mod": 0.8, "min_level": 3},
     {"name": "Ghost",        "type": "Ghost",      "hp_mod": 0.9, "atk_mod": 1.0, "def_mod": 1.2, "min_level": 4},
     {"name": "Dark Elf",     "type": "Dark Elf",   "hp_mod": 1.0, "atk_mod": 1.4, "def_mod": 1.0, "min_level": 5},
@@ -206,7 +222,7 @@ enemy_types = [
     {"name": "Golem",        "type": "Golem",      "hp_mod": 1.8, "atk_mod": 1.0, "def_mod": 1.5, "min_level": 6},
     {"name": "Demon",        "type": "Demon",      "hp_mod": 2.0, "atk_mod": 1.8, "def_mod": 1.8, "min_level": 7},
     {"name": "Dragon Whelp", "type": "Dragon",     "hp_mod": 1.4, "atk_mod": 1.7, "def_mod": 1.2, "min_level": 8},
-    {"name": "Dark Shape",   "type": "Dark Shape", "hp_mod": 1.0, "atk_mod": 2.0, "def_mod": 1.0, "min_level": 9},
+    {"name": "Dark Shape",   "type": "Dark Shape", "hp_mod": 0.6, "atk_mod": 1.8, "def_mod": 2.0, "min_level": 9},
 ]
 
 boss_types = [
@@ -245,55 +261,55 @@ armor_sets = {
         "bonus_thresholds": {2: "quick_strikes", 4: "goblin_tenacity"},
         "effects": {
             "quick_strikes": {"agility": 5, "attack": 3},  # +5 agilité, +3 attaque
-            "goblin_tenacity": {"agility": 10, "stamina": 15},  # +10% agilité, +15 stamina
+            "goblin_tenacity": {"agility": 10, "max_stamina": 15},  # +10 agilité, +15 stamina
         }
     },
     "Cursed Bone": {
         "bonus_thresholds": {2: "undead_resilience", 4: "bone_armor"},
         "effects": {
-            "undead_resilience": {"defense": 5, "hp": 10},  # +5 défense, +10 HP max
-            "bone_armor": {"defense": 5, "attack": 5},  # +10% résistance, +5 attaque
+            "undead_resilience": {"defense": 5, "max_hp": 10},  # +5 défense, +10 HP max
+            "bone_armor": {"defense": 5, "attack": 5},  # +10 résistance, +5 attaque
         }
     },
     "Hunter": {
         "bonus_thresholds": {2: "wolf_agility", 4: "predator_instinct"},
         "effects": {
-            "wolf_agility": {"agility": 8, "attack": 5},  # +8 agilité, +5% esquive
-            "predator_instinct": {"critical_chance": 10, "attack": 5},  # +10% chance critique, +5 attaque
+            "wolf_agility": {"agility": 8, "attack": 5},  # +8 agilité, +5 esquive
+            "predator_instinct": {"critical_chance": 10, "attack": 5},  # +10 chance critique, +5 attaque
         }
     },
     "Warrior": {
         "bonus_thresholds": {2: "orc_strength", 4: "berserker_fury"},
         "effects": {
             "orc_strength": {"attack": 7, "defense": 5},  # +7 attaque, +5 défense
-            "berserker_fury": {"attack": 10, "stamina": 20},  # +10 attaque, +20 stamina
+            "berserker_fury": {"attack": 10, "max_stamina": 20},  # +10 attaque, +20 stamina
         }
     },
     "Trollhide": {
         "bonus_thresholds": {2: "regenerative_skin", 4: "troll_resilience"},
         "effects": {
             "regenerative_skin": {"hp_regen": 3, "defense": 5},  # +3 HP régén par tour, +5 défense
-            "troll_resilience": {"hp": 30, "defense": 10},  # +30 HP max, +10% résistance
+            "troll_resilience": {"max_hp": 30, "defense": 10},  # +30 HP max, +10 résistance
         }
     },
     "Spectral": {
         "bonus_thresholds": {2: "ghostly_presence", 4: "ethereal_form"},
         "effects": {
-            "ghostly_presence": {"agility": 10, "mana": 10},  # +10% d'agilité, +10 mana
-            "ethereal_form": {"agility": 5, "magic_resist": 10},  # +15% d'agilité, +10% résistance magique
+            "ghostly_presence": {"agility": 10, "max_mana": 10},  # +10 d'agilité, +10 mana
+            "ethereal_form": {"agility": 5, "magic_resist": 10},  # +15 d'agilité, +10 résistance magique
         }
     },
     "Shadow": {
         "bonus_thresholds": {2: "shadow_step", 4: "invisibility"},
         "effects": {
-            "shadow_step": {"agility": 10, "attack": 5},  # +10% d'agilité, +10% d'attaque
-            "invisibility": {"agility": 15, "critical_chance": 5},  # +15% agilité, +5% critique
+            "shadow_step": {"agility": 10, "attack": 5},  # +10 d'agilité, +10 d'attaque
+            "invisibility": {"agility": 15, "critical_chance": 5},  # +15 agilité, +5 critique
         }
     },
     "Fallen King": {
         "bonus_thresholds": {2: "wraith_presence", 4: "king_of_the_dead"},
         "effects": {
-            "wraith_presence": {"mana": 10, "magic_resist": 10},  # +10 mana, +10% résistance magique
+            "wraith_presence": {"max_mana": 10, "magic_resist": 10},  # +10 mana, +10 résistance magique
             "king_of_the_dead": {"attack": 10, "defense": 10},  # +10 attaque, +10 défense
         }
     },
@@ -301,28 +317,122 @@ armor_sets = {
         "bonus_thresholds": {2: "earthly_endurance", 4: "titanic_resistance"},
         "effects": {
             "earthly_endurance": {"defense": 10, "hp": 20},  # +10 défense, +20 HP max
-            "titanic_resistance": {"defense": 20, "stamina_cost": -5},  # +20% résistance physique, -5% coût stamina
+            "titanic_resistance": {"defense": 20, "stamina_cost": -5},  # +20 résistance physique, -5 coût stamina
         }
     },
     "Infernal": {
         "bonus_thresholds": {2: "hellfire_aura", 4: "infernal_rage"},
         "effects": {
-            "hellfire_aura": {"fire_damage": 20, "fire_resist": 10},  # +20% dégâts de feu, +10% résistance feu
+            "hellfire_aura": {"fire_damage": 20, "fire_resist": 10},  # +20 dégâts de feu, +10 résistance feu
             "infernal_rage": {"attack": 15, "defense": -5},  # +15 attaque, -5 défense
         }
     },
     "Draconic": {
         "bonus_thresholds": {2: "fire_resistance", 4: "full_draconic_power"},
         "effects": {
-            "fire_resistance": {"fire_resist": 15},  # +15% résistance au feu
-            "full_draconic_power": {"defense": 15, "attack": 10, "hp": 25},  # +15 défense, +10 attaque, +25 HP
+            "fire_resistance": {"fire_resist": 15},  # +15 résistance au feu
+            "full_draconic_power": {"defense": 15, "attack": 10, "max_hp": 25},  # +15 défense, +10 attaque, +25 HP
         }
     },
     "Voidwalker": {
         "bonus_thresholds": {2: "dark_energy", 4: "void_mastery"},
         "effects": {
-            "dark_energy": {"mana": 15, "magic_damage": 10},  # +15 mana, +10% dégâts magiques
-            "void_mastery": {"agility": 10, "critical_chance": 10},  # +10% furtivité, +10% critique
+            "dark_energy": {"mana": 15, "magic_damage": 10},  # +15 mana, +10 dégâts magiques
+            "void_mastery": {"agility": 10, "critical_chance": 10},  # +10 furtivité, +10 critique
         }
     }
 }
+
+# New spells dictionary added here
+spells = [
+    {
+        "name": "Fireball",
+        "description": "A ball of fire that burns enemies.",
+        "mana_cost": 10,
+        "effects": {"burn_damage": 10}
+    },
+    {
+        "name": "Greater Fireball",
+        "description": "A larger ball of fire that burns enemies more intensely.",
+        "mana_cost": 20,
+        "effects": {"burn_damage": 20}
+    },
+    {
+        "name": "Ice Shard",
+        "description": "Sharp shards of ice that pierce enemies.",
+        "mana_cost": 8,
+        "effects": {"freeze": 8}
+    },
+    {
+        "name": "Greater Ice Shard",
+        "description": "Larger shards of ice that pierce enemies deeply.",
+        "mana_cost": 16,
+        "effects": {"freeze": 16}
+    },
+    {
+        "name": "Healing Light",
+        "description": "A warm light that heals allies.",
+        "mana_cost": 12,
+        "effects": {"heal": 12}
+    },
+    {
+        "name": "Greater Healing Light",
+        "description": "A powerful light that heals allies significantly.",
+        "mana_cost": 24,
+        "effects": {"heal": 24}
+    },
+    {
+        "name": "Lightning Bolt",
+        "description": "A bolt of lightning that shocks enemies.",
+        "mana_cost": 15,
+        "effects": {"shock": 15}
+    },
+    {
+        "name": "Greater Lightning Bolt",
+        "description": "A stronger bolt of lightning that shocks enemies severely.",
+        "mana_cost": 30,
+        "effects": {"shock": 30}
+    },
+    {
+        "name": "Arcane Shield",
+        "description": "A magical shield that absorbs damage.",
+        "mana_cost": 20,
+        "effects": {"shield": 20}
+    },
+    {
+        "name": "Greater Arcane Shield",
+        "description": "A powerful magical shield that absorbs more damage.",
+        "mana_cost": 40,
+        "effects": {"shield": 40}
+    },
+    {
+        "name": "Earthquake",
+        "description": "A powerful tremor that damages all enemies.",
+        "mana_cost": 25,
+        "effects": {"area_damage": 25}
+    },
+    {
+        "name": "Wind Gust",
+        "description": "A gust of wind that pushes enemies back.",
+        "mana_cost": 7,
+        "effects": {"knockback": 7}
+    },
+    {
+        "name": "Shadow Bind",
+        "description": "Binds the target in shadows, immobilizing them.",
+        "mana_cost": 18,
+        "effects": {"immobilize": 18}
+    },
+    {
+        "name": "Holy Smite",
+        "description": "A holy attack that damages undead enemies.",
+        "mana_cost": 22,
+        "effects": {"holy_damage": 22}
+    },
+    {
+        "name": "Mana Drain",
+        "description": "Drains mana from the target and restores caster's mana.",
+        "mana_cost": 14,
+        "effects": {"mana_drain": 14}
+    }
+]
