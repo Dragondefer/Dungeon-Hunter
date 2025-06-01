@@ -1,5 +1,5 @@
 # Changelog
-__version__ = "923.0" abc
+__version__ = "923.0" abcd
 __creation__ = "23-04-2025"
 
 All notable changes to this project will be documented in this file.
