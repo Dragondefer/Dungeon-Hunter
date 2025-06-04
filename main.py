@@ -1,23 +1,33 @@
-__version__ = "650.0"
+from sys import path as sys_path
+from os.path import abspath, dirname
+
+# Add the project root directory to sys.path to fix module import issues on Android/Termux
+project_root = abspath(dirname(__file__))
+if project_root not in sys_path:
+    sys_path.insert(0, project_root)
+
+__version__ = "678.0"
 __creation__ = "09-03-2025"
 
 import random
 import time
 import os
 
-from colors import Colors
-from game_utility import clear_screen, game_over, choose_difficulty, handle_error, collect_feedback, interactive_bar, move_cursor, maximize_terminal
-from dungeon import Room, Dungeon, generate_dungeon 
-from entity import Player, continue_game
-from data import get_quests_dict, get_random_names
-from story import display_title
-from logger import logger
+from interface.colors import Colors
+from engine.game_utility import (clear_screen, game_over, choose_difficulty,
+                                 handle_error, collect_feedback, interactive_bar,
+                                 move_cursor, maximize_terminal)
+from engine.dungeon import Room, Dungeon, generate_dungeon 
+from core.entity import Player, continue_game
+from data.data import get_quests_dict, get_random_names
+from core.story import display_title
+from engine.logger import logger
 
 # Note: You need to be at least beta tester to get the dev tools (as it can easley break everything and also spoil), look at the game's discord: https://discord.gg/3V7xGCvxEP
 try:
     dev_mode = False
-    if os.path.exists("dev_mod.py"):
-        from dev_mod import debug_menu
+    if os.path.exists("./engine/dev_mod.py"):
+        from engine.dev_mod import debug_menu
         dev_mode = True
 except Exception as e:
     logger.warning(f"Error when trying to import dev_mod.py: {e}")
@@ -49,7 +59,6 @@ def main(continue_game=False, loaded_player=None):
         input(f'{Colors.RED} hein? continue_game != False & continue_game and loaded_player IS None')
 
     
-
     
     # Main game loop
     game_running = True
@@ -70,11 +79,10 @@ def main(continue_game=False, loaded_player=None):
         print(f"{Colors.CYAN}1. Explore a new room{Colors.RESET}")
         print(f"{Colors.GREEN}2. Check inventory{Colors.RESET}")
         print(f"{Colors.RED}3. Rest{Colors.RESET}")
-        print(f"{Colors.MAGENTA}4. View quests{Colors.RESET}")
-        print(f"{Colors.BLUE}5. Display stats{Colors.RESET}")
-        print(f"{Colors.BRIGHT_GREEN}6. Display success{Colors.RESET}")
-        print(f"{Colors.BRIGHT_YELLOW}7. Save game{Colors.RESET}")
-        print(f"{Colors.BRIGHT_RED}8. Quit game{Colors.RESET}\n")
+        print(f"{Colors.MAGENTA}4. Information submenu{Colors.RESET}")
+        print(f"{Colors.BRIGHT_YELLOW}5. Save game{Colors.RESET}")
+        print(f"{Colors.BRIGHT_RED}6. Quit game{Colors.RESET}")
+
 
         
         choice = input(f"{Colors.CYAN}Your choice: {Colors.RESET}")
@@ -140,6 +148,7 @@ def main(continue_game=False, loaded_player=None):
 
                 player.current_room_number = 0
                 
+                time.sleep(0.5)
                 input(f"\n{Colors.YELLOW}Press Enter to continue to dungeon level {player.dungeon_level}...{Colors.RESET}")
             else:
                 if debug >= 1:
@@ -175,6 +184,7 @@ def main(continue_game=False, loaded_player=None):
                     end = True
                     continue
                 
+                time.sleep(0.5)
                 input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
         
         elif choice == "2":  # Check inventory
@@ -207,23 +217,42 @@ def main(continue_game=False, loaded_player=None):
             input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
         
 
-        elif choice == "4":  # View quests
-            player.view_quests()
-        
-        elif choice == "5":  # Display stats summary
-            player.display_stats_summary()
-        
-        elif choice == "6": # Display Achievement
-            player.display_achievements()
+        elif choice == "4":  # Information submenu
+            while True:
+                clear_screen()
+                print(f"\n{Colors.YELLOW}{Colors.UNDERLINE}Information Submenu{Colors.RESET}")
+                print(f"{Colors.CYAN}1. View Player Stats{Colors.RESET}")
+                print(f"{Colors.MAGENTA}2. View Logbook{Colors.RESET}")
+                print(f"{Colors.GREEN}3. View Quests{Colors.RESET}")
+                print(f"{Colors.BRIGHT_YELLOW}4. View Achievements{Colors.RESET}")
+                print(f"{Colors.RED}5. Back to Main Menu{Colors.RESET}")
 
-        elif choice == "7":  # Save game
+                choice = input(f"\n{Colors.CYAN}Your choice: {Colors.RESET}")
+
+                if choice == "1":  # View Player Stats
+                    player.display_stats_summary()
+
+                elif choice == "2":  # View Logbook
+                    player.display_logbook()
+                
+                elif choice == "3":  # View Quests
+                    player.view_quests()
+
+                elif choice == "4":  # View Achievements
+                    player.display_achievements()
+
+                elif choice == "5":  # Back to Main Menu
+                    break
+
+        elif choice == "5":  # Save game
             # Save does not work for now
             # Ask the save name:
             save_name = input(f"\n{Colors.YELLOW}Enter a save name: {Colors.RESET}")
             player.save_player(save_name)
+            time.sleep(0.5)
             input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
         
-        elif choice == "8":  # Quit game
+        elif choice == "6":  # Quit game
             confirm = input(f"{Colors.RED}Are you sure you want to quit? (y/n): {Colors.RESET}").lower()
             if confirm == "y":
                 try:

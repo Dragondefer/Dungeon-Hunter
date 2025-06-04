@@ -1,4 +1,4 @@
-__version__ = "290.0"
+__version__ = "320.0"
 __creation__ = "16-03-2025"
 
 import random
@@ -85,11 +85,12 @@ puzzle_choices = [
 # Player
 
 # Random names for player
+from interface.colors import Colors
 def get_random_names():
     player_name_list = [
         "Adventurer",
-        "Grim",
-        "Dragondefer",
+        f"{Colors.BRIGHT_BLACK}Grim{Colors.RESET}",
+        f"{Colors.BRIGHT_BLACK}Dragondefer{Colors.RESET}",
     ]
     # Add weights
     player_name_weights = [0.9, 0.05, 0.05]
@@ -99,7 +100,7 @@ def get_random_names():
 
 # Player's quests
 def get_quests_dict():
-    from progression import Quest
+    from core.progression import Quest
     quests_dict = {
         "Dungeon Master": Quest(
             title="Dungeon Master",
@@ -177,7 +178,7 @@ def get_quests_dict():
     return quests_dict
 
 # Achievements
-from progression import Achievement
+from core.progression import Achievement
 achievements = [
     Achievement("first_blood", "First Blood", "Kill an enemy.", lambda p: p.kills >= 1),
     Achievement("collector", "Collector", "Get 10 items.", lambda p: p.items_collected >= 10),
@@ -191,7 +192,7 @@ achievements = [
 
 
 # Events
-from progression import Event
+from core.progression import Event
 
 def blood_moon_effect(player):
     player.stats.permanent_stats["attack"] += 5
@@ -216,7 +217,7 @@ enemy_types = [
     {"name": "Wolf",         "type": "Wolf",       "hp_mod": 0.6, "atk_mod": 1.2, "def_mod": 0.6, "min_level": 1},
     {"name": "Orc",          "type": "Orc",        "hp_mod": 1.0, "atk_mod": 1.4, "def_mod": 0.9, "min_level": 2},
     {"name": "Troll",        "type": "Troll",      "hp_mod": 1.5, "atk_mod": 1.3, "def_mod": 0.8, "min_level": 3},
-    {"name": "Ghost",        "type": "Ghost",      "hp_mod": 0.9, "atk_mod": 1.0, "def_mod": 1.2, "min_level": 4},
+    {"name": "Ghost",        "type": "Ghost",      "hp_mod": 0.9, "atk_mod": 1.5, "def_mod": 1.2, "min_level": 4},
     {"name": "Dark Elf",     "type": "Dark Elf",   "hp_mod": 1.0, "atk_mod": 1.4, "def_mod": 1.0, "min_level": 5},
     {"name": "Wraith",       "type": "Wraith",     "hp_mod": 1.1, "atk_mod": 1.5, "def_mod": 1.1, "min_level": 5},
     {"name": "Golem",        "type": "Golem",      "hp_mod": 1.8, "atk_mod": 1.0, "def_mod": 1.5, "min_level": 6},
@@ -228,7 +229,7 @@ enemy_types = [
 boss_types = [
     {"name": "Goblin King",     "type": "Goblin",     "hp_mod": 1.0, "atk_mod": 1.0, "def_mod": 1.0, "agl_mod": 1.0, "min_level": 1},
     {"name": "Skeleton Lord",   "type": "Skeleton",   "hp_mod": 0.8, "atk_mod": 1.5, "def_mod": 1.2, "agl_mod": 1.0, "min_level": 2},
-    {"name": "Alpha Dire Wolf", "type": "Wolf",       "hp_mod": 1.0, "atk_mod": 2.0, "def_mod": 1.4, "agl_mod": 2.0, "min_level": 3},
+    {"name": "Alpha Dire Wolf", "type": "Wolf",       "hp_mod": 0.6, "atk_mod": 2.0, "def_mod": 1.4, "agl_mod": 2.0, "min_level": 3},
     {"name": "Orc Warlord",     "type": "Orc",        "hp_mod": 2.4, "atk_mod": 2.1, "def_mod": 1.7, "agl_mod": 0.5, "min_level": 4},
     {"name": "Ancient Troll",   "type": "Troll",      "hp_mod": 2.7, "atk_mod": 1.8, "def_mod": 1.6, "agl_mod": 0.5, "min_level": 5},
     {"name": "Spectre Lord",    "type": "Ghost",      "hp_mod": 2.2, "atk_mod": 2.0, "def_mod": 2.2, "agl_mod": 3.0, "min_level": 6},
@@ -237,7 +238,7 @@ boss_types = [
     {"name": "Ancient Golem",   "type": "Golem",      "hp_mod": 3.0, "atk_mod": 2.0, "def_mod": 2.5, "agl_mod": 0.0, "min_level": 9},
     {"name": "Elder Dragon",    "type": "Dragon",     "hp_mod": 3.5, "atk_mod": 2.7, "def_mod": 2.2, "agl_mod": 1.0, "min_level": 10},
     {"name": "Dark Lord",       "type": "Dark Shape", "hp_mod": 3.5, "atk_mod": 3.5, "def_mod": 2.0, "agl_mod": 1.5, "min_level": 11},
-    {"name": "Senessax",        "type": "Dragon",     "hp_mod": 5.0, "atk_mod": 5.0, "def_mod": 5.0, "agl_mod": 5.0, "min_level": 12},
+    {"name": "Iron Dragon",     "type": "Dragon",     "hp_mod": 5.0, "atk_mod": 5.0, "def_mod": 5.0, "agl_mod": 5.0, "min_level": 12},
 ]
 
 # Sets
@@ -436,3 +437,56 @@ spells = [
         "effects": {"mana_drain": 14}
     }
 ]
+
+
+# Special attacks
+
+def flaming_strike(user, target):
+    dmg = 30 + user.stats.attack
+    target.stats.take_damage(dmg)
+    target.try_apply_status("burn", turns=3)
+
+def frost_slam(user, target):
+    dmg = 25
+    target.stats.take_damage(dmg)
+    target.try_apply_status("freeze", turns=1)
+
+def lightning_strike(user, target):
+    dmg = 35 + user.stats.attack
+    target.stats.take_damage(dmg)
+    target.try_apply_status("shock", turns=2)
+
+def arcane_explosion(user, target):
+    dmg = 40 + user.stats.attack
+    target.stats.take_damage(dmg)
+    user.try_apply_status("mana_boost", turns=2)
+
+def earth_shatter(user, target):
+    dmg = 50 + user.stats.attack
+    target.stats.take_damage(dmg)
+    target.try_apply_status("stunned", turns=1)
+
+special_attacks_dict = {
+    "flaming_strike": flaming_strike,
+    "frost_slam": frost_slam,
+    "lightning_strike": lightning_strike,
+    "arcane_explosion": arcane_explosion,
+    "earth_shatter": earth_shatter
+}
+
+# Map weapon set names to their special attacks (list of tuples: attack name, attack function)
+weapon_special_attacks = {
+    "Goblin Dagger": [("Flaming Strike", flaming_strike)],
+    "Undead Blade": [("Frost Slam", frost_slam)],
+    "Wolf Claws": [("Lightning Strike", lightning_strike)],
+    "Orcish Battle Axe": [("Earth Shatter", earth_shatter)],
+    "Bone Crusher": [("Earth Shatter", earth_shatter)],
+    "Phantom Scythe": [("Arcane Explosion", arcane_explosion)],
+    "Twin Shadow Blades": [("Shadow Bind", None)],  # Shadow Bind not in special_attacks_dict
+    "Wraithblade": [("Frost Slam", frost_slam), ("Earth Shatter", earth_shatter)],
+    "Earthshatter Maul": [("Earth Shatter", earth_shatter)],
+    "Hellfire Sword": [("Flaming Strike", flaming_strike)],
+    "Dragon Slayer": [("Flaming Strike", flaming_strike), ("Lightning Strike", lightning_strike)],
+    "Void Staff": [("Arcane Explosion", arcane_explosion)],
+}
+

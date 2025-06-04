@@ -1,4 +1,4 @@
-__version__ = "465.0"
+__version__ = "468.0"
 __creation__ = "09-03-2025"
 
 import os
@@ -8,8 +8,11 @@ import random
 import datetime
 import traceback
 
-from colors import Colors
-from logger import logger
+# Define the root file of the game so it can import from other moduls such as the folder interface to get Colors
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from interface.colors import Colors
+from engine.logger import logger
 
 # For Windows non-blocking key detection
 if os.name == 'nt':
@@ -62,7 +65,7 @@ def strip_ansi(text):
     import re
     return re.sub(r'\x1b\[[0-9;]*m', '', text)
 
-def execute_command(cmd, allowed=False, prnt=True, context=None):
+def execute_command(cmd, allowed=False, prnt=True, rtn=False, context=None):
     if context is None:
         context = {}
     try:
@@ -72,9 +75,13 @@ def execute_command(cmd, allowed=False, prnt=True, context=None):
             print('>', cmd)
             time.sleep(0.1)
             print(result)
-        return f"{Colors.GREEN}Command executed{Colors.RESET}"
+        if rtn is True:
+            return result
+        else:
+            return True
     except Exception as e:
-        return f"{Colors.RED}Error: {e}{Colors.RESET}"
+        print(f"{Colors.RED}Error occured: {e}{Colors.RESET}")
+        return e
 
 
 def timed_input_pattern(difficulty=1.0, return_type='bool', peak_int_min=0, peak_int_max=10):
@@ -487,7 +494,7 @@ def choose_difficulty(player):
     Allows the player to select a difficulty mode with suspense effect.
     """
     logger.debug("Choosing difficulty mode...")
-    from difficulty import NormalMode, SoulsEnjoyerMode, RealisticMode
+    from engine.difficulty import NormalMode, SoulsEnjoyerMode, RealisticMode
     try:
         player.save_difficulty_data()
     except AttributeError as AE:

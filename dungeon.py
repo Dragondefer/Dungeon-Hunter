@@ -1,10 +1,10 @@
-__version__ = "1653.0"
+__version__ = "1671.0"
 __creation__ = "09-03-2025"
 
 import time
 import random
 
-from game_utility import (clear_screen, typewriter_effect,
+from engine.game_utility import (clear_screen, typewriter_effect,
                           dice_animation, handle_error,
                           timed_input_pattern,
                           timed_input,
@@ -12,11 +12,11 @@ from game_utility import (clear_screen, typewriter_effect,
                           loading,
                           execute_command,
                           )
-from colors import Colors
-from entity import Player, Enemy, generate_enemy, load_player
-from items import Armor, Weapon, Potion, generate_random_item
-from data import room_descriptions, puzzle_choices, rest_events
-from logger import logger
+from interface.colors import Colors
+from core.entity import Player, Enemy, generate_enemy, load_player
+from items.items import Armor, Weapon, Potion, generate_random_item
+from data.data import room_descriptions, puzzle_choices, rest_events
+from engine.logger import logger
 
 debug = 0
 
@@ -223,9 +223,9 @@ class Room:
         print(f"\n{Colors.CYAN}You encounter a puzzle.{Colors.RESET}")
 
         if tutorial is True:
-            typewriter_effect(f"\n[Assistant] {Colors.GREEN}This is a puzzle room, you need to solve it to proceed.{Colors.RESET}", 0.03)
+            typewriter_effect(f"\n[Assistant]: {Colors.GREEN}This is a puzzle room, you need to solve it to proceed.{Colors.RESET}", 0.03)
             time.sleep(1)
-            typewriter_effect(f"[Assistant] {Colors.GREEN}But be carful, {Colors.RESET}", 0.05, "")
+            typewriter_effect(f"[Assistant]: {Colors.GREEN}But be carful, {Colors.RESET}", 0.05, "")
             time.sleep(0.5)
             typewriter_effect(f"{Colors.GREEN}these ancient mechanisms can reveal traps.. or even forgotten knowledge.{Colors.RESET}", 0.05)
         
@@ -599,14 +599,14 @@ class Room:
         
         if tutorial is True:
             if is_boss_room is False:
-                typewriter_effect(f"\n[ASSISTANT] {Colors.GREEN}In this tutorial, you will learn the basics of combat{Colors.RESET}", 0.03)
+                typewriter_effect(f"\n[Assistant]: {Colors.GREEN}In this tutorial, you will learn the basics of combat{Colors.RESET}", 0.03)
                 time.sleep(0.5)
-                typewriter_effect(f"[ASSISTANT] {Colors.GREEN}During combat, you have to manage your Health, Stamuina and Mana.{Colors.RESET}", 0.04)
+                typewriter_effect(f"[Assistant]: {Colors.GREEN}During combat, you have to manage your Health, Stamuina and Mana.{Colors.RESET}", 0.04)
                 time.sleep(0.5)
             else:
-                typewriter_effect(f"\n[ASSISTANT] {Colors.GREEN}This is your first combat against a boss.{Colors.RESET}", 0.05)
+                typewriter_effect(f"\n[Assistant]: {Colors.GREEN}This is your first combat against a boss.{Colors.RESET}", 0.05)
                 time.sleep(0.5)
-                typewriter_effect(f"\n[ASSISTANT] {Colors.GREEN}Don't worry, i will help you if needed.{Colors.RESET}", 0.05)
+                typewriter_effect(f"\n[Assistant]: {Colors.GREEN}Don't worry, i will help you if needed.{Colors.RESET}", 0.05)
                 time.sleep(0.5)
 
         enemy = self.enemies[0]
@@ -633,14 +633,14 @@ class Room:
 
             if tutorial is True and one_time_message is True:
                 if is_boss_room is False:
-                    typewriter_effect(f"\n[Assistant] {Colors.GREEN}You can attack, use skills, or items during your turn.{Colors.RESET}", 0.03)
+                    typewriter_effect(f"\n[Assistant]: {Colors.GREEN}You can attack, use skills, or items during your turn.{Colors.RESET}", 0.03)
                     time.sleep(0.5)
-                    typewriter_effect(f"[Assistant] {Colors.GREEN}You can also try to run away from the fight.{Colors.RESET}", 0.03)
+                    typewriter_effect(f"[Assistant]: {Colors.GREEN}You can also try to run away from the fight.{Colors.RESET}", 0.03)
                 else:
-                    typewriter_effect(f"\n[Assistant] {Colors.GREEN}The boss is strong, be careful.{Colors.RESET}", 0.03)
+                    typewriter_effect(f"\n[Assistant]: {Colors.GREEN}The boss is strong, be careful.{Colors.RESET}", 0.03)
                     time.sleep(0.5)
                     """
-                    typewriter_effect(f"[Assistant] {Colors.GREEN}You arn't alone..{Colors.RESET}", 0.03, "")
+                    typewriter_effect(f"[Assistant]: {Colors.GREEN}You arn't alone..{Colors.RESET}", 0.03, "")
                     time.sleep(0.5)
                     typewriter_effect(f"{Colors.GREEN}for now.{Colors.RESET}", 0.03)
                     time.sleep(0.5)
@@ -660,23 +660,23 @@ class Room:
 
             if tutorial is True:
                 if player.stats.hp < player.stats.max_hp / 2:
-                    typewriter_effect(f"\n[Assistant] {Colors.RED}You are low on health, be carful.{Colors.RESET}", 0.03)
-                    typewriter_effect(f"[Assistant] {Colors.BLUE}Requesting permission..{Colors.RESET}", 0.05)
+                    typewriter_effect(f"\n[Assistant]: {Colors.RED}You are low on health, be carful.{Colors.RESET}", 0.03)
+                    typewriter_effect(f"[Assistant]: {Colors.BLUE}Requesting permission..{Colors.RESET}", 0.05)
                     loading(2)
-                    typewriter_effect(f"[Assistant] {Colors.GREEN}Permission allowed, executing command....{Colors.RESET}\n", 0.03)
+                    typewriter_effect(f"[Assistant]: {Colors.GREEN}Permission allowed, executing command...{Colors.RESET}\n", 0.03)
                     time.sleep(1)
                     execute_command("player.heal(999)", allowed=True, prnt=True, context={"player": player})
                     time.sleep(0.5)
-                    typewriter_effect(f"\n[Assistant] {Colors.GREEN}Player healed successfully..{Colors.RESET}", 0.03)
+                    typewriter_effect(f"\n[Assistant]: {Colors.GREEN}Player healed successfully..{Colors.RESET}", 0.03)
                 if player.stats.stamina < player.stats.max_stamina / 2:
-                    typewriter_effect(f"\n[Assistant] {Colors.RED}You seem exausted.{Colors.RESET}", 0.03)
-                    typewriter_effect(f"[Assistant] {Colors.BLUE}Requesting permission..{Colors.RESET}", 0.05)
+                    typewriter_effect(f"\n[Assistant]: {Colors.RED}You seem exausted.{Colors.RESET}", 0.03)
+                    typewriter_effect(f"[Assistant]: {Colors.BLUE}Requesting permission..{Colors.RESET}", 0.05)
                     loading(2)
-                    typewriter_effect(f"[Assistant] {Colors.GREEN}Permission allowed, executing command....{Colors.RESET}\n", 0.03)
+                    typewriter_effect(f"[Assistant]: {Colors.GREEN}Permission allowed, executing command...{Colors.RESET}\n", 0.03)
                     time.sleep(1)
                     execute_command("player.rest_stamina(999)", allowed=True, prnt=True, context={"player": player})
                     time.sleep(0.5)
-                    typewriter_effect(f"\n[Assistant] {Colors.GREEN}Player rested successfully...{Colors.RESET}", 0.03)
+                    typewriter_effect(f"\n[Assistant]: {Colors.GREEN}Player rested successfully...{Colors.RESET}", 0.03)
                     
 
             choice = input(f"\n{Colors.CYAN}What will you do? {Colors.RESET}")
@@ -705,11 +705,20 @@ class Room:
                     print(f"{Colors.RED}You're exhausted! Your attack is weaker...{Colors.RESET}")
                     base_damage /= 2
 
-                damage, absorbed_damage = enemy.stats.take_damage(base_damage)
-                actual_damage = damage + absorbed_damage
-                player.damage_dealt += actual_damage
-                logger.info(f"Player attack: {'critical hit' if critical else ''} {actual_damage} dmg, {stamina_cost} stm")
-                print(f"You deal {Colors.RED}{math.ceil(actual_damage)}{Colors.RESET} damage to {enemy.name}!")
+                # Use special attacks if any
+                if player.equipment.main_hand and hasattr(player.equipment.main_hand, "special_attacks") and player.equipment.main_hand.special_attacks:
+                    print(f"{Colors.CYAN}You use a special attack!{Colors.RESET}")
+                    for attack_name, attack_func in player.equipment.main_hand.special_attacks:
+                        if attack_func:
+                            print(f"Using {attack_name}...")
+                            attack_func(player, enemy)
+                            time.sleep(0.5)
+                else:
+                    damage, absorbed_damage = enemy.stats.take_damage(base_damage)
+                    actual_damage = damage + absorbed_damage
+                    player.damage_dealt += actual_damage
+                    logger.info(f"Player attack: {'critical hit' if critical else ''} {actual_damage} dmg, {stamina_cost} stm")
+                    print(f"You deal {Colors.RED}{math.ceil(actual_damage)}{Colors.RESET} damage to {enemy.name}!")
 
             elif choice == "2" and player.skills:  # Use skill with timing mechanic
                 player.use_skill(enemy)
@@ -757,14 +766,54 @@ class Room:
                 print(f"{Colors.BRIGHT_BLACK}You gain 1 souls !{Colors.RESET}\n")
 
                 # Item drop
-                if is_boss_room:
-                    dropped_item = generate_random_item(player=player, enemy=enemy, rarity_boost=1.5)
+                if tutorial is False:
+                    if is_boss_room:
+                        dropped_item = generate_random_item(player=player, enemy=enemy, rarity_boost=1.5)
 
-                elif random.random() < (0.2 + player.stats.luck * 0.02):
-                    dropped_item = generate_random_item(player=player, enemy=enemy)
-                    player.inventory.append(dropped_item)
-                    print(f"{Colors.GREEN}The {enemy.name} dropped: {dropped_item.name} !{Colors.RESET}")
+                    elif random.random() < (0.2 + player.stats.luck * 0.02):
+                        dropped_item = generate_random_item(player=player, enemy=enemy)
+                        player.inventory.append(dropped_item)
+                        print(f"{Colors.GREEN}The {enemy.name} dropped: {dropped_item.name} !{Colors.RESET}")
+                        time.sleep(2)
+                
+                else:
+                    typewriter_effect(f"[Assistant]: ", end='')
+                    time.sleep(0.2)
+                    typewriter_effect(f"{Colors.BRIGHT_BLACK}...{Colors.RESET}", 0.5)
+                    time.sleep(0.2)
+                    typewriter_effect(f"[Assistant]: {Colors.CYAN}Something is wrong.. ", end='')
+                    time.sleep(0.2)
+                    typewriter_effect(f"for the tutorial, the enemy should drop an item but it didn't..{Colors.RESET}", 0.05)
+                    time.sleep(1)
+                    typewriter_effect(f"[Assistant]: {Colors.BLUE}Requesting permission..{Colors.RESET}", 0.05)
+                    loading(2)
+                    typewriter_effect(f"[Assistant]: {Colors.GREEN}Permission allowed, executing command...{Colors.RESET}\n", 0.03)
+                    time.sleep(1)
+                    generated_item = execute_command(
+                        "generate_random_item(player=player, enemy=enemy)",
+                        allowed=True,
+                        prnt=True,
+                        rtn=True,
+                        context={
+                            "generate_random_item": generate_random_item,
+                            "player": player,
+                            "enemy": enemy,
+                        }
+                    )
+                    time.sleep(0.5)
+                    execute_command(
+                        "player.inventory.append(generated_item)",
+                        allowed=True,
+                        prnt=True,
+                        context={
+                            "player":player,
+                        }
+                    )
+                    time.sleep(0.5)
+                    typewriter_effect(f"\n[Assistant]: {Colors.GREEN}Item added succesfully.{Colors.RESET}\n", 0.03)
+                    print(f"{Colors.GREEN}The {enemy.name} dropped: {generated_item.name} !{Colors.RESET}")
                     time.sleep(2)
+
 
                 self.enemies.remove(enemy)
 
@@ -803,8 +852,8 @@ class Room:
 
         if tutorial is True:
             self.items.append(generate_random_item(player))
-            typewriter_effect(f"\n[ASSISTANT] {Colors.GREEN}In treasure room, you can up to 2 random items.{Colors.RESET}", 0.03)
-            typewriter_effect(f"[ASSISTANT] {Colors.GREEN}For now, everything is unlocked..{Colors.RESET}", 0.075)
+            typewriter_effect(f"\n[Assistant]: {Colors.GREEN}In treasure room, you can up to 2 random items.{Colors.RESET}", 0.03)
+            typewriter_effect(f"[Assistant]: {Colors.GREEN}For now, everything is unlocked..{Colors.RESET}", 0.075)
         
         if not self.items:
             print(f"\n{Colors.YELLOW}You've already collected all treasure from this room.{Colors.RESET}")
@@ -906,11 +955,11 @@ class Room:
                     print(line)
                 
             if tutorial is True and one_time_message is True:
-                typewriter_effect(f"\n[ASSISTANT] {Colors.GREEN}In the shop, you can buy and sell items.{Colors.RESET}", 0.03)
-                typewriter_effect(f"[ASSISTANT] {Colors.GREEN}For this time, you are allowed to buy one item for free.{Colors.RESET}", 0.05)
+                typewriter_effect(f"\n[Assistant]: {Colors.GREEN}In the shop, you can buy and sell items.{Colors.RESET}", 0.03)
+                typewriter_effect(f"[Assistant]: {Colors.GREEN}For this time, you are allowed to buy one item for free.{Colors.RESET}", 0.05)
                 one_time_message = False
 
-            print(f"\n{Colors.BRIGHT_CYAN}What would you like to do?{Colors.RESET}")
+            print(f"\n{Colors.BRIGHT_CYAN}{Colors.UNDERLINE}What would you like to do?{Colors.RESET}")
             print(f"{Colors.YELLOW}1-{len(shop_inventory)}. Buy item{Colors.RESET}")
             print(f"{Colors.GREEN}S. Sell items{Colors.RESET}")
             print(f"{Colors.RED}L. Leave shop{Colors.RESET}")
@@ -995,11 +1044,11 @@ class Room:
         print(f"\n{Colors.CYAN}You find a safe place to rest.{Colors.RESET}")
 
         if tutorial is True:
-            typewriter_effect(f"\n[ASSISTANT] {Colors.GREEN}In the rest room, you can recover your health, mana and stamina.{Colors.RESET}", 0.03)
+            typewriter_effect(f"\n[Assistant]: {Colors.GREEN}In the rest room, you can recover your health, mana and stamina.{Colors.RESET}", 0.03)
             time.sleep(0.5)
-            typewriter_effect(f"[ASSISTANT] {Colors.GREEN}You can also meditate to improve your stats.{Colors.RESET}", 0.03)
+            typewriter_effect(f"[Assistant]: {Colors.GREEN}You can also meditate to improve your stats.{Colors.RESET}", 0.03)
             time.sleep(0.5)
-            typewriter_effect(f"[ASSISTANT] {Colors.GREEN}There is rumors who said that wierd things can happend in your sleep...{Colors.RESET}\n", 0.05)
+            typewriter_effect(f"[Assistant]: {Colors.GREEN}There is rumors who said that wierd things can happend in your sleep...{Colors.RESET}\n", 0.05)
             time.sleep(1)
         
         options = [
@@ -1206,7 +1255,6 @@ class Room:
         return True  # Continue exploration si rien ne se passe
 
 
-
 class Dungeon(list):
     """
     A class representing a dungeon, which is a collection of rooms.
@@ -1308,6 +1356,7 @@ def generate_random_room(player, room_type=None, is_boss_room=False, tutorial=Fa
 def generate_dungeon(player:Player):
     """Generates a dungeon with rooms based on the level and difficulty."""
     global debug
+    debug = 0
     dungeon_level = player.dungeon_level
     difficulty = player.mode
     rooms = []

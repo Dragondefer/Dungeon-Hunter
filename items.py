@@ -1,12 +1,12 @@
-__version__ = "698.0"
+__version__ = "716.0"
 __creation__ = "09-03-2025"
 
 import random
 
-from colors import Colors
-from game_utility import clear_screen
-from data import enemy_sets
-from logger import logger
+from interface.colors import Colors
+from engine.game_utility import clear_screen
+from data.data import enemy_sets
+from engine.logger import logger
 
 debug = 0
 
@@ -142,7 +142,7 @@ class Equipment:
         eq = cls()
         for slot, item_data in data.items():
             if item_data is not None:
-                from items import Item
+                from items.items import Item
                 eq.slots[slot] = Item.from_dict(item_data)
             else:
                 eq.slots[slot] = None
@@ -212,29 +212,38 @@ class Weapon(Gear):
     Représente une arme équipable qui augmente les dégâts d'attaque.
     Hérite de Gear pour être compatible avec le système d'équipement.
     """
-    def __init__(self, name, description, value, damage):
+    def __init__(self, name, description, value, damage, attacks=None):
         super().__init__(name, description, value, {"attack": damage})
         self.damage = damage
-        logger.debug(f"Weapon created: {self.name} with damage {self.damage}")
+        self.attacks = attacks or []  # List of tuples (attack name, attack function)
+        logger.debug(f"Weapon created: {self.name} with damage {self.damage} and special attacks {self.attacks}")
     
     def __str__(self):
-        return f"{self.name} - {self.description} (Damage: +{self.damage}, Value: {self.value} gold)"
+        attacks_str = ", ".join([name for name, _ in self.attacks]) if self.attacks else "None"
+        return f"{self.name} - {self.description} (Damage: +{self.damage}, Special Attacks: {attacks_str}, Value: {self.value} gold)"
     
     def to_dict(self):
         """Convertit l'arme en dictionnaire pour la sauvegarde."""
         data = super().to_dict()
         data["extra"]["damage"] = self.damage
+        # Save only the names of special attacks for serialization
+        data["special_attacks"] = [name for name, _ in self.attacks]
         return data
     
     @classmethod
     def from_dict(cls, data):
         """Crée une arme à partir d'un dictionnaire sans modifier le format général."""
         extras = data.get("extra", {})
+        special_attack_names = data.get("special_attacks", [])
+        # Import special_attacks_dict from data module to map names to functions
+        from data.data import special_attacks_dict
+        special_attacks = [(name, special_attacks_dict.get(name)) for name in special_attack_names if name in special_attacks_dict]
         return Weapon(
             data["name"],
             data["description"],
             data["value"],
-            extras.get("damage", 0)
+            extras.get("damage", 0),
+            special_attacks=special_attacks
         )
 
 # New weapon subclasses with class bonuses
@@ -358,27 +367,38 @@ class Potion(Item):
     
     def use(self, player):
         global debug
-        
-        if self.effect_type == "heal":
-            old_hp = player.stats.hp
-            player.heal(self.effect_value)
-            logger.info("Player used a healing potion.")
-            print(f"{Colors.GREEN}You drink the {self.name} and recover {player.stats.hp - old_hp} HP!{Colors.RESET}")
-            if debug >= 1:
-                print(f'{Colors.RED}DEBUG: old_hp: {old_hp}\nplayer.stats.hp: {player.stats.hp}')
-        elif self.effect_type == "attack_boost":
-            player.stats.temporary_stats["attack"] += self.effect_value
-            logger.info(f"Player used an attack boost potion: {self.name}")
-            print(f"{Colors.RED}You drink the {self.name} and feel stronger! Attack +{self.effect_value}{Colors.RESET}")
-        elif self.effect_type == "defense_boost":
-            player.stats.temporary_stats["defense"] += self.effect_value
-            logger.info(f"Player used a defense boost potion: {self.name}")
-            print(f"{Colors.BLUE}You drink the {self.name} and feel tougher! Defense +{self.effect_value}{Colors.RESET}")
-        elif self.effect_type == "luck_boost":
-            player.stats.temporary_stats["luck"] += self.effect_value
-            logger.info(f"Player used a luck boost potion: {self.name}")
-            print(f"{Colors.CYAN}You drink the {self.name} and feel luckier! Luck +{self.effect_value}{Colors.RESET}")
-        
+
+        from core.status_effects import EFFECT_MAP
+
+        # Map potion effect_type strings to status effect class names in EFFECT_MAP
+        effect_class_name_map = {
+            "heal": "Healing",
+            "attack_boost": "Attack Boost",
+            "defense_boost": "Defense Boost",
+            "luck_boost": "Luck Boost",
+            "fire_resistance": "Fire Resistance"
+        }
+
+        effect_class_name = effect_class_name_map.get(self.effect_type)
+
+        if effect_class_name is None:
+            logger.warning(f"Unknown potion effect type: {self.effect_type}")
+            print(f"{Colors.RED}The {self.name} has an unknown effect and does nothing.{Colors.RESET}")
+        else:
+            effect_class = EFFECT_MAP.get(effect_class_name)
+            if effect_class_name == "Healing":
+                # Healing effect is immediate, no duration
+                effect = effect_class(self.effect_value)
+                effect.apply(player)
+                logger.info(f"Player used a healing potion: {self.name}")
+                print(f"{Colors.GREEN}You drink the {self.name} and recover {self.effect_value} HP!{Colors.RESET}")
+            else:
+                # For other effects, create with duration = effect_value
+                effect = effect_class(duration=self.effect_value)
+                effect.apply(player)
+                logger.info(f"Player used a {self.effect_type} potion: {self.name}")
+                print(f"{Colors.CYAN}You drink the {self.name} and gain {self.effect_type.replace('_', ' ')} for {self.effect_value} turns!{Colors.RESET}")
+
         # Remove from inventory after use
         try:
             player.inventory.remove(self)
@@ -564,7 +584,7 @@ def get_enemy_set_info(enemy_type):
         }
     return {"armor": "", "weapon": ""}
 
-def create_weapon(level, rarity, prefix, weapon_type, value_base, rarity_data):
+def create_weapon(level, rarity, prefix, weapon_type, value_base, rarity_data, special_attacks=None):
     """Create a weapon item."""
     multipliers = rarity_data["multipliers"]
     colors = rarity_data["colors"]
@@ -580,7 +600,7 @@ def create_weapon(level, rarity, prefix, weapon_type, value_base, rarity_data):
     colored_name = colors[rarity_key](name) if callable(colors[rarity_key]) else f"{colors[rarity_key]}{name}{Colors.RESET}"
     
     desc = f"A level {level} {prefix} weapon"
-    return Weapon(colored_name, desc, value_base, damage)
+    return Weapon(colored_name, desc, value_base, damage, attacks=special_attacks)
 
 def create_armor(level, rarity, prefix, armor_type, value_base, rarity_data, armor_set_type=""):
     """Create an armor item."""
@@ -637,7 +657,7 @@ def create_potion(level, rarity, prefix, item_name, value_base, rarity_data):
         "Iron Skin Tonic":        {"effect_type": "defense_boost", "effect_value": int(2 * multipliers[rarity])},
         "Lucky Charm Brew":       {"effect_type": "luck_boost",    "effect_value": int(1 * multipliers[rarity])},
         "Healing Spring Potion":  {"effect_type": "heal",          "effect_value": int(10 * multipliers[rarity])},
-        "Dragon's Breath Potion": {"effect_type": "fire_damage",   "effect_value": int(1 * multipliers[rarity])}
+        "Dragon's Breath Potion": {"effect_type": "fire_resistance",   "effect_value": int(2 * multipliers[rarity])}
     }
     
     potion_name = item_name if item_name in potion_types else random.choice(list(potion_types.keys()))
@@ -650,7 +670,8 @@ def create_potion(level, rarity, prefix, item_name, value_base, rarity_data):
         "heal": f"Restores {potion['effect_value']} HP",
         "attack_boost": f"Increases Attack by {potion['effect_value']}",
         "defense_boost": f"Increases Defense by {potion['effect_value']}",
-        "luck_boost": f"Increases Luck by {potion['effect_value']}"
+        "luck_boost": f"Increases Luck by {potion['effect_value']}",
+        "fire_resistance": f"Grants fire resistance for {potion['effect_value']} turns"
     }.get(potion["effect_type"], "")
     
     return Potion(colored_name, effect_desc, value_base, potion["effect_type"], potion["effect_value"])
@@ -703,9 +724,13 @@ def generate_random_item(player=None, enemy=None, item_type=None, rarity=None, i
         weapon_types = ["Sword", "Axe", "Dagger", "Mace", "Staff", "Bow"]
         if weapon_set_type:
             weapon_type = weapon_set_type
+            # Import weapon_special_attacks from data
+            from data.data import weapon_special_attacks
+            special_attacks = weapon_special_attacks.get(weapon_type, None)
         else:
             weapon_type = item_name if item_name in weapon_types else random.choice(weapon_types)
-        return create_weapon(level, rarity, prefix, weapon_type, value_base, rarity_data)
+            special_attacks = None
+        return create_weapon(level, rarity, prefix, weapon_type, value_base, rarity_data, special_attacks=special_attacks)
         
     elif item_type == "armor":
         armor_types = ["Helmet", "Chestplate", "Gauntlets", "Leggings", "Boots", "Shield"]

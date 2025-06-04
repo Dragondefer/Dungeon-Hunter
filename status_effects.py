@@ -1,3 +1,6 @@
+__version__ = "8.0"
+__creation__ = "28-05-2025"
+
 class StatusEffect:
     def __init__(self, name, duration, damage_per_turn=0, effect_type="debuff"):
         self.name = name
@@ -42,12 +45,70 @@ class Freeze(StatusEffect):
     def apply(self, target):
         target.stats.can_act = False  # à ajouter dans Stats si besoin
 
+class FireResistance(StatusEffect):
+    def __init__(self, duration=2):
+        super().__init__("Fire Resistance", duration, effect_type="buff")
+
+    def apply(self, target):
+        # Increase burn resistance to grant fire resistance
+        if hasattr(target, "resistances") and "burn" in target.resistances:
+            target.resistances["burn"] += 1
+            print(f"{target.name}'s burn resistance increased by 1 for {self.duration} turns.")
+        else:
+            print(f"{target.name} gains fire resistance for {self.duration} turns.")
+
+class AttackBoost(StatusEffect):
+    def __init__(self, duration=3, boost_amount=5):
+        super().__init__("Attack Boost", duration, effect_type="buff")
+        self.boost_amount = boost_amount
+
+    def apply(self, target):
+        if not hasattr(target.stats, "temporary_stats"):
+            target.stats.temporary_stats = {}
+        target.stats.temporary_stats["attack"] = target.stats.temporary_stats.get("attack", 0) + self.boost_amount
+        print(f"{target.name}'s attack increased by {self.boost_amount} for {self.duration} turns.")
+
+class DefenseBoost(StatusEffect):
+    def __init__(self, duration=3, boost_amount=5):
+        super().__init__("Defense Boost", duration, effect_type="buff")
+        self.boost_amount = boost_amount
+
+    def apply(self, target):
+        if not hasattr(target.stats, "temporary_stats"):
+            target.stats.temporary_stats = {}
+        target.stats.temporary_stats["defense"] = target.stats.temporary_stats.get("defense", 0) + self.boost_amount
+        print(f"{target.name}'s defense increased by {self.boost_amount} for {self.duration} turns.")
+
+class LuckBoost(StatusEffect):
+    def __init__(self, duration=3, boost_amount=3):
+        super().__init__("Luck Boost", duration, effect_type="buff")
+        self.boost_amount = boost_amount
+
+    def apply(self, target):
+        if not hasattr(target.stats, "temporary_stats"):
+            target.stats.temporary_stats = {}
+        target.stats.temporary_stats["luck"] = target.stats.temporary_stats.get("luck", 0) + self.boost_amount
+        print(f"{target.name}'s luck increased by {self.boost_amount} for {self.duration} turns.")
+
+class HealingEffect(StatusEffect):
+    def __init__(self, heal_amount):
+        super().__init__("Healing", duration=0, effect_type="buff")
+        self.heal_amount = heal_amount
+
+    def apply(self, target):
+        old_hp = target.stats.hp
+        target.heal(self.heal_amount)
+        print(f"{target.name} healed for {target.stats.hp - old_hp} HP.")
 
 EFFECT_MAP = {
     "Poison": Poison,
     "Burn": Burn,
     "Freeze": Freeze,
-    # ...
+    "Fire Resistance": FireResistance,
+    "Attack Boost": AttackBoost,
+    "Defense Boost": DefenseBoost,
+    "Luck Boost": LuckBoost,
+    "Healing": HealingEffect,
 }
 
 def status_effect_from_dict(data):

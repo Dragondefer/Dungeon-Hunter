@@ -1,5 +1,5 @@
-__version__ = "51.0"
-__creation__ = "9-03-2025"
+__version__ = "53.0"
+__creation__ = "09-03-2025"
 
 # Terminal colors and formatting
 class Colors:

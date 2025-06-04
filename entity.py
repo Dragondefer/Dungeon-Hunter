@@ -1,4 +1,4 @@
-__version__ = "2217.0"
+__version__ = "2285.0"
 __creation__ = "09-03-2025"
 
 # This file contains the core entity classes for the Dungeon Hunter game.
@@ -13,12 +13,16 @@ import json
 import os
 import shutil
 
-from colors import Colors
-from game_utility import (clear_screen, handle_error, typewriter_effect, glitch_text, random_glitch_text, ancient_text, glitch_burst, timed_input_pattern, strip_ansi)
-from items import Item, Equipment, Gear, Weapon, Armor, Ring, Amulet, Belt, Potion
-from data import armor_sets, enemy_types, boss_types, achievements
-from inventory import Inventory
-from spells import Spell, Scroll
+from interface.colors import Colors
+from engine.game_utility import (clear_screen, handle_error, typewriter_effect,
+                          glitch_text, random_glitch_text, ancient_text,
+                          glitch_burst, timed_input_pattern, strip_ansi)
+from items.items import (Item, Equipment, Gear, Weapon, Armor,
+                   Ring, Amulet, Belt, Potion)
+from data.data import armor_sets, enemy_types, boss_types, achievements
+from items.inventory import Inventory
+from items.spells import Spell, Scroll
+from core.masteries import Mastery
 
 debug = 0
 
@@ -268,6 +272,7 @@ class Stats:
         return damage, damage_absorbed
 
 
+
 #̶̼͝ E̶͍̚v̶̼͝ë̵͕́r̷͍̈́ÿ̸̡́ s̸̱̅k̵̢͝i̴̊͜l̷̫̈́l̷̫̈́ h̵̤͒ä̷̪́s̸̱̅ ä̷̪́ p̵̦̆r̷͍̈́i̴̊͜c̴̱͝ë̵͕́.̵͇̆.̵͇̆.̵͇̆ s̸̱̅o̶͙͝m̴̛̠ë̵͕́ m̴̛̠o̶͙͝r̷͍̈́ë̵͕́ ẗ̴̗́h̵̤͒ä̷̪́n̸̻̈́ o̶͙͝ẗ̴̗́h̵̤͒ë̵͕́r̷͍̈́s̸̱̅.̵͇̆
 class Skill:
     """
@@ -322,7 +327,7 @@ class Skill:
                 print(f"{Colors.RED}You don't have enough {resource} to use {self.name}!{Colors.RESET}")
                 return 0
         
-        print(f"\n{Colors.YELLOW}Timing skill activation! Press Enter at the right moment to increase skill effect.{Colors.RESET}")
+        print(f"\n{Colors.YELLOW}Timing skill activation!\nPress Enter at the right moment to increase skill effect.{Colors.RESET}")
         input_multiplier = 1
         timing_success = timed_input_pattern(difficulty=1.0, return_type='int')
 
@@ -386,12 +391,23 @@ class Entity:
     """
     def __init__(self, name, hp, max_hp, attack, defense):
         self.name = name
+        
         self.stats = Stats(
             hp=hp,
             max_hp=max_hp,
             attack=attack,
             defense=defense
         )
+
+        self.status_effects = []  # liste d'effets actifs
+
+        # <0: vulnérabilité ; >0: résistance
+        self.resistances = {
+            "poison": 0,
+            "burn": 0,
+            "freeze": 0
+            }
+
     
     def is_alive(self):
         return self.stats.hp > 0
@@ -423,6 +439,30 @@ class Entity:
             print(f"DEBUG: temporary_stats content -> {self.stats.temporary_stats}")
             print(f"DEBUG: After healing -> Temp HP: {self.stats.temporary_stats['hp']}/{hp_max_temp}, "
                 f"Perm HP: {self.stats.permanent_stats['hp']}/{hp_max_perm}")
+    
+
+    def process_status_effects(self):
+        for effect in self.status_effects[:]:
+            effect.on_turn_start(self)
+            if effect.is_expired():
+                print(f"{self.name} is no longer affected by {effect.name}.")
+                self.status_effects.remove(effect)
+    
+    def try_apply_status(self, effect):
+        resistance = self.resistances.get(effect.name.lower(), 0)
+        if random.randint(0, 100) < (100 - resistance):
+            # Check if effect of same name already exists
+            existing_effect = next((e for e in self.status_effects if e.name == effect.name), None)
+            if existing_effect:
+                # Refresh or extend duration
+                existing_effect.duration = max(existing_effect.duration, effect.duration)
+                print(f"{self.name}'s {effect.name} effect duration refreshed.")
+            else:
+                self.status_effects.append(effect)
+                effect.apply(self)
+                print(f"{self.name} is affected by {effect.name}.")
+        else:
+            print(f"{self.name} resisted {effect.name}.")
 
 
 """
@@ -453,7 +493,7 @@ class Entity:
 
 #̶̼͝ T̸̻̈́h̵̤͒ë̵͕́ p̵̦̆l̷̫̈́ä̷̪́ÿ̸̡́ë̵͕́r̷͍̈́’s̸̱̅ f̷̠͑ä̷̪́ẗ̴̗́ë̵͕́ i̴̊͜s̸̱̅ ẅ̷̙́r̷͍̈́i̴̊͜ẗ̴̗́ẗ̴̗́ë̵͕́n̸̻̈́ i̴̊͜n̸̻̈́ b̸̼̅l̷̫̈́o̶͙͝o̶͙͝ď̶̙ ä̷̪́n̸̻̈́ď̶̙ c̴̱͝o̶͙͝ď̶̙ë̵͕́.̵͇̆
 
-from difficulty import GameMode, NormalMode, RealisticMode
+from engine.difficulty import GameMode, NormalMode, RealisticMode
 
 class Player(Entity):
     """
@@ -492,6 +532,24 @@ class Player(Entity):
         display_status() -> None:
             Prints the player's current stats and equipped items.
     """
+
+    def display_logbook(self):
+        """Display a logbook of every monster discovered with notes and other info."""
+        clear_screen()
+        print(f"\n{Colors.BRIGHT_MAGENTA}Monster Logbook (Placeholder){Colors.RESET}")
+        print("This feature will display all monsters discovered with notes and other details.")
+        input(f"\n{Colors.YELLOW}Press Enter to return...{Colors.RESET}")
+
+    def display_skill_mastery(self):
+        """Display XP and levels of each skill mastery."""
+        clear_screen()
+        print(f"\n{Colors.BRIGHT_CYAN}Skill Mastery (Placeholder){Colors.RESET}")
+        if not self.skills:
+            print("You have not acquired any skills yet.")
+        else:
+            for skill in self.skills:
+                print(f"- {skill.name} (Level {skill.level})")
+        input(f"\n{Colors.YELLOW}Press Enter to return...{Colors.RESET}")
     def __init__(self, name="Adventurer", difficulty=NormalMode()):
         """Initialise le joueur avec des stats de base et un équipement vide."""
         super().__init__(name, 100, 100, 5, 5)  # Héritage de la classe Entity
@@ -526,7 +584,7 @@ class Player(Entity):
         self.skills = []
         self.kills = 0
 
-        from difficulty import GameMode, NormalMode, RealisticMode, SoulsEnjoyerMode
+        from engine.difficulty import GameMode, NormalMode, RealisticMode, SoulsEnjoyerMode
 
         if isinstance(difficulty, GameMode):
             self.mode = difficulty
@@ -587,13 +645,20 @@ class Player(Entity):
         self.inventory.append(Potion("Minor Health Potion", "Restores some health", 100, "heal", 50))
 
         self.known_spells: list[Spell] = []
+        self.masteries:dict[Mastery] = {}  # exemple : {"sword": Mastery("sword"), "fire_magic": Mastery("fire_magic")}
+
 
         # Met à jour les stats avec l'équipement initial (même s'il est vide)
         self.stats.update_total_stats()
         self.apply_all_equipment_effects()
-        
-        # print('DEBUG: Permanant_stats:', self.stats.permanent_stats)
-        # input('press enter to continue')
+
+    def __str__(self):
+        return json.dumps(self.to_dict(), indent=4, ensure_ascii=False)
+
+    def __repr__(self):
+        attrs = vars(self)
+        attr_strs = [f"{k}={v!r}" for k, v in attrs.items()]
+        return f"<Player " + ", ".join(attr_strs) + ">"
 
     def learn_spell(self, spell: Spell):
         """Add a spell to the player's known spells."""
@@ -705,14 +770,16 @@ class Player(Entity):
         data["seen_events"] = list(self.seen_events)
         data["mode"] = self.mode.to_dict()
         data["displayed_set_bonuses"] = list(self.displayed_set_bonuses) if hasattr(self, "displayed_set_bonuses") else []
+        data["status_effects"] = [effect.__dict__ for effect in self.status_effects] if self.status_effects else []
+        data["masteries"] = {k: v.to_dict() for k, v in self.masteries.items()}
+
 
         return data
 
     @classmethod
     def from_dict(cls, data):
-        from entity import Equipment, Item, Skill, Potion
-        from progression import Quest, Achievement
-        from difficulty import GameMode
+        from core.progression import Quest, Achievement
+        from engine.difficulty import GameMode
 
         player = cls(data.get("name", "Adventurer"), GameMode.from_dict(data.get("mode", {})))
 
@@ -735,10 +802,20 @@ class Player(Entity):
         player.achievements = [Achievement.from_dict(a, condition_map) for a in data.get("achievements", [])]
 
         player.seen_events = set(data.get("seen_events", []))
-        player.displayed_set_bonuses = set(data.get("displayed_set_bonuses"))
+        player.displayed_set_bonuses = set(data.get("displayed_set_bonuses") or [])
 
         if player.equipment:
             player.apply_all_equipment_effects()
+            
+
+        from core.status_effects import status_effect_from_dict
+
+        player.status_effects = [
+            effect for effect in (status_effect_from_dict(e) for e in data.get("status_effects", [])) if effect
+        ]
+
+        player.masteries = {k: Mastery.from_dict(v) for k, v in data.get("masteries", {}).items()}
+
 
         return player
 
@@ -2218,11 +2295,19 @@ class Enemy(Entity):
 def generate_enemy(level:int, is_boss:bool, player: Player):
     """Génère un ennemi ou un boss en fonction du niveau donné."""
     
+    global debug
+
+    if debug >= 1:
+        print(f"DEBUG: Generating {'boss' if is_boss else 'enemy'} for level {level}")
+
     # Sélection des ennemis ou des boss disponibles pour ce niveau
     if is_boss:
         valid_types = [e for e in boss_types if e["min_level"] == level]
     else:
         valid_types = [e for e in enemy_types if e["min_level"] <= level]
+
+    if debug >= 1:
+        print(f"DEBUG: Found {len(valid_types)} valid {'boss' if is_boss else 'enemy'} types")
 
     # Si aucun ennemi valide, on prend le premier ennemi par défaut
     if not valid_types:
@@ -2238,15 +2323,24 @@ def generate_enemy(level:int, is_boss:bool, player: Player):
     # Sélection pondérée d'un ennemi approprié
     enemy_data = random.choices(valid_types, weights=weights, k=1)[0]
 
+    if debug >= 1:
+        print(f"DEBUG: Selected enemy type: {enemy_data['name']} with modifiers hp:{enemy_data['hp_mod']}, atk:{enemy_data['atk_mod']}, def:{enemy_data['def_mod']}")
+
     # Définition des stats de base
     base_hp = 20 + level * 10
     base_attack = 5 + level * 2
     base_defense = 2 + level
 
+    if debug >= 1:
+        print(f"DEBUG: Base stats - HP: {base_hp}, Attack: {base_attack}, Defense: {base_defense}")
+
     # Application des modificateurs de l'ennemi
     hp = int(base_hp * enemy_data["hp_mod"])
     attack = int(base_attack * enemy_data["atk_mod"])
     defense = int(base_defense * enemy_data["def_mod"])
+
+    if debug >= 1:
+        print(f"DEBUG: Modified stats - HP: {hp}, Attack: {attack}, Defense: {defense}")
 
     # Multiplier les stats si c'est un boss
     if is_boss:
@@ -2254,23 +2348,38 @@ def generate_enemy(level:int, is_boss:bool, player: Player):
         attack = int(attack * 1.5)
         defense = int(defense * 1.5)
 
+        if debug >= 1:
+            print(f"DEBUG: Boss stats after multiplier - HP: {hp}, Attack: {attack}, Defense: {defense}")
+
     # Apply NG+ difficulty multiplier to enemy stats, starting at NG+0 (multiplier >= 1)
     diff_mltp = max(1, player.mode.get_ng_plus(player) * 0.1) # 10% increase per NG+ level
     hp = int(hp * diff_mltp)
     attack = int(attack * diff_mltp)
     defense = int(defense * diff_mltp)
 
+    if debug >= 1:
+        print(f"DEBUG: Stats after NG+ multiplier ({diff_mltp}) - HP: {hp}, Attack: {attack}, Defense: {defense}")
+
     # Calcul des récompenses
     xp_reward = int(10 * level * (2 if is_boss else 1))
     gold_reward = int(5 * level * (3 if is_boss else 1))
 
+    if debug >= 1:
+        print(f"DEBUG: Rewards - XP: {xp_reward}, Gold: {gold_reward}")
+
     # Définition de la difficulté
     difficulty = level + (3 if is_boss else 0)
+
+    if debug >= 1:
+        print(f"DEBUG: Difficulty set to {difficulty}")
 
     # Formatage du nom (différent pour les boss)
     name = f"{Colors.RED}{enemy_data['name']}{Colors.RESET}"
     if is_boss:
         name = f"{Colors.BRIGHT_RED}{Colors.BOLD}{enemy_data['name']}{Colors.RESET}"
+
+    if debug >= 1:
+        print(f"DEBUG: Enemy name set to {name}")
 
     # Création de l'objet Enemy avec le type correspondant
     return Enemy(name, enemy_data["type"], hp, attack, defense, xp_reward, gold_reward, difficulty)

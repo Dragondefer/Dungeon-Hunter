@@ -1,4 +1,4 @@
-__version__ = "17.0"
+__version__ = "21.0"
 __creation__ = "08-05-2025"
 
 class Inventory(list):

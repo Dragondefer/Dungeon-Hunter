@@ -1,5 +1,8 @@
-from colors import Colors
-from logger import logger
+__version__ = "7.0"
+__creation__ = "24-05-2025"
+
+from interface.colors import Colors
+from engine.logger import logger
 
 class Spell:
     """

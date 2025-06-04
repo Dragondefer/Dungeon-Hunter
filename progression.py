@@ -1,11 +1,11 @@
-__version__ = "76.0"
+__version__ = "84.0"
 __creation__ = "09-03-2025"
 
 import time
 
-from colors import Colors
-from game_utility import clear_screen
-from logger import logger
+from interface.colors import Colors
+from engine.game_utility import clear_screen
+from engine.logger import logger
 
 class Quest:
     """
