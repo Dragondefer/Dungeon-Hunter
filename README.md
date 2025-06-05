@@ -1,7 +1,7 @@
-__version__ = "278.0"
+__version__ = "300.0"
 __creation__ = "23-04-2025"
 
-# Dungeon Hunter - Version 5.2.2
+# Dungeon Hunter - Version 5.5.0
 
 Dungeon Hunter is a text-based dungeon exploration RPG game where you play as a brave adventurer exploring dangerous dungeons, battling enemies, completing quests, collecting loot, and leveling up your character.
 
@@ -23,13 +23,12 @@ You can contact me on discord : https://discord.gg/3V7xGCvxEP
 
 ## How to Run the game
 
-### If you have downloaded the game from the release page
 You can find the latest version of the game with the 3 different ways to run it.
-Under here, you will find the 3 ways to run the game, and the one I recommend such as with the source code who will get hotfix and auto update.
+Under here, you will find the 3 ways to run the game, and the one I recommend who is the one that automatically update the game at launch as it save a lot of time and so it check for update for you.
 
 ### Recomanded : Auto-Update (req: GIT + Python 3)
 Why is this the best option:
-   - Whenever you launch the game with play.bat, it automatically download the latest version of each files from the repo on github
+   - Whenever you launch the game with `play.bat`, it **automatically download the latest version** of each files from the repo on github!
 
 1. Ensure you have [git](https://git-scm.com/downloads) installed
    - You can verify by typing `git` in the cmd
@@ -50,7 +49,7 @@ Why is this the best option:
 
 ### If you don't have Python installed (req: Nothing)
 
-1. **Download the `main.exe` file**
+1. **Download the `Dungeon-Hunter.exe` file**
 
 2. **Verify its authenticity using the published SHA-256 hash** (see below):
    - Windows users can use the built-in `CertUtil` command:
@@ -149,7 +148,7 @@ And now your main.exe file is marked with the given hash
 This project contains hidden game content such as secret achievements, late-game story elements, and hidden events.
 If you're planning to play the game, **reading through the source code may spoil your experience**.
 
-We recommend **not inspecting files like `story.py`, `achievements.py`, or data/ files** unless you’ve finished the game or are contributing as a developer.
+We recommend **not inspecting files like `core/story.py`, `core/progression.py`, or data/data.py files** unless you’ve finished the game or are contributing as a developer.
 
 ---
 
@@ -157,7 +156,7 @@ We recommend **not inspecting files like `story.py`, `achievements.py`, or data/
 
 * Clear `""" SPOILER WARNING """` docstrings at the top of sensitive files or sections.
 * Comments like `# --- SPOILER SECTION BELOW ---` to separate spoiler content visually.
-* Grouped spoiler content into separate files (e.g., `data.py`, `story.py`).
+* Grouped spoiler content into separate files (e.g., `data/data.py`, `core/story.py`).
 
 
 ## Reviewing Suspicious Files 🔍
@@ -362,9 +361,9 @@ If you want to contact me, ask question / help, or just talk / play don't hesita
 ## For Beginners
 
 - **Learning Path**:
-  - Read through `game_utility.py` and `entity.py` to see how classes and functions are structured.
+  - Read through `engine/dungeon.py` and `core/entity.py` to see how classes and functions are structured.
   - Experiment by adding simple print statements or modifying values—this is the best way to learn!
-  - Also, you can look at the `debug_menu` function in the `class Player` in `entity.py`
+  - Also, you can look at the `debug_menu` function in the `class Player` in `core/entity.py`
 
 And don't forget to ask help if needed
 

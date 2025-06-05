@@ -1,6 +1,7 @@
-# Changelog
-__version__ = "923.0"
+__version__ = "943.0"
 __creation__ = "23-04-2025"
+
+# Changelog
 
 All notable changes to this project will be documented in this file.
 So log doesn't include every changes but only the main one as there is a huge amout of work, changes, fix and so on.
@@ -8,6 +9,7 @@ So log doesn't include every changes but only the main one as there is a huge am
 Note: Every logs before version [4.x.x] was made based on the files merges and might include mistakes and oversights
 
 Here is the schematic of the logs:
+
 ---
 ## [x.x.x] : Title - DD-MM-YYYY (creation date)
     - [__version__, __version__ ...]
@@ -31,6 +33,7 @@ Order of each version: ['colors.py', 'data.py', 'difficulty.py', 'dungeon.py', '
   - Planned: Improve combat balancing
   - Boss special attack system with unique abilities
   - Critical hit visualization ?
+  - Specific attacks for each weapons
 
 - **Items**
   - Artéfacts (Use Point ? Limit of 3 ?) (Increase inv ? live steal)
@@ -43,7 +46,6 @@ Order of each version: ['colors.py', 'data.py', 'difficulty.py', 'dungeon.py', '
   - Level-specific enemy variants
 
 - **Quest System Improvements**
-  - 6 quest types (exploration/combat/item collection)
   - Branching storylines with possible endings
   - Reputation system affecting merchant prices/ally availability
   - Dynamic quests with multiple completion methods
@@ -149,7 +151,7 @@ Order of each version: ['colors.py', 'data.py', 'difficulty.py', 'dungeon.py', '
 
 ### Fixed
 - Initial release - no previous fixes recorded
-- *Some errors are better left unfixed.*
+- *S̶̤̕o̶͙͝m̴̛̠ë̵͕́ ë̵͕́r̷͍̈́r̷͍̈́o̶͙͝r̷͍̈́s̸̱̅ ä̷̪́r̷͍̈́ë̵͕́ b̸̼̅ë̵͕́ẗ̴̗́ẗ̴̗́ë̵͕́r̷͍̈́ l̷̫̈́ë̵͕́f̷̠͑ẗ̴̗́ ŭ̵͇n̸̻̈́f̷̠͑i̴̊͜x̵̛̠ë̵͕́ď̶̙.̵͇̆*
 
 ### Changed
 - Initial release - no previous changes to record
@@ -557,14 +559,18 @@ Need to be fixed in the future:
 ---
 
 ## [5.x.x] : Echoes of Depth - 05-05-2025
-  - [5.0.0] : Save system + player's statistics - 07-05-2025
-  - [5.1.0] : Difficulty core class + Inventory class 08-05-2025
-  - [5.2.0] : Progression + L̷̻̎o̶͙͝r̷͍̈́ë̵͕́ - 10-05-2025
+  - [5.0.0] : **Save system** + **player's statistics** - 07-05-2025
+  - [5.1.0] : **Difficulty core class** + **Inventory class** 08-05-2025
+  - [5.2.0] : **Progression** + **L̷̻̎o̶͙͝r̷͍̈́ë̵͕́** - 10-05-2025
     - [51.0, 224.0, 50.0, 1050.0, 1819.0, 340.0, 17.0, 641.0, 476.0, 76.0, 34.0]
-  - [5.3.0] : Items + Equipment update - 15-05-2025
+  - [5.3.0] : **Items** + **Equipment update** - 15-05-2025
     - [53.0, 228.0, 66.0, 1230.0, 2007.0, 355.0, 21.0, 690.0, 594.0, 81.0, 66.0]
-  - [5.4.0] : Magic implementation + Tutorials - 18-05-2025
+  - [5.4.0] : **Magic implementation** + **Tutorials** - 18-05-2025
     - [53.0, 290.0, 66.0, 1653.0, 2217.0, 465.0, 21.0, 698.0, 650.0, 81.0, 78.0]
+  - [5.5.0] : **Mastery implementation** + **Special attack** - 29-055-2025
+    - As there is new file, here is the new order:
+    - ['colors.py', 'data.py', 'difficulty.py', 'dungeon.py', 'entity.py', 'game_utility.py', 'inventory.py', 'items.py', 'main.py', 'masteries.py', 'progression.py', 'spells.py', 'status_effects.py', 'story.py']
+    - [53.0, 320.0, 69.0, 1671.0, 2285.0, 468.0, 21.0, 716.0, 678.0, 10.0, 84.0, 7.0, 8.0, 82.0] 
 
 ### Added
 - **Debug and core**
@@ -575,11 +581,17 @@ Need to be fixed in the future:
 - **QoL**: (Quality of Life):
   - Added loading animation
   - Added two option for displaying dungeon level: top mid or top right
+  - The stats and dungeon level display are now at the same height
 
 - **Breath of the Dungeon**
-  - **progression**
+  - **progression**:
     - Added some Events
-    -̸̡̈́ *̶̢͌T̸̻̈́h̵̤͒ë̵͕́ s̸̱̅h̵̤͒ä̷̪́ď̶̙o̶͙͝ẅ̷̙́s̸̱̅ l̷̫̈́i̴̊͜n̸̻̈́g̸̻̿ë̵͕́r̷͍̈́ h̵̤͒ë̵͕́r̷͍̈́ë̵͕́,̶̼͝ ẅ̷̙́ä̷̪́ẗ̴̗́c̴̱͝h̵̤͒i̴̊͜n̸̻̈́g̸̻̿ ÿ̸̡́o̶͙͝ŭ̵͇r̷͍̈́ ë̵͕́v̶̼͝ë̵͕́r̷͍̈́ÿ̸̡́ m̴̛̠o̶͙͝v̶̼͝ë̵͕́.̵͇̆.̵͇̆.̵͇̆*̶̢͌
+    - *̶̢͌T̸̻̈́h̵̤͒ë̵͕́ s̸̱̅h̵̤͒ä̷̪́ď̶̙o̶͙͝ẅ̷̙́s̸̱̅ l̷̫̈́i̴̊͜n̸̻̈́g̸̻̿ë̵͕́r̷͍̈́ h̵̤͒ë̵͕́r̷͍̈́ë̵͕́,̶̼͝ ẅ̷̙́ä̷̪́ẗ̴̗́c̴̱͝h̵̤͒i̴̊͜n̸̻̈́g̸̻̿ ÿ̸̡́o̶͙͝ŭ̵͇r̷͍̈́ ë̵͕́v̶̼͝ë̵͕́r̷͍̈́ÿ̸̡́ m̴̛̠o̶͙͝v̶̼͝ë̵͕́.̵͇̆.̵͇̆.̵͇̆*̶̢͌
+  - **Effects**:
+    - Added status effects (e.g: Poison, Burn, Freeze)
+    - Refactored `Potion.use()` method to utilize modular status effect classes from `core/status_effects.py` for better extensibility and maintainability.
+    - Added new status effect classes: `AttackBoost`, `DefenseBoost`, `LuckBoost`, and `HealingEffect` in `core/status_effects.py`.
+      
 
 - **Ascension Protocol**
   - **Player**:
@@ -587,7 +599,7 @@ Need to be fixed in the future:
     - Made the inventory a class `Inventory(list)` and a `inventory.py` file
     - Added a new file progression.py which contain the class: Quest, Achievement and Event
     - Added some Achievements
-    -̸̡̈́ *̶̢͌S̶̤̕o̶͙͝m̴̛̠ë̵͕́ ä̷̪́c̴̱͝h̵̤͒i̴̊͜ë̵͕́v̶̼͝ë̵͕́m̴̛̠ë̵͕́n̸̻̈́ẗ̴̗́s̸̱̅ ä̷̪́r̷͍̈́ë̵͕́ n̸̻̈́o̶͙͝ẗ̴̗́ m̴̛̠ë̵͕́ä̷̪́n̸̻̈́ẗ̴̗́ ẗ̴̗́o̶͙͝ b̸̼̅ë̵͕́ f̷̠͑o̶͙͝ŭ̵͇n̸̻̈́ď̶̙.̵͇̆.̵͇̆.̵͇̆*̶̢͌
+    - *̶̢͌S̶̤̕o̶͙͝m̴̛̠ë̵͕́ ä̷̪́c̴̱͝h̵̤͒i̴̊͜ë̵͕́v̶̼͝ë̵͕́m̴̛̠ë̵͕́n̸̻̈́ẗ̴̗́s̸̱̅ ä̷̪́r̷͍̈́ë̵͕́ n̸̻̈́o̶͙͝ẗ̴̗́ m̴̛̠ë̵͕́ä̷̪́n̸̻̈́ẗ̴̗́ ẗ̴̗́o̶͙͝ b̸̼̅ë̵͕́ f̷̠͑o̶͙͝ŭ̵͇n̸̻̈́ď̶̙.̵͇̆.̵͇̆.̵͇̆*̶̢͌
     - Added hidden Achievements
     - Added some Tutorials !
     - Added one time Events (can be really basic, e.g: Help notes...)
@@ -608,8 +620,10 @@ Need to be fixed in the future:
   - Fixed a wrong gold managment in a puzzle (with the dices) and in shops
   - When level up, the new amout of xp req is xp * 1.5. But then, when reaching level 1740, the xp req to level up reached infinite and break the game, so now instead of doing * 1.5, there is an xp limit of 1̸̘̓6̴̨͝6̴̨͝2̴̙͝9̴̗̈́1̸̘̓6̴̨͝2̴̙͝8̸̱̅0̵̢̈́2̴̙͝8̸̱̅0̵̢̈́9̴̗̈́1̸̘̓8̸̱̅4̷̫̈́2̴̙͝6̴̨͝1̸̘̓3̶̢͌0̵̢̈́0̵̢̈́9̴̗̈́0̵̢̈́9̴̗̈́5̸̱̅0̵̢̈́0̵̢̈́9̴̗̈́2̴̙͝6̴̨͝6̴̨͝4̷̫̈́9̴̗̈́5̸̱̅1̸̘̓9̴̗̈́5̸̱̅6̴̨͝7̷͍̈́5̸̱̅7̷͍̈́1̸̘̓9̴̗̈́6̴̨͝6̴̨͝3̶̢͌1̸̘̓2̴̙͝2̴̙͝3̶̢͌1̸̘̓3̶̢͌8̸̱̅8̸̱̅3̶̢͌3̶̢͌8̸̱̅5̸̱̅3̶̢͌6̴̨͝7̷͍̈́2̴̙͝9̴̗̈́1̸̘̓7̷͍̈́0̵̢̈́8̸̱̅1̸̘̓4̷̫̈́8̸̱̅0̵̢̈́4̷̫̈́9̴̗̈́2̴̙͝8̸̱̅7̷͍̈́5̸̱̅7̷͍̈́1̸̘̓0̵̢̈́7̷͍̈́0̵̢̈́3̶̢͌3̶̢͌2̴̙͝7̷͍̈́6̴̨͝9̴̗̈́2̴̙͝5̸̱̅8̸̱̅2̴̙͝3̶̢͌1̸̘̓9̴̗̈́2̴̙͝9̴̗̈́5̸̱̅6̴̨͝6̴̨͝8̸̱̅4̷̫̈́3̶̢͌5̸̱̅8̸̱̅1̸̘̓5̸̱̅0̵̢̈́3̶̢͌2̴̙͝8̸̱̅7̷͍̈́2̴̙͝8̸̱̅3̶̢͌3̶̢͌3̶̢͌7̷͍̈́4̷̫̈́1̸̘̓4̷̫̈́7̷͍̈́7̷͍̈́1̸̘̓5̸̱̅3̶̢͌5̸̱̅0̵̢̈́8̸̱̅6̴̨͝4̷̫̈́5̸̱̅4̷̫̈́5̸̱̅8̸̱̅9̴̗̈́4̷̫̈́6̴̨͝9̴̗̈́4̷̫̈́7̷͍̈́6̴̨͝5̸̱̅0̵̢̈́2̴̙͝0̵̢̈́0̵̢̈́4̷̫̈́1̸̘̓9̴̗̈́1̸̘̓8̸̱̅1̸̘̓0̵̢̈́8̸̱̅7̷͍̈́5̸̱̅2̴̙͝2̴̙͝1̸̘̓4̷̫̈́6̴̨͝2̴̙͝1̸̘̓3̶̢͌4̷̫̈́1̸̘̓1̸̘̓9̴̗̈́7̷͍̈́9̴̗̈́3̶̢͌3̶̢͌1̸̘̓5̸̱̅0̵̢̈́6̴̨͝0̵̢̈́0̵̢̈́6̴̨͝7̷͍̈́8̸̱̅1̸̘̓3̶̢͌2̴̙͝3̶̢͌2̴̙͝5̸̱̅8̸̱̅7̷͍̈́8̸̱̅3̶̢͌9̴̗̈́0̵̢̈́5̸̱̅6̴̨͝2̴̙͝1̸̘̓6̴̨͝2̴̙͝7̷͍̈́9̴̗̈́7̷͍̈́9̴̗̈́4̷̫̈́9̴̗̈́8̸̱̅4̷̫̈́2̴̙͝6̴̨͝4̷̫̈́2̴̙͝9̴̗̈́8̸̱̅6̴̨͝7̷͍̈́7̷͍̈́0̵̢̈́0̵̢̈́2̴̙͝1̸̘̓8̸̱̅2̴̙͝2̴̙͝9̴̗̈́5̸̱̅9̴̗̈́1̸̘̓4̷̫̈́0̵̢̈́7̷͍̈́2̴̙͝5̸̱̅3̶̢͌2̴̙͝1̸̘̓5̸̱̅0̵̢̈́2̴̙͝0̵̢̈́1̸̘̓8̸̱̅2̴̙͝9̴̗̈́4̷̫̈́7̷͍̈́2̴̙͝4̷̫̈́3̶̢͌7̷͍̈́5̸̱̅9̴̗̈́2̴̙͝0̵̢̈́4̷̫̈́5̸̱̅2̴̙͝0̵̢̈́7̷͍̈́8̸̱̅6̴̨͝0̵̢̈́1̸̘̓0̵̢̈́3̶̢͌6̴̨͝3̶̢͌7̷͍̈́7̷͍̈́0̵̢̈́3̶̢͌3̶̢͌1̸̘̓6̴̨͝9̴̗̈́3̶̢͌9̴̗̈́2̴̙͝6̴̨͝7̷͍̈́5̸̱̅4̷̫̈́7̷͍̈́3̶̢͌7̷͍̈́1̸̘̓3̶̢͌1̸̘̓5̸̱̅8̸̱̅7̷͍̈́7̷͍̈́1̸̘̓9̴̗̈́4̷̫̈́6̴̨͝7̷͍̈́8̸̱̅7̷͍̈́7̷͍̈́2̴̙͝1̸̘̓7̷͍̈́0̵̢̈́7̷͍̈́5̸̱̅2̴̙͝
   - Bonus stats for armor sets finaly work after updating the whole equipment stats and hours of debug... (last fix by changing a 0 by 1...)
-  
 
+- **Effects**
+  - Fixed issue where potion effect durations decreased too quickly when applied multiple times in a single turn.
+  
 ### Changed
 - **Player**:
   - Modifed the basics functions like `append` and `remove` of the new Inventory(list) class
@@ -622,11 +636,14 @@ Need to be fixed in the future:
 
 - **Enemy**:
   - Modified some stats coefficients to balance the game a bit more
+  - Improved formula for damage and armor: `attack * (100 / (100 + defense)`
 
 - **Items**:
   - Reworked base effects of Rings, Belts and Amulets from `int(1  * rarity_multiplier[rarity])` to `int((1 + (level // 2)) * rarity_multiplier[rarity])`
   - The core functin `generate_random_item(...)` work 100% instead of 80%
 
+- **Core**:
+  - Changed the whole file management: created folders (core, engine, data, items, interface)
 
 
 
@@ -646,22 +663,4 @@ Need to be fixed in the future:
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-## [T̸̻̈́h̵̤͒␊ W̸͕̆h̵̤͒␋s̸̱̅p̵̦̆ë̵͕́⎼i̴̊͜┼g̸̻̿ V̵̰͊o̶͙͝i̴̊͜␍] - ???-??-??
+## [6.0.0] : T̸̻̈́h̵̤͒␊ W̸͕̆h̵̤͒␋s̸̱̅p̵̦̆ë̵͕́⎼i̴̊͜┼g̸̻̿ V̵̰͊o̶͙͝i̴̊͜␍ - ??-06-2025
