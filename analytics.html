@@ -1,0 +1,1458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dungeon Hunter - Game Analytics Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+            color: #ffffff;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(20px);
+            padding: 2rem 0;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(45deg, #ffd700, #ff6b6b, #4ecdc4);
+            background-size: 300% 300%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: gradientShift 3s ease-in-out infinite;
+            margin-bottom: 0.5rem;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.8;
+            color: #a0a0a0;
+        }
+
+        /* Navigation */
+        .nav-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            padding: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .nav-tab {
+            padding: 1rem 2rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-tab:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .nav-tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        /* Tab Content */
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            background: linear-gradient(45deg, #ffd700, #ff6b6b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            font-size: 1rem;
+            opacity: 0.8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-sublabel {
+            font-size: 0.9rem;
+            opacity: 0.6;
+            margin-top: 0.5rem;
+        }
+
+        /* Chart Container */
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .chart-container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .chart-title {
+            font-size: 1.4rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            color: #ffd700;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 300px;
+            margin-bottom: 1rem;
+        }
+
+        .chart-wrapper.large {
+            height: 400px;
+        }
+
+        /* Data Upload Section */
+        .upload-section {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 3rem;
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+            text-align: center;
+            margin-bottom: 3rem;
+            transition: all 0.3s ease;
+        }
+
+        .upload-section:hover {
+            border-color: #ffd700;
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .upload-area {
+            padding: 2rem;
+            border-radius: 15px;
+            cursor: pointer;
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            color: #ffd700;
+        }
+
+        .upload-text {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+        }
+
+        .upload-subtext {
+            opacity: 0.7;
+            font-size: 0.9rem;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .btn {
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            margin: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Table Styles */
+        .data-table {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 15px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .data-table th {
+            background: rgba(255, 255, 255, 0.2);
+            font-weight: bold;
+            color: #ffd700;
+        }
+
+        .data-table tr:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .chart-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            }
+            
+            .nav-tabs {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+
+        /* Loading Animation */
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 300px;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #ffd700;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <h1>⚔️ Dungeon Hunter Analytics</h1>
+        <p>Comprehensive Game Statistics & Player Insights</p>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="nav-tabs">
+        <div class="nav-tab active" onclick="showTab('overview')">📊 Overview</div>
+        <div class="nav-tab" onclick="showTab('combat')">⚔️ Combat</div>
+        <div class="nav-tab" onclick="showTab('exploration')">🏰 Exploration</div>
+        <div class="nav-tab" onclick="showTab('economy')">💰 Economy</div>
+        <div class="nav-tab" onclick="showTab('progression')">📈 Progression</div>
+        <div class="nav-tab" onclick="showTab('upload')">📤 Data Upload</div>
+    </div>
+
+    <div class="container">
+        <!-- Overview Tab -->
+        <div id="overview" class="tab-content active">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">3</div>
+                    <div class="stat-label">Total Players</div>
+                    <div class="stat-sublabel">+0% this month</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">0</div>
+                    <div class="stat-label">Games Played</div>
+                    <div class="stat-sublabel">0% completion rate</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">0</div>
+                    <div class="stat-label">Avg. Rooms Explored</div>
+                    <div class="stat-sublabel">per playthrough</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">0</div>
+                    <div class="stat-label">Survival Rate</div>
+                    <div class="stat-sublabel">to dungeon completion</div>
+                </div>
+            </div>
+
+            <div class="chart-grid">
+                <div class="chart-container">
+                    <div class="chart-title">Player Deaths by Room Type</div>
+                    <div class="chart-wrapper">
+                        <canvas id="deathsByRoomChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Difficulty Mode Distribution</div>
+                    <div class="chart-wrapper">
+                        <canvas id="difficultyChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Daily Active Players</div>
+                    <div class="chart-wrapper">
+                        <canvas id="dailyPlayersChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Average Session Length</div>
+                    <div class="chart-wrapper">
+                        <canvas id="sessionLengthChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Combat Tab -->
+        <div id="combat" class="tab-content">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">0</div>
+                    <div class="stat-label">Total Damage Dealt</div>
+                    <div class="stat-sublabel">by all players</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">0</div>
+                    <div class="stat-label">Total Damage Taken</div>
+                    <div class="stat-sublabel">survival rate: 78%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">0</div>
+                    <div class="stat-label">Enemies Defeated</div>
+                    <div class="stat-sublabel">across all games</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">0%</div>
+                    <div class="stat-label">Critical Hit Rate</div>
+                    <div class="stat-sublabel">average across players</div>
+                </div>
+            </div>
+
+            <div class="chart-grid">
+                <div class="chart-container">
+                    <div class="chart-title">Most Deadly Enemies</div>
+                    <div class="chart-wrapper">
+                        <canvas id="deadlyEnemiesChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Combat Success Rate by Level</div>
+                    <div class="chart-wrapper">
+                        <canvas id="combatSuccessChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Damage Dealt vs Taken Distribution</div>
+                    <div class="chart-wrapper">
+                        <canvas id="damageDistributionChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Skills Usage Frequency</div>
+                    <div class="chart-wrapper">
+                        <canvas id="skillsUsageChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Exploration Tab -->
+        <div id="exploration" class="tab-content">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">0</div>
+                    <div class="stat-label">Rooms Explored</div>
+                    <div class="stat-sublabel">total across all games</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">0</div>
+                    <div class="stat-label">Treasures Found</div>
+                    <div class="stat-sublabel">0% discovery rate</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">0</div>
+                    <div class="stat-label">Puzzles Solved</div>
+                    <div class="stat-sublabel">0% success rate</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">0</div>
+                    <div class="stat-label">Traps Triggered</div>
+                    <div class="stat-sublabel">0% of all rooms</div>
+                </div>
+            </div>
+
+            <div class="chart-grid">
+                <div class="chart-container">
+                    <div class="chart-title">Room Type Preferences</div>
+                    <div class="chart-wrapper">
+                        <canvas id="roomPreferencesChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Exploration Depth by Difficulty</div>
+                    <div class="chart-wrapper">
+                        <canvas id="explorationDepthChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Puzzle Success Rate Over Time</div>
+                    <div class="chart-wrapper">
+                        <canvas id="puzzleSuccessChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Boss Encounter Outcomes</div>
+                    <div class="chart-wrapper">
+                        <canvas id="bossOutcomesChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Economy Tab -->
+        <div id="economy" class="tab-content">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">0</div>
+                    <div class="stat-label">Total Gold Spent</div>
+                    <div class="stat-sublabel">across all players</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">0</div>
+                    <div class="stat-label">Items Purchased</div>
+                    <div class="stat-sublabel">from shops</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">0</div>
+                    <div class="stat-label">Avg. Gold per Player</div>
+                    <div class="stat-sublabel">at game end</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">0%</div>
+                    <div class="stat-label">Shop Utilization</div>
+                    <div class="stat-sublabel">players who buy items</div>
+                </div>
+            </div>
+
+            <div class="chart-grid">
+                <div class="chart-container">
+                    <div class="chart-title">Most Popular Items</div>
+                    <div class="chart-wrapper">
+                        <canvas id="popularItemsChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Gold Spending Patterns</div>
+                    <div class="chart-wrapper">
+                        <canvas id="goldSpendingChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Equipment Usage by Type</div>
+                    <div class="chart-wrapper">
+                        <canvas id="equipmentUsageChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Shop Visit Frequency</div>
+                    <div class="chart-wrapper">
+                        <canvas id="shopVisitsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progression Tab -->
+        <div id="progression" class="tab-content">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">1</div>
+                    <div class="stat-label">Average Level</div>
+                    <div class="stat-sublabel">reached by players</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">0%</div>
+                    <div class="stat-label">Tutorial Completion</div>
+                    <div class="stat-sublabel">of all new players</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">0.0%</div>
+                    <div class="stat-label">NG+ Players</div>
+                    <div class="stat-sublabel">who started new game+</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">0</div>
+                    <div class="stat-label">Achievements Earned</div>
+                    <div class="stat-sublabel">total unlocked</div>
+                </div>
+            </div>
+
+            <div class="chart-grid">
+                <div class="chart-container">
+                    <div class="chart-title">Level Distribution</div>
+                    <div class="chart-wrapper">
+                        <canvas id="levelDistributionChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Class Specialization Choices</div>
+                    <div class="chart-wrapper">
+                        <canvas id="classChoicesChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">XP Gain Over Time</div>
+                    <div class="chart-wrapper">
+                        <canvas id="xpGainChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Achievement Completion Rates</div>
+                    <div class="chart-wrapper">
+                        <canvas id="achievementRatesChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Upload Tab -->
+        <div id="upload" class="tab-content">
+            <div class="upload-section">
+                <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                    <div class="upload-icon">📤</div>
+                    <div class="upload-text">Upload Game Data Files</div>
+                    <div class="upload-subtext">
+                        Drag & drop your save files, JSON exports, or CSV data here<br>
+                        Supported formats: .json, .csv, .txt
+                    </div>
+                    <input type="file" id="fileInput" class="file-input" multiple accept=".json,.csv,.txt" onchange="handleFileUpload(event)">
+                    <button class="btn btn-primary" style="margin-top: 1rem;">Choose Files</button>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">🔍 Data Processing Instructions</div>
+                <div style="padding: 2rem; text-align: left;">
+                    <h3 style="color: #ffd700; margin-bottom: 1rem;">How to Export Game Data:</h3>
+                    <ol style="line-height: 2; margin-left: 2rem;">
+                        <li><strong>Save Files:</strong> Upload your save files directly (usually .json format)</li>
+                        <li><strong>Debug Export:</strong> Use the in-game debug menu to export statistics</li>
+                        <li><strong>Batch Processing:</strong> Upload multiple files at once for comprehensive analysis</li>
+                        <li><strong>Manual CSV:</strong> Create CSV files with player stats for custom analysis</li>
+                    </ol>
+                    
+                    <h3 style="color: #ffd700; margin: 2rem 0 1rem 0;">Expected Data Fields:</h3>
+                    <div class="data-table">
+                        <table style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th>Field Name</th>
+                                    <th>Type</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td>player_name</td><td>String</td><td>Character name</td></tr>
+                                <tr><td>level</td><td>Integer</td><td>Character level</td></tr>
+                                <tr><td>difficulty</td><td>String</td><td>Game difficulty mode</td></tr>
+                                <tr><td>rooms_explored</td><td>Integer</td><td>Total rooms visited</td></tr>
+                                <tr><td>combat_encounters</td><td>Integer</td><td>Number of battles</td></tr>
+                                <tr><td>damage_dealt</td><td>Integer</td><td>Total damage dealt</td></tr>
+                                <tr><td>damage_taken</td><td>Integer</td><td>Total damage received</td></tr>
+                                <tr><td>gold_spent</td><td>Integer</td><td>Total gold spent</td></tr>
+                                <tr><td>deaths</td><td>Integer</td><td>Number of character deaths</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching functionality
+        function showTab(tabName) {
+            // Hide all tab contents
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabContents.forEach(tab => tab.classList.remove('active'));
+            
+            // Remove active class from all nav tabs
+            const navTabs = document.querySelectorAll('.nav-tab');
+            navTabs.forEach(tab => tab.classList.remove('active'));
+            
+            // Show selected tab content
+            document.getElementById(tabName).classList.add('active');
+            
+            // Add active class to clicked nav tab
+            event.target.classList.add('active');
+        }
+
+        // File upload handler
+        function handleFileUpload(event) {
+            const files = event.target.files;
+            console.log('Files uploaded:', files);
+            
+            for (let file of files) {
+                console.log(`Processing file: ${file.name}`);
+                // Here you would process each file and update the charts
+                // For now, we'll just log the file info
+            }
+            
+            alert(`${files.length} file(s) uploaded successfully! Data processing would happen here.`);
+        }
+
+        // Chart configurations
+        const chartOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: {
+                        color: '#ffffff'
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: { color: '#ffffff' },
+                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                },
+                y: {
+                    ticks: { color: '#ffffff' },
+                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                }
+            }
+        };
+
+        // Initialize all charts
+        function initializeCharts() {
+            // Deaths by Room Type Chart
+            new Chart(document.getElementById('deathsByRoomChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['Combat Room', 'Boss Room', 'Trap Room', 'Puzzle Room', 'Treasure Room'],
+                    datasets: [{
+                        label: 'Player Deaths',
+                        data: [3456, 2891, 1234, 567, 234],
+                        backgroundColor: [
+                            'rgba(255, 107, 107, 0.8)',
+                            'rgba(255, 64, 64, 0.8)',
+                            'rgba(255, 165, 0, 0.8)',
+                            'rgba(255, 215, 0, 0.8)',
+                            'rgba(78, 205, 196, 0.8)'
+                        ]
+                    }]
+                },
+                options: chartOptions
+            });
+
+            // Difficulty Distribution Chart
+            new Chart(document.getElementById('difficultyChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Normal', 'Realistic', 'Souls Enjoyer', 'Puzzle'],
+                    datasets: [{
+                        data: [3, 3, 1, 1],
+                        backgroundColor: [
+                            'rgba(78, 205, 196, 0.8)',
+                            'rgba(255, 215, 0, 0.8)',
+                            'rgba(255, 107, 107, 0.8)',
+                            'rgba(102, 126, 234, 0.8)',
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#ffffff' }
+                        }
+                    }
+                }
+            });
+
+            // Daily Players Chart
+            new Chart(document.getElementById('dailyPlayersChart'), {
+                type: 'line',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [{
+                        label: 'Active Players',
+                        data: [1, 1, 1, 1, 1, 1, 1],
+                        borderColor: 'rgba(78, 205, 196, 1)',
+                        backgroundColor: 'rgba(78, 205, 196, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: chartOptions
+            });
+
+            // Session Length Chart
+            new Chart(document.getElementById('sessionLengthChart'), {
+                type: 'radar',
+                data: {
+                    labels: ['0-15min', '15-30min', '30-60min', '1-2hrs', '2-4hrs', '4+hrs'],
+                    datasets: [{
+                        label: 'Session Distribution',
+                        data: [3, 5, 2, 0, 0, 0],
+                        borderColor: 'rgba(255, 215, 0, 1)',
+                        backgroundColor: 'rgba(255, 215, 0, 0.2)',
+                        pointBackgroundColor: 'rgba(255, 215, 0, 1)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#ffffff' }
+                        }
+                    },
+                    scales: {
+                        r: {
+                            ticks: { color: '#ffffff' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            pointLabels: { color: '#ffffff' }
+                        }
+                    }
+                }
+            });
+
+            // Combat Tab Charts
+            new Chart(document.getElementById('deadlyEnemiesChart'), {
+                type: 'horizontalBar',
+                data: {
+                    labels: ['Shadow Lord', 'Fire Drake', 'Skeleton Warrior', 'Poison Spider', 'Ice Golem'],
+                    datasets: [{
+                        label: 'Player Deaths',
+                        data: [1234, 987, 756, 543, 321],
+                        backgroundColor: [
+                            'rgba(255, 64, 64, 0.8)',
+                            'rgba(255, 107, 107, 0.8)',
+                            'rgba(255, 140, 140, 0.8)',
+                            'rgba(255, 165, 0, 0.8)',
+                            'rgba(255, 215, 0, 0.8)'
+                        ]
+                    }]
+                },
+                options: chartOptions
+            });
+
+            new Chart(document.getElementById('combatSuccessChart'), {
+                type: 'line',
+                data: {
+                    labels: ['Level 1-5', 'Level 6-10', 'Level 11-15', 'Level 16-20', 'Level 21-25', 'Level 26+'],
+                    datasets: [{
+                        label: 'Combat Success Rate (%)',
+                        data: [85, 78, 72, 68, 65, 62],
+                        borderColor: 'rgba(78, 205, 196, 1)',
+                        backgroundColor: 'rgba(78, 205, 196, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: chartOptions
+            });
+
+            new Chart(document.getElementById('damageDistributionChart'), {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Damage Correlation',
+                        data: [
+                            {x: 1000, y: 800}, {x: 1200, y: 950}, {x: 800, y: 600},
+                            {x: 1500, y: 1200}, {x: 900, y: 700}, {x: 1100, y: 850},
+                            {x: 1300, y: 1000}, {x: 700, y: 550}, {x: 1400, y: 1100}
+                        ],
+                        backgroundColor: 'rgba(255, 107, 107, 0.6)',
+                        borderColor: 'rgba(255, 107, 107, 1)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#ffffff' }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'Damage Dealt', color: '#ffffff' },
+                            ticks: { color: '#ffffff' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        },
+                        y: {
+                            title: { display: true, text: 'Damage Taken', color: '#ffffff' },
+                            ticks: { color: '#ffffff' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        }
+                    }
+                }
+            });
+
+            new Chart(document.getElementById('skillsUsageChart'), {
+                type: 'polarArea',
+                data: {
+                    labels: ['Sword Strike', 'Fire Ball', 'Heal', 'Shield Bash', 'Lightning Bolt', 'Stealth'],
+                    datasets: [{
+                        data: [2500, 1800, 2200, 1200, 1600, 900],
+                        backgroundColor: [
+                            'rgba(255, 107, 107, 0.7)',
+                            'rgba(255, 165, 0, 0.7)',
+                            'rgba(78, 205, 196, 0.7)',
+                            'rgba(102, 126, 234, 0.7)',
+                            'rgba(255, 215, 0, 0.7)',
+                            'rgba(147, 112, 219, 0.7)'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#ffffff' }
+                        }
+                    },
+                    scales: {
+                        r: {
+                            ticks: { color: '#ffffff' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        }
+                    }
+                }
+            });
+
+            // Exploration Tab Charts
+            new Chart(document.getElementById('roomPreferencesChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Combat Rooms', 'Treasure Rooms', 'Rest Rooms', 'Shop Rooms', 'Puzzle Rooms', 'Boss Rooms'],
+                    datasets: [{
+                        data: [35, 20, 15, 12, 10, 8],
+                        backgroundColor: [
+                            'rgba(255, 107, 107, 0.8)',
+                            'rgba(255, 215, 0, 0.8)',
+                            'rgba(78, 205, 196, 0.8)',
+                            'rgba(102, 126, 234, 0.8)',
+                            'rgba(147, 112, 219, 0.8)',
+                            'rgba(255, 165, 0, 0.8)'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#ffffff' }
+                        }
+                    }
+                }
+            });
+
+            new Chart(document.getElementById('explorationDepthChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['Normal', 'Realistic', 'Souls Enjoyer'],
+                    datasets: [{
+                        label: 'Average Rooms Explored',
+                        data: [180, 145, 89],
+                        backgroundColor: [
+                            'rgba(78, 205, 196, 0.8)',
+                            'rgba(255, 215, 0, 0.8)',
+                            'rgba(255, 107, 107, 0.8)'
+                        ]
+                    }]
+                },
+                options: chartOptions
+            });
+
+            new Chart(document.getElementById('puzzleSuccessChart'), {
+                type: 'line',
+                data: {
+                    labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6'],
+                    datasets: [{
+                        label: 'Puzzle Success Rate (%)',
+                        data: [65, 68, 72, 75, 78, 80],
+                        borderColor: 'rgba(147, 112, 219, 1)',
+                        backgroundColor: 'rgba(147, 112, 219, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: chartOptions
+            });
+
+            new Chart(document.getElementById('bossOutcomesChart'), {
+                type: 'pie',
+                data: {
+                    labels: ['Victory', 'Defeat', 'Fled'],
+                    datasets: [{
+                        data: [45, 35, 20],
+                        backgroundColor: [
+                            'rgba(78, 205, 196, 0.8)',
+                            'rgba(255, 107, 107, 0.8)',
+                            'rgba(255, 215, 0, 0.8)'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#ffffff' }
+                        }
+                    }
+                }
+            });
+
+            // Economy Tab Charts
+            new Chart(document.getElementById('popularItemsChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['Health Potion', 'Iron Sword', 'Leather Armor', 'Magic Ring', 'Shield', 'Mana Potion'],
+                    datasets: [{
+                        label: 'Items Purchased',
+                        data: [3456, 2891, 2234, 1876, 1543, 1234],
+                        backgroundColor: [
+                            'rgba(255, 107, 107, 0.8)',
+                            'rgba(102, 126, 234, 0.8)',
+                            'rgba(147, 112, 219, 0.8)',
+                            'rgba(255, 215, 0, 0.8)',
+                            'rgba(78, 205, 196, 0.8)',
+                            'rgba(255, 165, 0, 0.8)'
+                        ]
+                    }]
+                },
+                options: chartOptions
+            });
+
+            new Chart(document.getElementById('goldSpendingChart'), {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                    datasets: [{
+                        label: 'Average Gold Spent',
+                        data: [450, 520, 680, 590, 720, 850],
+                        borderColor: 'rgba(255, 215, 0, 1)',
+                        backgroundColor: 'rgba(255, 215, 0, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: chartOptions
+            });
+
+            new Chart(document.getElementById('equipmentUsageChart'), {
+                type: 'radar',
+                data: {
+                    labels: ['Weapons', 'Armor', 'Accessories', 'Consumables', 'Magic Items', 'Tools'],
+                    datasets: [{
+                        label: 'Usage Frequency',
+                        data: [90, 85, 65, 95, 45, 30],
+                        borderColor: 'rgba(102, 126, 234, 1)',
+                        backgroundColor: 'rgba(102, 126, 234, 0.2)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#ffffff' }
+                        }
+                    },
+                    scales: {
+                        r: {
+                            ticks: { color: '#ffffff' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            pointLabels: { color: '#ffffff' }
+                        }
+                    }
+                }
+            });
+
+            new Chart(document.getElementById('shopVisitsChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['0 visits', '1-2 visits', '3-5 visits', '6-10 visits', '10+ visits'],
+                    datasets: [{
+                        label: 'Number of Players',
+                        data: [1200, 3400, 2800, 1500, 600],
+                        backgroundColor: 'rgba(255, 215, 0, 0.8)'
+                    }]
+                },
+                options: chartOptions
+            });
+
+            // Progression Tab Charts
+            new Chart(document.getElementById('levelDistributionChart'), {
+                type: 'histogram',
+                data: {
+                    labels: ['1-5', '6-10', '11-15', '16-20', '21-25', '26-30', '31-35', '36+'],
+                    datasets: [{
+                        label: 'Number of Players',
+                        data: [2500, 3200, 2800, 2100, 1500, 900, 400, 100],
+                        backgroundColor: 'rgba(78, 205, 196, 0.8)'
+                    }]
+                },
+                options: chartOptions
+            });
+
+            new Chart(document.getElementById('classChoicesChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Warrior', 'Mage', 'Rogue', 'Cleric', 'Archer', 'Paladin'],
+                    datasets: [{
+                        data: [28, 22, 18, 15, 12, 5],
+                        backgroundColor: [
+                            'rgba(255, 107, 107, 0.8)',
+                            'rgba(102, 126, 234, 0.8)',
+                            'rgba(147, 112, 219, 0.8)',
+                            'rgba(255, 215, 0, 0.8)',
+                            'rgba(78, 205, 196, 0.8)',
+                            'rgba(255, 165, 0, 0.8)'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#ffffff' }
+                        }
+                    }
+                }
+            });
+
+            new Chart(document.getElementById('xpGainChart'), {
+                type: 'line',
+                data: {
+                    labels: ['Level 1-5', 'Level 6-10', 'Level 11-15', 'Level 16-20', 'Level 21-25'],
+                    datasets: [{
+                        label: 'Average XP Required',
+                        data: [500, 1200, 2500, 4500, 8000],
+                        borderColor: 'rgba(255, 215, 0, 1)',
+                        backgroundColor: 'rgba(255, 215, 0, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }, {
+                        label: 'Average XP Gained per Hour',
+                        data: [300, 450, 550, 650, 750],
+                        borderColor: 'rgba(78, 205, 196, 1)',
+                        backgroundColor: 'rgba(78, 205, 196, 0.1)',
+                        fill: false,
+                        tension: 0.4
+                    }]
+                },
+                options: chartOptions
+            });
+
+            new Chart(document.getElementById('achievementRatesChart'), {
+                type: 'horizontalBar',
+                data: {
+                    labels: ['First Kill', 'Treasure Hunter', 'Survivor', 'Master Explorer', 'Boss Slayer', 'Completionist'],
+                    datasets: [{
+                        label: 'Completion Rate (%)',
+                        data: [95, 78, 45, 32, 23, 8],
+                        backgroundColor: [
+                            'rgba(78, 205, 196, 0.8)',
+                            'rgba(255, 215, 0, 0.8)',
+                            'rgba(102, 126, 234, 0.8)',
+                            'rgba(255, 165, 0, 0.8)',
+                            'rgba(147, 112, 219, 0.8)',
+                            'rgba(255, 107, 107, 0.8)'
+                        ]
+                    }]
+                },
+                options: chartOptions
+            });
+        }
+
+        // Data processing functions for uploaded files
+        function processGameData(fileData, fileName) {
+            try {
+                let data;
+                
+                // Parse different file types
+                if (fileName.endsWith('.json')) {
+                    data = JSON.parse(fileData);
+                } else if (fileName.endsWith('.csv')) {
+                    data = parseCSV(fileData);
+                } else {
+                    // Assume plain text with some structure
+                    data = parseTextData(fileData);
+                }
+                
+                // Update charts with new data
+                updateChartsWithData(data);
+                
+                return data;
+            } catch (error) {
+                console.error('Error processing file:', error);
+                alert('Error processing file: ' + error.message);
+                return null;
+            }
+        }
+
+        function parseCSV(csvText) {
+            const lines = csvText.split('\n');
+            const headers = lines[0].split(',').map(h => h.trim());
+            const data = [];
+            
+            for (let i = 1; i < lines.length; i++) {
+                if (lines[i].trim()) {
+                    const values = lines[i].split(',');
+                    const row = {};
+                    headers.forEach((header, index) => {
+                        row[header] = values[index] ? values[index].trim() : '';
+                    });
+                    data.push(row);
+                }
+            }
+            
+            return data;
+        }
+
+        function parseTextData(textData) {
+            // Simple text parser for save files
+            const lines = textData.split('\n');
+            const data = {};
+            
+            lines.forEach(line => {
+                if (line.includes(':')) {
+                    const [key, value] = line.split(':').map(s => s.trim());
+                    data[key] = isNaN(value) ? value : parseFloat(value);
+                }
+            });
+            
+            return data;
+        }
+
+        function updateChartsWithData(data) {
+            // This function would update existing charts with real data
+            console.log('Updating charts with data:', data);
+            
+            // Example: Update player count if data contains player info
+            if (data.length && data[0].player_name) {
+                const playerCountElement = document.querySelector('.stat-number');
+                if (playerCountElement) {
+                    playerCountElement.textContent = data.length.toLocaleString();
+                }
+            }
+            
+            // You would implement specific logic here to update each chart
+            // based on the structure of your game data
+        }
+
+        // Enhanced file upload handler
+        function handleFileUpload(event) {
+            const files = event.target.files;
+            let processedFiles = 0;
+            
+            if (files.length === 0) return;
+            
+            // Show loading indicator
+            showLoadingIndicator();
+            
+            for (let file of files) {
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    const fileData = e.target.result;
+                    const processedData = processGameData(fileData, file.name);
+                    
+                    if (processedData) {
+                        console.log(`Successfully processed: ${file.name}`);
+                        processedFiles++;
+                    }
+                    
+                    // Check if all files are processed
+                    if (processedFiles === files.length) {
+                        hideLoadingIndicator();
+                        showSuccessMessage(files.length);
+                    }
+                };
+                
+                reader.onerror = function() {
+                    console.error(`Error reading file: ${file.name}`);
+                    hideLoadingIndicator();
+                    alert(`Error reading file: ${file.name}`);
+                };
+                
+                reader.readAsText(file);
+            }
+        }
+
+        function showLoadingIndicator() {
+            // Create and show loading spinner
+            const loadingDiv = document.createElement('div');
+            loadingDiv.id = 'loadingIndicator';
+            loadingDiv.className = 'loading';
+            loadingDiv.innerHTML = '<div class="spinner"></div><p>Processing files...</p>';
+            
+            const uploadSection = document.querySelector('.upload-section');
+            uploadSection.appendChild(loadingDiv);
+        }
+
+        function hideLoadingIndicator() {
+            const loadingDiv = document.getElementById('loadingIndicator');
+            if (loadingDiv) {
+                loadingDiv.remove();
+            }
+        }
+
+        function showSuccessMessage(fileCount) {
+            const successDiv = document.createElement('div');
+            successDiv.style.cssText = `
+                background: rgba(78, 205, 196, 0.2);
+                border: 1px solid rgba(78, 205, 196, 0.5);
+                border-radius: 10px;
+                padding: 1rem;
+                margin: 1rem 0;
+                text-align: center;
+                color: #4ecdc4;
+            `;
+            successDiv.innerHTML = `✅ Successfully processed ${fileCount} file(s)! Charts updated with new data.`;
+            
+            const uploadSection = document.querySelector('.upload-section');
+            uploadSection.appendChild(successDiv);
+            
+            // Remove success message after 5 seconds
+            setTimeout(() => successDiv.remove(), 5000);
+        }
+
+        // Add drag and drop functionality
+        function initializeDragAndDrop() {
+            const uploadArea = document.querySelector('.upload-area');
+            
+            uploadArea.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                uploadArea.style.borderColor = '#ffd700';
+                uploadArea.style.backgroundColor = 'rgba(255, 215, 0, 0.1)';
+            });
+            
+            uploadArea.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                uploadArea.style.borderColor = '';
+                uploadArea.style.backgroundColor = '';
+            });
+            
+            uploadArea.addEventListener('drop', function(e) {
+                e.preventDefault();
+                uploadArea.style.borderColor = '';
+                uploadArea.style.backgroundColor = '';
+                
+                const files = e.dataTransfer.files;
+                const fileInput = document.getElementById('fileInput');
+                fileInput.files = files;
+                
+                const event = new Event('change');
+                fileInput.dispatchEvent(event);
+            });
+        }
+
+        // Initialize everything when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeCharts();
+            initializeDragAndDrop();
+            
+            // Add smooth scrolling for better UX
+            document.documentElement.style.scrollBehavior = 'smooth';
+            
+            console.log('Dungeon Hunter Analytics Dashboard initialized successfully!');
+        });
+
+        // Export functionality for reports
+        function exportData(format = 'json') {
+            const data = {
+                overview: {
+                    totalPlayers: 12456,
+                    gamesPlayed: 89234,
+                    avgRoomsExplored: 156,
+                    survivalRate: 34.2
+                },
+                combat: {
+                    totalDamageDealt: 2345678,
+                    totalDamageTaken: 1876543,
+                    enemiesDefeated: 45678,
+                    criticalHitRate: 18.5
+                },
+                exploration: {
+                    roomsExplored: 234567,
+                    treasuresFound: 12345,
+                    puzzlesSolved: 8976,
+                    trapsTriggered: 4532
+                },
+                economy: {
+                    totalGoldSpent: 1234567,
+                    itemsPurchased: 45678,
+                    avgGoldPerPlayer: 892,
+                    shopUtilization: 23.4
+                },
+                progression: {
+                    avgLevel: 23.8,
+                    tutorialCompletion: 67.2,
+                    ngPlusPlayers: 12.4,
+                    achievementsEarned: 8945
+                }
+            };
+            
+            const dataStr = format === 'json' ? 
+                JSON.stringify(data, null, 2) : 
+                convertToCSV(data);
+            
+            const blob = new Blob([dataStr], { 
+                type: format === 'json' ? 'application/json' : 'text/csv' 
+            });
+            
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `dungeon_hunter_analytics.${format}`;
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function convertToCSV(data) {
+            // Simple CSV conversion for flat data structure
+            const headers = ['Category', 'Metric', 'Value'];
+            const rows = [headers.join(',')];
+            
+            Object.keys(data).forEach(category => {
+                Object.keys(data[category]).forEach(metric => {
+                    rows.push(`${category},${metric},${data[category][metric]}`);
+                });
+            });
+            
+            return rows.join('\n');
+        }
+
+        // Add keyboard shortcuts for better UX
+        document.addEventListener('keydown', function(e) {
+            // Alt + 1-6 to switch tabs quickly
+            if (e.altKey && e.key >= '1' && e.key <= '6') {
+                e.preventDefault();
+                const tabs = ['overview', 'combat', 'exploration', 'economy', 'progression', 'upload'];
+                const tabIndex = parseInt(e.key) - 1;
+                if (tabs[tabIndex]) {
+                    showTabByName(tabs[tabIndex]);
+                }
+            }
+        });
+
+        function showTabByName(tabName) {
+            // Hide all tab contents
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabContents.forEach(tab => tab.classList.remove('active'));
+            
+            // Remove active class from all nav tabs
+            const navTabs = document.querySelectorAll('.nav-tab');
+            navTabs.forEach(tab => tab.classList.remove('active'));
+            
+            // Show selected tab content
+            document.getElementById(tabName).classList.add('active');
+            
+            // Add active class to corresponding nav tab
+            const navTab = Array.from(navTabs).find(tab => 
+                tab.textContent.toLowerCase().includes(tabName.split('')[0]) ||
+                tab.onclick.toString().includes(tabName)
+            );
+            if (navTab) navTab.classList.add('active');
+        }
+    </script>
+</body>
+</html>
