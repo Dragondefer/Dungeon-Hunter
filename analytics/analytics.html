@@ -401,7 +401,7 @@
                 <div class="stat-card">
                     <div class="stat-number">0</div>
                     <div class="stat-label">Total Damage Taken</div>
-                    <div class="stat-sublabel">survival rate: 78%</div>
+                    <div class="stat-sublabel">survival rate: 0%</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-number">0</div>
@@ -809,7 +809,7 @@
 
             // Combat Tab Charts
             new Chart(document.getElementById('deadlyEnemiesChart'), {
-                type: 'horizontalBar',
+                type: 'bar',
                 data: {
                     labels: ['Shadow Lord', 'Fire Drake', 'Skeleton Warrior', 'Poison Spider', 'Ice Golem'],
                     datasets: [{
@@ -824,7 +824,10 @@
                         ]
                     }]
                 },
-                options: chartOptions
+                options: {
+                    ...chartOptions,
+                    indexAxis: 'y'
+                }
             });
 
             new Chart(document.getElementById('combatSuccessChart'), {
@@ -1079,7 +1082,7 @@
 
             // Progression Tab Charts
             new Chart(document.getElementById('levelDistributionChart'), {
-                type: 'histogram',
+                type: 'bar',
                 data: {
                     labels: ['1-5', '6-10', '11-15', '16-20', '21-25', '26-30', '31-35', '36+'],
                     datasets: [{
@@ -1142,7 +1145,7 @@
             });
 
             new Chart(document.getElementById('achievementRatesChart'), {
-                type: 'horizontalBar',
+                type: 'bar',
                 data: {
                     labels: ['First Kill', 'Treasure Hunter', 'Survivor', 'Master Explorer', 'Boss Slayer', 'Completionist'],
                     datasets: [{
@@ -1158,7 +1161,10 @@
                         ]
                     }]
                 },
-                options: chartOptions
+                options: {
+                    ...chartOptions,
+                    indexAxis: 'y'
+                }
             });
         }
 
@@ -1345,16 +1351,6 @@
             });
         }
 
-        // Initialize everything when page loads
-        document.addEventListener('DOMContentLoaded', function() {
-            initializeCharts();
-            initializeDragAndDrop();
-            
-            // Add smooth scrolling for better UX
-            document.documentElement.style.scrollBehavior = 'smooth';
-            
-            console.log('Dungeon Hunter Analytics Dashboard initialized successfully!');
-        });
 
         // Export functionality for reports
         function exportData(format = 'json') {
@@ -1453,6 +1449,239 @@
             );
             if (navTab) navTab.classList.add('active');
         }
+
+        // Handle error messages
+        function showErrorMessage(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.style.cssText = `
+                background: rgba(255, 107, 107, 0.2);
+                border: 1px solid rgba(255, 107, 107, 0.5);
+                border-radius: 10px;
+                padding: 1rem;
+                margin: 1rem;
+                text-align: center;
+                color: #ff6b6b;
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 1000;
+                max-width: 300px;
+            `;
+            errorDiv.innerHTML = `⚠️ ${message}`;
+            
+            document.body.appendChild(errorDiv);
+            
+            // Remove error message after 5 seconds
+            setTimeout(() => errorDiv.remove(), 5000);
+        }
+
+        // Add this new function to automatically load global_stats.json
+        async function loadGlobalStats() {
+            try {
+                const response = await fetch('/analytics/global_stats.json');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                console.log('Global stats loaded successfully:', data);
+                
+                // Update the dashboard with loaded data
+                updateDashboardWithStats(data);
+                
+                return data;
+            } catch (error) {
+                console.error('Error loading global_stats.json:', error);
+                console.log('Using default/demo data instead');
+                
+                // Show a user-friendly message
+                showErrorMessage('Could not load live data. Using demo data.');
+                
+                return null;
+            }
+        }
+
+    // Add this function to update dashboard stats with real data
+    function updateDashboardWithStats(stats) {
+        // Update Overview Tab Stats
+        if (stats.overview) {
+            updateStatCard(0, stats.overview.totalPlayers || 0, 'Total Players');
+            updateStatCard(1, stats.overview.gamesPlayed || 0, 'Games Played');
+            updateStatCard(2, stats.overview.avgRoomsExplored || 0, 'Avg. Rooms Explored');
+            updateStatCard(3, `${stats.overview.survivalRate || 0}%`, 'Survival Rate');
+        }
+        
+        // Update Combat Tab Stats
+        if (stats.combat) {
+            const combatStats = document.querySelectorAll('#combat .stat-number');
+            if (combatStats.length >= 4) {
+                combatStats[0].textContent = (stats.combat.totalDamageDealt || 0).toLocaleString();
+                combatStats[1].textContent = (stats.combat.totalDamageTaken || 0).toLocaleString();
+                combatStats[2].textContent = (stats.combat.enemiesDefeated || 0).toLocaleString();
+                combatStats[3].textContent = `${stats.combat.criticalHitRate || 0}%`;
+            }
+        }
+        
+        // Update Exploration Tab Stats
+        if (stats.exploration) {
+            const explorationStats = document.querySelectorAll('#exploration .stat-number');
+            if (explorationStats.length >= 4) {
+                explorationStats[0].textContent = (stats.exploration.roomsExplored || 0).toLocaleString();
+                explorationStats[1].textContent = (stats.exploration.treasuresFound || 0).toLocaleString();
+                explorationStats[2].textContent = (stats.exploration.puzzlesSolved || 0).toLocaleString();
+                explorationStats[3].textContent = (stats.exploration.trapsTriggered || 0).toLocaleString();
+            }
+        }
+        
+        // Update Economy Tab Stats
+        if (stats.economy) {
+            const economyStats = document.querySelectorAll('#economy .stat-number');
+            if (economyStats.length >= 4) {
+                economyStats[0].textContent = (stats.economy.totalGoldSpent || 0).toLocaleString();
+                economyStats[1].textContent = (stats.economy.itemsPurchased || 0).toLocaleString();
+                economyStats[2].textContent = (stats.economy.avgGoldPerPlayer || 0).toLocaleString();
+                economyStats[3].textContent = `${stats.economy.shopUtilization || 0}%`;
+            }
+        }
+        
+        // Update Progression Tab Stats
+        if (stats.progression) {
+            const progressionStats = document.querySelectorAll('#progression .stat-number');
+            if (progressionStats.length >= 4) {
+                progressionStats[0].textContent = stats.progression.avgLevel || 1;
+                progressionStats[1].textContent = `${stats.progression.tutorialCompletion || 0}%`;
+                progressionStats[2].textContent = `${stats.progression.ngPlusPlayers || 0}%`;
+                progressionStats[3].textContent = (stats.progression.achievementsEarned || 0).toLocaleString();
+            }
+        }
+        
+        // Update charts with new data
+        updateChartsWithStats(stats);
+    }
+
+    // Helper function to update individual stat cards
+    function updateStatCard(index, value, label) {
+        const statCards = document.querySelectorAll('#overview .stat-card');
+        if (statCards[index]) {
+            const numberElement = statCards[index].querySelector('.stat-number');
+            const labelElement = statCards[index].querySelector('.stat-label');
+            
+            if (numberElement) {
+                numberElement.textContent = typeof value === 'number' ? value.toLocaleString() : value;
+            }
+            if (labelElement) {
+                labelElement.textContent = label;
+            }
+        }
+    }
+
+    // Add this function to update charts with real data
+    function updateChartsWithStats(stats) {
+        // Only update charts if the data exists
+        if (!stats) return;
+        
+        // Update difficulty chart if data exists
+        if (stats.charts && stats.charts.difficultyDistribution) {
+            const difficultyChart = Chart.getChart('difficultyChart');
+            if (difficultyChart) {
+                difficultyChart.data.datasets[0].data = stats.charts.difficultyDistribution;
+                difficultyChart.update();
+            }
+        }
+        
+        // Update daily players chart
+        if (stats.charts && stats.charts.dailyPlayers) {
+            const dailyChart = Chart.getChart('dailyPlayersChart');
+            if (dailyChart) {
+                dailyChart.data.datasets[0].data = stats.charts.dailyPlayers;
+                dailyChart.update();
+            }
+        }
+        
+        // Update deaths by room chart
+        if (stats.charts && stats.charts.deathsByRoom) {
+            const deathsChart = Chart.getChart('deathsByRoomChart');
+            if (deathsChart) {
+                deathsChart.data.datasets[0].data = stats.charts.deathsByRoom;
+                deathsChart.update();
+            }
+        }
+        
+        // Add more chart updates as needed...
+    }
+
+    // REPLACE the existing DOMContentLoaded listener with:
+    document.addEventListener('DOMContentLoaded', async function() {
+        // Show loading indicator
+        showGlobalLoadingIndicator();
+        
+        // First initialize charts with default data
+        initializeCharts();
+        initializeDragAndDrop();
+        
+        // Then try to load real data (with timeout)
+        try {
+            const loadPromise = loadGlobalStats();
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Timeout')), 5000)
+            );
+            
+            await Promise.race([loadPromise, timeoutPromise]);
+        } catch (error) {
+            console.log('Failed to load stats within timeout, continuing with demo data');
+        }
+        
+        // Always hide loading indicator
+        hideGlobalLoadingIndicator();
+        
+        // Add smooth scrolling for better UX
+        document.documentElement.style.scrollBehavior = 'smooth';
+        
+        console.log('Dungeon Hunter Analytics Dashboard initialized successfully!');
+    });
+
+    // Add loading indicator functions
+    function showGlobalLoadingIndicator() {
+        const loadingDiv = document.createElement('div');
+        loadingDiv.id = 'globalLoadingIndicator';
+        loadingDiv.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            flex-direction: column;
+            color: white;
+        `;
+        loadingDiv.innerHTML = `
+            <div class="spinner"></div>
+            <p style="margin-top: 1rem; font-size: 1.2rem;">Loading game statistics...</p>
+        `;
+        document.body.appendChild(loadingDiv);
+    }
+
+    function hideGlobalLoadingIndicator() {
+        const loadingDiv = document.getElementById('globalLoadingIndicator');
+        if (loadingDiv) {
+            loadingDiv.remove();
+        }
+    }
+
+    // Add auto-refresh functionality (optional)
+    function enableAutoRefresh(intervalMinutes = 5) {
+        setInterval(async () => {
+            console.log('Auto-refreshing stats...');
+            await loadGlobalStats();
+        }, intervalMinutes * 60 * 1000);
+    }
+
+    // Call this if you want auto-refresh every 5 minutes
+    enableAutoRefresh(5);
     </script>
 </body>
 </html>
