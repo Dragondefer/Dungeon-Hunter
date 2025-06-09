@@ -1478,7 +1478,7 @@
         // Add this new function to automatically load global_stats.json
         async function loadGlobalStats() {
             try {
-                const response = await fetch('/analytics/global_stats.json');
+                const response = await fetch('/Dungeon-Hunter/analytics/global_stats.json');
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
