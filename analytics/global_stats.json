@@ -1,0 +1,32 @@
+{
+    "overview": {
+        "totalPlayers": 1,
+        "gamesPlayed": 1,
+        "avgRoomsExplored": 16.0,
+        "survivalRate": 1.0
+    },
+    "combat": {
+        "totalDamageDealt": 641.0,
+        "totalDamageTaken": 290,
+        "enemiesDefeated": 0,
+        "criticalHitRate": 0.0
+    },
+    "exploration": {
+        "roomsExplored": 16,
+        "treasuresFound": 4,
+        "puzzlesSolved": 1,
+        "trapsTriggered": 0
+    },
+    "economy": {
+        "totalGoldSpent": 0,
+        "itemsPurchased": 0,
+        "avgGoldPerPlayer": 0.0,
+        "shopUtilization": 0.0
+    },
+    "progression": {
+        "avgLevel": 4.0,
+        "tutorialCompletion": 0.0,
+        "ngPlusPlayers": 0.0,
+        "achievementsEarned": 8
+    }
+}
