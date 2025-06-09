@@ -337,58 +337,70 @@
     </div>
 
     <div class="container">
-        <!-- Overview Tab -->
-        <div id="overview" class="tab-content active">
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-number">3</div>
-                    <div class="stat-label">Total Players</div>
-                    <div class="stat-sublabel">+0% this month</div>
+            <!-- Overview Tab -->
+            <div id="overview" class="tab-content active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number">3</div>
+                        <div class="stat-label">Total Players</div>
+                        <div class="stat-sublabel">+0% this month</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">0</div>
+                        <div class="stat-label">Games Played</div>
+                        <div class="stat-sublabel">0% completion rate</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">0</div>
+                        <div class="stat-label">Avg. Rooms Explored</div>
+                        <div class="stat-sublabel">per playthrough</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">0</div>
+                        <div class="stat-label">Survival Rate</div>
+                        <div class="stat-sublabel">to dungeon completion</div>
+                    </div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-number">0</div>
-                    <div class="stat-label">Games Played</div>
-                    <div class="stat-sublabel">0% completion rate</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">0</div>
-                    <div class="stat-label">Avg. Rooms Explored</div>
-                    <div class="stat-sublabel">per playthrough</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">0</div>
-                    <div class="stat-label">Survival Rate</div>
-                    <div class="stat-sublabel">to dungeon completion</div>
+    
+                <div class="chart-grid">
+                    <div class="chart-container">
+                        <div class="chart-title">Player Deaths by Room Number - Normal</div>
+                        <div class="chart-wrapper">
+                            <canvas id="deathsByRoom_Normal"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-title">Player Deaths by Room Number - Realistic</div>
+                        <div class="chart-wrapper">
+                            <canvas id="deathsByRoom_Realistic"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-title">Player Deaths by Room Number - Souls Enjoyer</div>
+                        <div class="chart-wrapper">
+                            <canvas id="deathsByRoom_SoulsEnjoyer"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-title">Difficulty Mode Distribution</div>
+                        <div class="chart-wrapper">
+                            <canvas id="difficultyChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-title">Daily Active Players</div>
+                        <div class="chart-wrapper">
+                            <canvas id="dailyPlayersChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-title">Average Session Length</div>
+                        <div class="chart-wrapper">
+                            <canvas id="sessionLengthChart"></canvas>
+                        </div>
+                    </div>
                 </div>
             </div>
-
-            <div class="chart-grid">
-                <div class="chart-container">
-                    <div class="chart-title">Player Deaths by Room Type</div>
-                    <div class="chart-wrapper">
-                        <canvas id="deathsByRoomChart"></canvas>
-                    </div>
-                </div>
-                <div class="chart-container">
-                    <div class="chart-title">Difficulty Mode Distribution</div>
-                    <div class="chart-wrapper">
-                        <canvas id="difficultyChart"></canvas>
-                    </div>
-                </div>
-                <div class="chart-container">
-                    <div class="chart-title">Daily Active Players</div>
-                    <div class="chart-wrapper">
-                        <canvas id="dailyPlayersChart"></canvas>
-                    </div>
-                </div>
-                <div class="chart-container">
-                    <div class="chart-title">Average Session Length</div>
-                    <div class="chart-wrapper">
-                        <canvas id="sessionLengthChart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <!-- Combat Tab -->
         <div id="combat" class="tab-content">
@@ -713,24 +725,23 @@
 
         // Initialize all charts
         function initializeCharts() {
-            // Deaths by Room Type Chart
-            new Chart(document.getElementById('deathsByRoomChart'), {
-                type: 'bar',
-                data: {
-                    labels: ['Combat Room', 'Boss Room', 'Trap Room', 'Puzzle Room', 'Treasure Room'],
-                    datasets: [{
-                        label: 'Player Deaths',
-                        data: [3456, 2891, 1234, 567, 234],
-                        backgroundColor: [
-                            'rgba(255, 107, 107, 0.8)',
-                            'rgba(255, 64, 64, 0.8)',
-                            'rgba(255, 165, 0, 0.8)',
-                            'rgba(255, 215, 0, 0.8)',
-                            'rgba(78, 205, 196, 0.8)'
-                        ]
-                    }]
-                },
-                options: chartOptions
+            // Deaths by Room Number per Difficulty Charts
+            window.deathsByRoomCharts = {};
+            const difficulties = ['Normal', 'Realistic', 'SoulsEnjoyer'];
+            difficulties.forEach(difficulty => {
+                const ctx = document.getElementById(`deathsByRoom_${difficulty}`).getContext('2d');
+                window.deathsByRoomCharts[difficulty] = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: Array.from({length: 16}, (_, i) => (i + 1).toString()),
+                        datasets: [{
+                            label: `Player Deaths - ${difficulty}`,
+                            data: Array(16).fill(0),
+                            backgroundColor: 'rgba(255, 107, 107, 0.8)'
+                        }]
+                    },
+                    options: chartOptions
+                });
             });
 
             // Difficulty Distribution Chart

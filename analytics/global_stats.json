@@ -1,21 +1,21 @@
 {
     "overview": {
-        "totalPlayers": 1,
-        "gamesPlayed": 1,
-        "avgRoomsExplored": 16.0,
+        "totalPlayers": 3,
+        "gamesPlayed": 4,
+        "avgRoomsExplored": 7.5,
         "survivalRate": 1.0
     },
     "combat": {
-        "totalDamageDealt": 641.0,
-        "totalDamageTaken": 290,
+        "totalDamageDealt": 1056.0,
+        "totalDamageTaken": 494,
         "enemiesDefeated": 0,
         "criticalHitRate": 0.0
     },
     "exploration": {
-        "roomsExplored": 16,
-        "treasuresFound": 4,
-        "puzzlesSolved": 1,
-        "trapsTriggered": 0
+        "roomsExplored": 30,
+        "treasuresFound": 7,
+        "puzzlesSolved": 2,
+        "trapsTriggered": 1
     },
     "economy": {
         "totalGoldSpent": 0,
@@ -24,9 +24,9 @@
         "shopUtilization": 0.0
     },
     "progression": {
-        "avgLevel": 4.0,
+        "avgLevel": 2.25,
         "tutorialCompletion": 0.0,
         "ngPlusPlayers": 0.0,
-        "achievementsEarned": 8
+        "achievementsEarned": 32
     }
 }
