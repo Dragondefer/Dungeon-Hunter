@@ -1,32 +1,135 @@
 {
     "overview": {
         "totalPlayers": 3,
-        "gamesPlayed": 4,
-        "avgRoomsExplored": 7.5,
+        "gamesPlayed": 3,
+        "avgRoomsExplored": 15.0,
         "survivalRate": 1.0
     },
     "combat": {
-        "totalDamageDealt": 1056.0,
-        "totalDamageTaken": 494,
-        "enemiesDefeated": 0,
+        "totalDamageDealt": 1031.0,
+        "totalDamageTaken": 392,
+        "enemiesDefeated": 10,
         "criticalHitRate": 0.0
     },
     "exploration": {
         "roomsExplored": 30,
-        "treasuresFound": 7,
-        "puzzlesSolved": 2,
-        "trapsTriggered": 1
+        "treasuresFound": 2,
+        "puzzlesSolved": 1,
+        "trapsTriggered": 4
     },
     "economy": {
-        "totalGoldSpent": 0,
+        "totalGoldSpent": 100,
         "itemsPurchased": 0,
-        "avgGoldPerPlayer": 0.0,
-        "shopUtilization": 0.0
+        "avgGoldPerPlayer": 50.0,
+        "shopUtilization": 0.5
     },
     "progression": {
-        "avgLevel": 2.25,
+        "avgLevel": 3.0,
         "tutorialCompletion": 0.0,
         "ngPlusPlayers": 0.0,
-        "achievementsEarned": 32
-    }
+        "achievementsEarned": 16
+    },
+    "deathsByRoomPerDifficulty": {
+        "Normal": {
+            "1": 0,
+            "2": 0,
+            "3": 0,
+            "4": 0,
+            "5": 0,
+            "6": 0,
+            "7": 0,
+            "8": 0,
+            "9": 0,
+            "10": 0,
+            "11": 0,
+            "12": 0,
+            "13": 0,
+            "14": 0,
+            "15": 0,
+            "16": 0
+        },
+        "Realistic": {
+            "1": 0,
+            "2": 0,
+            "3": 0,
+            "4": 0,
+            "5": 0,
+            "6": 0,
+            "7": 0,
+            "8": 0,
+            "9": 0,
+            "10": 0,
+            "11": 0,
+            "12": 0,
+            "13": 0,
+            "14": 0,
+            "15": 0,
+            "16": 0
+        },
+        "SoulsEnjoyer": {
+            "1": 0,
+            "2": 0,
+            "3": 0,
+            "4": 0,
+            "5": 0,
+            "6": 0,
+            "7": 0,
+            "8": 0,
+            "9": 0,
+            "10": 0,
+            "11": 0,
+            "12": 0,
+            "13": 0,
+            "14": 0,
+            "15": 0,
+            "16": 0
+        }
+    },
+    "difficultyDistribution": {
+        "Normal": 0,
+        "Realistic": 0,
+        "Souls Enjoyer": 0,
+        "Puzzle": 0
+    },
+    "dailyPlayers": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+    ],
+    "sessionLengthDistribution": {
+        "0-15min": 0,
+        "15-30min": 0,
+        "30-60min": 0,
+        "1-2hrs": 0,
+        "2-4hrs": 0,
+        "4+hrs": 0
+    },
+    "mostDeadlyEnemies": {},
+    "combatSuccessByLevel": {},
+    "damageDealtVsTaken": [],
+    "skillsUsageFrequency": {},
+    "roomTypePreferences": {},
+    "explorationDepthByDifficulty": {
+        "Normal": 0,
+        "Realistic": 0,
+        "Souls Enjoyer": 0
+    },
+    "puzzleSuccessRateOverTime": [],
+    "bossEncounterOutcomes": {
+        "Victory": 0,
+        "Defeat": 0,
+        "Fled": 0
+    },
+    "mostPopularItems": {},
+    "goldSpendingPatterns": [],
+    "equipmentUsageByType": {},
+    "shopVisitFrequency": {},
+    "levelDistribution": {},
+    "classSpecializationChoices": {},
+    "xpGainOverTime": [],
+    "achievementCompletionRates": {}
 }
