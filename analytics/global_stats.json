@@ -1,33 +1,33 @@
 {
     "overview": {
-        "totalPlayers": 3,
-        "gamesPlayed": 3,
-        "avgRoomsExplored": 15.0,
-        "survivalRate": 1.0
+        "totalPlayers": 4,
+        "gamesPlayed": 4,
+        "avgRoomsExplored": 38.0,
+        "survivalRate": 50.5
     },
     "combat": {
-        "totalDamageDealt": 1031.0,
-        "totalDamageTaken": 392,
-        "enemiesDefeated": 10,
+        "totalDamageDealt": 20229.0,
+        "totalDamageTaken": 936,
+        "enemiesDefeated": 106,
         "criticalHitRate": 0.0
     },
     "exploration": {
-        "roomsExplored": 30,
-        "treasuresFound": 2,
-        "puzzlesSolved": 1,
-        "trapsTriggered": 4
+        "roomsExplored": 152,
+        "treasuresFound": 29,
+        "puzzlesSolved": 4,
+        "trapsTriggered": 23
     },
     "economy": {
-        "totalGoldSpent": 100,
-        "itemsPurchased": 0,
-        "avgGoldPerPlayer": 50.0,
-        "shopUtilization": 0.5
+        "totalGoldSpent": 740,
+        "itemsPurchased": 2,
+        "avgGoldPerPlayer": 185.0,
+        "shopUtilization": 25.25
     },
     "progression": {
-        "avgLevel": 3.0,
+        "avgLevel": 5.25,
         "tutorialCompletion": 0.0,
-        "ngPlusPlayers": 0.0,
-        "achievementsEarned": 16
+        "ngPlusPlayers": 0.25,
+        "achievementsEarned": 32
     },
     "deathsByRoomPerDifficulty": {
         "Normal": {
@@ -131,5 +131,123 @@
     "levelDistribution": {},
     "classSpecializationChoices": {},
     "xpGainOverTime": [],
-    "achievementCompletionRates": {}
+    "achievementCompletionRates": {},
+    "rawDamageDealtVsTaken": [
+        {
+            "x": 170.0,
+            "y": 105
+        },
+        {
+            "x": 1767.0,
+            "y": 270
+        },
+        {
+            "x": 17793.0,
+            "y": 310
+        }
+    ],
+    "rawSkillsUsageFrequency": [
+        {},
+        {},
+        {},
+        {}
+    ],
+    "rawRoomTypePreferences": [
+        {},
+        {},
+        {},
+        {}
+    ],
+    "rawExplorationDepthByDifficulty": [
+        {
+            "Normal": 0,
+            "Realistic": 0,
+            "Souls Enjoyer": 0
+        },
+        {
+            "Normal": 0,
+            "Realistic": 0,
+            "Souls Enjoyer": 0
+        },
+        {
+            "Normal": 0,
+            "Realistic": 0,
+            "Souls Enjoyer": 0
+        },
+        {
+            "Normal": 0,
+            "Realistic": 0,
+            "Souls Enjoyer": 0
+        }
+    ],
+    "rawPuzzleSuccessRateOverTime": [
+        [],
+        [],
+        [],
+        []
+    ],
+    "rawBossEncounterOutcomes": [
+        {
+            "Victory": 0,
+            "Defeat": 0,
+            "Fled": 0
+        },
+        {
+            "Victory": 0,
+            "Defeat": 0,
+            "Fled": 0
+        },
+        {
+            "Victory": 0,
+            "Defeat": 0,
+            "Fled": 0
+        },
+        {
+            "Victory": 0,
+            "Defeat": 0,
+            "Fled": 0
+        }
+    ],
+    "rawMostPopularItems": [
+        {},
+        {},
+        {}
+    ],
+    "rawGoldSpendingPatterns": [
+        [],
+        [],
+        [],
+        []
+    ],
+    "rawEquipmentUsageByType": [
+        {},
+        {},
+        {},
+        {}
+    ],
+    "rawShopVisitFrequency": [
+        {},
+        {},
+        {},
+        {}
+    ],
+    "rawLevelDistribution": [
+        {},
+        {},
+        {},
+        {}
+    ],
+    "rawClassSpecializationChoices": [
+        {},
+        {},
+        {},
+        {}
+    ],
+    "rawXpGainOverTime": [
+        [],
+        [],
+        [],
+        []
+    ],
+    "rawAchievementCompletionRates": []
 }
