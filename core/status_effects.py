@@ -1,4 +1,4 @@
-__version__ = "8.0"
+__version__ = "14.0"
 __creation__ = "28-05-2025"
 
 class StatusEffect:

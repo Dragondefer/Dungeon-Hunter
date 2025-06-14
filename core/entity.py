@@ -1,4 +1,4 @@
-__version__ = "2285.0"
+__version__ = "2426.0"
 __creation__ = "09-03-2025"
 
 # This file contains the core entity classes for the Dungeon Hunter game.
@@ -12,6 +12,7 @@ import time
 import json
 import os
 import shutil
+import uuid
 
 from interface.colors import Colors
 from engine.game_utility import (clear_screen, handle_error, typewriter_effect,
@@ -19,29 +20,15 @@ from engine.game_utility import (clear_screen, handle_error, typewriter_effect,
                           glitch_burst, timed_input_pattern, strip_ansi)
 from items.items import (Item, Equipment, Gear, Weapon, Armor,
                    Ring, Amulet, Belt, Potion)
-from data.data import armor_sets, enemy_types, boss_types, achievements
+from data.data import armor_sets, enemy_types, boss_types, achievements, skills_dict, can_send_analytics
 from items.inventory import Inventory
 from items.spells import Spell, Scroll
 from core.masteries import Mastery
+from core.skills import Skill
+from core.player_class import PlayerClass
+from items.items import Equipment
 
 debug = 0
-
-class PlayerClass:
-    def __init__(self, name:str, bonuses:dict, skill_name:str):
-        self.name = name
-        self.bonuses = bonuses  # dict of stat bonuses
-        self.skill_name = skill_name
-
-    def apply_to_player(self, player):
-        # Apply bonuses to player's stats
-        for stat, value in self.bonuses.items():
-            player.stats.modify_stat(stat, value)
-        # Add skill to player if available
-        if self.skill_name in skills_dict:
-            player.skills.append(skills_dict[self.skill_name])
-        else:
-            print(f"Warning: Skill {self.skill_name} not found in skills_dict.")
-
 
 class StatContainer: # Pas utilsé
     """Classe pour gérer les stats permanentes et temporaires avec accès en notation pointée."""
@@ -74,7 +61,7 @@ class Stats:
         # Appliquer les valeurs passées en argument
         for key, value in kwargs.items():
             if key in self.permanent_stats and isinstance(value, (int, float)):
-                self.permanent_stats[key] = value  # Assure que seules les valeurs valides sont appliquées
+                self.permanent_stats[key] = int(value)  # Assure que seules les valeurs valides sont appliquées
 
 
         # Initialisation des stats temporaires
@@ -118,7 +105,7 @@ class Stats:
     def __setattr__(self, key, value):
         """Si on modifie une stat existante, elle est ajoutée aux stats permanentes."""
         if "permanent_stats" in self.__dict__ and key in self.permanent_stats:
-            self.permanent_stats[key] = value  # Modifie directement les stats permanentes
+            self.permanent_stats[key] = int(value)  # Modifie directement les stats permanentes
         else:
             super().__setattr__(key, value)  # Utilisation normale pour les autres attributs
 
@@ -227,7 +214,7 @@ class Stats:
     def reset_equipment_stats(self):
         self.equipment_stats = {key: 0 for key in self.permanent_stats}
 
-    def take_damage(self, damage):
+    def take_damage(self, damage:int|float):
         """Gère la prise de dégâts en priorisant les points de vie temporaires et conserve les HP max temporaires."""
         global debug
 
@@ -252,14 +239,14 @@ class Stats:
         # Dégâts absorbés en priorité par les HP temporaires
         if hp_temp > 0:
             damage_absorbed = min(hp_temp, damage)
-            self.temporary_stats["hp"] -= damage_absorbed
+            self.temporary_stats["hp"] -= int(damage_absorbed)
             damage -= damage_absorbed  # Mise à jour des dégâts restants
         else:
             damage_absorbed = 0
 
         # S'il reste des dégâts, ils sont appliqués aux HP permanents
         if damage > 0:
-            self.permanent_stats["hp"] = max(0, hp_perm - damage)
+            self.permanent_stats["hp"] = int(max(0, hp_perm - damage))
 
         # Mise à jour des HP affichés (permanents + temporaires)
         self.update_total_stats()
@@ -271,100 +258,6 @@ class Stats:
         # return total damage
         return damage, damage_absorbed
 
-
-
-#̶̼͝ E̶͍̚v̶̼͝ë̵͕́r̷͍̈́ÿ̸̡́ s̸̱̅k̵̢͝i̴̊͜l̷̫̈́l̷̫̈́ h̵̤͒ä̷̪́s̸̱̅ ä̷̪́ p̵̦̆r̷͍̈́i̴̊͜c̴̱͝ë̵͕́.̵͇̆.̵͇̆.̵͇̆ s̸̱̅o̶͙͝m̴̛̠ë̵͕́ m̴̛̠o̶͙͝r̷͍̈́ë̵͕́ ẗ̴̗́h̵̤͒ä̷̪́n̸̻̈́ o̶͙͝ẗ̴̗́h̵̤͒ë̵͕́r̷͍̈́s̸̱̅.̵͇̆
-class Skill:
-    """
-    Represents a special skill with:
-    - name: the name of the skill.
-    - description: a description of the skill.
-    - level: the mastery level of the skill.
-    - damage_multiplier: multiplier applied to the base damage.
-    - temporary_bonus: a dict of bonus effects (e.g., {"defense": 5}).
-    - cost: a dict of resource costs (e.g., {"mana": 10, "stamina": 5, "hp": 0}).
-    """
-    def __init__(self, name, description, level=1, damage_multiplier=1, temporary_bonus=None, cost=None):
-        self.name = name
-        self.description = description
-        self.level = level
-        self.damage_multiplier = damage_multiplier
-        self.temporary_bonus = temporary_bonus if temporary_bonus is not None else {}
-        self.cost = cost if cost is not None else {}
-
-    def to_dict(self):
-        """Convertit l'objet Skill en dictionnaire automatiquement."""
-        return self.__dict__.copy()
-    
-    @classmethod
-    def from_dict(cls, data):
-        return cls(
-            name=data["name"],
-            description=data["description"],
-            level=data.get("level", 1),
-            damage_multiplier=data.get("damage_multiplier", 1),
-            temporary_bonus=data.get("temporary_bonus", {}),
-            cost=data.get("cost", {})
-        )
-
-    def __str__(self):
-        cost_str = ", ".join(f"{k}: {v}" for k, v in self.cost.items()) if self.cost else "No cost"
-        bonus_str = ", ".join(f"{k}: +{v}" for k, v in self.temporary_bonus.items()) if self.temporary_bonus else "No bonus"
-        return f"{self.name} (Lv{self.level}): {self.description} | Multiplier: {self.damage_multiplier} | Cost: {cost_str} | Bonus: {bonus_str}"
-
-    def activate(self, player):
-        """
-        Activates the skill:
-          - Checks if the player has enough resources (mana, stamina, hp) based on self.cost.
-          - If not, prints an error and returns a multiplier of 0.
-          - Otherwise, it deducts the cost and applies temporary bonuses.
-          - Returns the damage multiplier of the skill.
-        """
-        # Vérifier que le joueur dispose des ressources nécessaires
-        for resource, cost_value in self.cost.items():
-            current_value = getattr(player.stats, resource, 0)
-            if current_value < cost_value:
-                print(f"{Colors.RED}You don't have enough {resource} to use {self.name}!{Colors.RESET}")
-                return 0
-        
-        print(f"\n{Colors.YELLOW}Timing skill activation!\nPress Enter at the right moment to increase skill effect.{Colors.RESET}")
-        input_multiplier = 1
-        timing_success = timed_input_pattern(difficulty=1.0, return_type='int')
-
-        if timing_success:
-            print(f"{Colors.GREEN}Perfect timing! Skill damage increased by 50%.{Colors.RESET}")
-            input_multiplier *= 1.5
-        else:
-            print(f"{Colors.RED}Poor timing! Skill damage reduced by 25%.{Colors.RESET}")
-            input_multiplier *= 0.75
-
-        # Déduire le coût des ressources
-        for resource, cost_value in self.cost.items():
-            # Deduct the correct resource cost
-            if resource == "mana":
-                player.use_mana(cost_value)
-            elif resource == "stamina":
-                player.use_stamina(cost_value)
-            elif resource == "hp":
-                player.use_hp(cost_value)
-                        
-        # Appliquer les bonus temporaires
-        for stat, bonus in self.temporary_bonus.items():
-            player.modify_stat(stat, bonus, "temporary")
-
-        print(f"{Colors.GREEN}{self.name} activated!{Colors.RESET}")
-        return self.damage_multiplier * input_multiplier
-
-
-skills_dict = {
-    "Berserk Rage": Skill("Berserk Rage", "Unleash a furious attack.", level=1, damage_multiplier=2.0, temporary_bonus={}, cost={"stamina": 10}),
-    "Shadow Strike": Skill("Shadow Strike", "A swift and deadly strike.", level=1, damage_multiplier=1.5, temporary_bonus={}, cost={"stamina": 8}),
-    "Arcane Blast": Skill("Arcane Blast", "A powerful burst of arcane energy.", level=1, damage_multiplier=2.5, temporary_bonus={}, cost={"mana": 15}),
-    "Divine Shield": Skill("Divine Shield", "Raises a protective barrier reducing damage.", level=1, damage_multiplier=1.0, temporary_bonus={"defense": 5}, cost={"mana": 10}),
-    # more skills
-    "Healing Wave": Skill("Healing Wave", "Heals yourself with some magics.", level=1, damage_multiplier=0.0, temporary_bonus={"hp": 10}, cost={"mana": 5}),
-    "Shield Bash": Skill("Shield Bash", "Bashes the enemy with your shield.", level=1, damage_multiplier=1.0, temporary_bonus={"attack": 5}, cost={"stamina": 5}),
-}
 
 
 # Game Classes
@@ -533,26 +426,34 @@ class Player(Entity):
             Prints the player's current stats and equipped items.
     """
 
-    def display_logbook(self):
-        """Display a logbook of every monster discovered with notes and other info."""
-        clear_screen()
-        print(f"\n{Colors.BRIGHT_MAGENTA}Monster Logbook (Placeholder){Colors.RESET}")
-        print("This feature will display all monsters discovered with notes and other details.")
-        input(f"\n{Colors.YELLOW}Press Enter to return...{Colors.RESET}")
-
-    def display_skill_mastery(self):
-        """Display XP and levels of each skill mastery."""
-        clear_screen()
-        print(f"\n{Colors.BRIGHT_CYAN}Skill Mastery (Placeholder){Colors.RESET}")
-        if not self.skills:
-            print("You have not acquired any skills yet.")
-        else:
-            for skill in self.skills:
-                print(f"- {skill.name} (Level {skill.level})")
-        input(f"\n{Colors.YELLOW}Press Enter to return...{Colors.RESET}")
-    def __init__(self, name="Adventurer", difficulty=NormalMode()):
+    def __init__(self, name="Adventurer", difficulty=GameMode()):
         """Initialise le joueur avec des stats de base et un équipement vide."""
+        import uuid
+        from engine.game_utility import get_or_create_user_id
         super().__init__(name, 100, 100, 5, 5)  # Héritage de la classe Entity
+
+        import time
+        self._playtime_start = time.time()  # Timestamp when playtime tracking starts
+        self.playtime_seconds = 0  # Total accumulated playtime in seconds
+
+        from engine.difficulty import GameMode, NormalMode, RealisticMode, SoulsEnjoyerMode
+
+        if isinstance(difficulty, GameMode):
+            self.mode = difficulty
+        elif isinstance(difficulty, str):
+            diff_lower = difficulty.lower()
+            if diff_lower == "normal":
+                self.mode = NormalMode()
+            elif diff_lower == "realistic":
+                self.mode = RealisticMode()
+            elif diff_lower == "soul_enjoyer" or diff_lower == "souls_enjoyer":
+                self.mode = SoulsEnjoyerMode()
+            else:
+                print(f"Unknown difficulty '{difficulty}', setting to NormalMode by default.")
+                self.mode = NormalMode()
+        else:
+            print(f"Invalid difficulty type '{type(difficulty)}', setting to NormalMode by default.")
+            self.mode = NormalMode()
 
         self.difficulty_data = {}
 
@@ -562,6 +463,17 @@ class Player(Entity):
         self.gold = 50
         self.souls = 0
         self.sin = 0
+
+        # Add user_id for persistent anonymous user identification
+        self.user_id = get_or_create_user_id()
+
+        # Add player_id for unique identification
+        self.player_id = str(uuid.uuid4())
+
+        self.deaths_per_room = {}
+        self.levels_completed = 0
+        self.total_deaths = 0
+        self.total_play_sessions = 1
 
         # Équipement initialisé avant les stats (pour pouvoir l'envoyer dans Stats)
         self.equipment = Equipment(
@@ -584,24 +496,9 @@ class Player(Entity):
         self.skills = []
         self.kills = 0
 
-        from engine.difficulty import GameMode, NormalMode, RealisticMode, SoulsEnjoyerMode
+        self.critical_count = 0
+        self.attack_count = 0
 
-        if isinstance(difficulty, GameMode):
-            self.mode = difficulty
-        elif isinstance(difficulty, str):
-            diff_lower = difficulty.lower()
-            if diff_lower == "normal":
-                self.mode = NormalMode()
-            elif diff_lower == "realistic":
-                self.mode = RealisticMode()
-            elif diff_lower == "soul_enjoyer" or diff_lower == "souls_enjoyer":
-                self.mode = SoulsEnjoyerMode()
-            else:
-                print(f"Unknown difficulty '{difficulty}', setting to NormalMode by default.")
-                self.mode = NormalMode()
-        else:
-            print(f"Invalid difficulty type '{type(difficulty)}', setting to NormalMode by default.")
-            self.mode = NormalMode()
 
         self.class_name = "Novice"
         self.profession = None
@@ -636,6 +533,31 @@ class Player(Entity):
         self.damage_dealt = 0
         self.damage_taken = 0
 
+        # Analytics stats
+        self.mostDeadlyEnemies = []  # List of enemy names for each death event
+        self.combatSuccessByLevel = {}
+        self.skillsUsageFrequency = {}
+        self.roomTypePreferences = {}
+        self.explorationDepthByDifficulty = {
+            "Normal": 0,
+            "Realistic": 0,
+            "Souls Enjoyer": 0
+        }
+        self.puzzleSuccessRateOverTime = []
+        self.bossEncounterOutcomes = {
+            "Victory": 0,
+            "Defeat": 0,
+            "Fled": 0
+        }
+        self.goldSpendingPatterns = []
+        self.equipmentUsageByType = {}
+        self.shopVisitFrequency = {}
+        self.purchased_items: dict[Item, int] = {}
+        self.levelDistribution = {}
+        self.classSpecializationChoices = {}
+        self.xpGainOverTime = []
+        self.achievementCompletionRates = []
+
         self.ng_plus = {"normal": 0, "soul_enjoyer": 0, "realistic": 0}
 
         self.unlocked_difficulties = {"normal": True, "soul_enjoyer": False, "realistic": False}
@@ -645,12 +567,22 @@ class Player(Entity):
         self.inventory.append(Potion("Minor Health Potion", "Restores some health", 100, "heal", 50))
 
         self.known_spells: list[Spell] = []
-        self.masteries:dict[Mastery] = {}  # exemple : {"sword": Mastery("sword"), "fire_magic": Mastery("fire_magic")}
+        self.masteries:dict[str, Mastery] = {}  # exemple : {"sword": Mastery("sword"), "fire_magic": Mastery("fire_magic")}
 
 
         # Met à jour les stats avec l'équipement initial (même s'il est vide)
         self.stats.update_total_stats()
         self.apply_all_equipment_effects()
+
+    def increment_deaths_in_room(self, difficulty_name: str, room_id: int):
+        """Increment the death count for a specific room under a difficulty."""
+        if difficulty_name not in self.deaths_per_room:
+            self.deaths_per_room[difficulty_name] = {}
+        if room_id in self.deaths_per_room[difficulty_name]:
+            self.deaths_per_room[difficulty_name][room_id] += 1
+        else:
+            self.deaths_per_room[difficulty_name][room_id] = 1
+        self.total_deaths += 1
 
     def __str__(self):
         return json.dumps(self.to_dict(), indent=4, ensure_ascii=False)
@@ -659,6 +591,52 @@ class Player(Entity):
         attrs = vars(self)
         attr_strs = [f"{k}={v!r}" for k, v in attrs.items()]
         return f"<Player " + ", ".join(attr_strs) + ">"
+    
+    
+    def get_playtime(self):
+        """Return the total playtime in seconds including current session."""
+        import time
+        current_time = time.time()
+        elapsed = current_time - self._playtime_start
+        return self.playtime_seconds + elapsed
+
+    def get_formatted_playtime(self):
+        """Return the total playtime as a formatted string HH:MM:SS."""
+        total_seconds = int(self.get_playtime())
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+        seconds = total_seconds % 60
+        return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+    
+
+    def increment_levels_completed(self):
+        """Increment the count of levels completed."""
+        self.levels_completed += 1
+
+    def increment_play_sessions(self):
+        """Increment the count of total play sessions."""
+        self.total_play_sessions += 1
+
+
+
+    def display_logbook(self):
+        """Display a logbook of every monster discovered with notes and other info."""
+        clear_screen()
+        print(f"\n{Colors.BRIGHT_MAGENTA}Monster Logbook (Placeholder){Colors.RESET}")
+        print("This feature will display all monsters discovered with notes and other details.")
+        input(f"\n{Colors.YELLOW}Press Enter to return...{Colors.RESET}")
+
+    def display_skill_mastery(self):
+        """Display XP and levels of each skill mastery."""
+        clear_screen()
+        print(f"\n{Colors.BRIGHT_CYAN}Skill Mastery (Placeholder){Colors.RESET}")
+        if not self.skills:
+            print("You have not acquired any skills yet.")
+        else:
+            for skill in self.skills:
+                print(f"- {skill.name} (Level )")
+        input(f"\n{Colors.YELLOW}Press Enter to return...{Colors.RESET}")
+
 
     def learn_spell(self, spell: Spell):
         """Add a spell to the player's known spells."""
@@ -704,9 +682,11 @@ class Player(Entity):
     def load_difficulty_data(self, difficulty_name):
         """Load inventory, gold, level, stats, and other data for the given difficulty."""
         data = self.difficulty_data.get(difficulty_name)
+        from items.items import Equipment
+        
         if data:
-            from items import Item
-            from entity import Equipment, Skill
+            from items.items import Item
+            from core.skills import Skill
 
             self.inventory.clear()
             for item_data in data["inventory"]:
@@ -749,6 +729,7 @@ class Player(Entity):
                 "stamina": 50, "max_stamina": 50,
                 "critical_chance": 5
             }
+            
             self.stats.update_total_stats()
             self.equipment = Equipment()
             self.stats.equipment = self.equipment
@@ -773,6 +754,32 @@ class Player(Entity):
         data["status_effects"] = [effect.__dict__ for effect in self.status_effects] if self.status_effects else []
         data["masteries"] = {k: v.to_dict() for k, v in self.masteries.items()}
 
+        # Convert player_class to dict if present
+        if hasattr(self, "player_class") and self.player_class is not None:
+            data["player_class"] = self.player_class.to_dict()
+        else:
+            data["player_class"] = None
+
+        # Add playtime_seconds to saved data
+        data["playtime_seconds"] = self.playtime_seconds
+
+        # Add new stats to saved data
+        data["player_id"] = self.player_id
+        data["deaths_per_room"] = self.deaths_per_room
+        data["levels_completed"] = self.levels_completed
+        data["total_deaths"] = self.total_deaths
+        data["total_play_sessions"] = self.total_play_sessions
+
+        # Add analytics variables needed for analytics.html
+        data["player_name"] = self.name
+        data["level"] = self.level
+        data["difficulty"] = self.mode.name if hasattr(self.mode, "name") else str(self.mode)
+        data["rooms_explored"] = self.total_rooms_explored
+        data["combat_encounters"] = self.combat_encounters
+        data["damage_dealt"] = self.damage_dealt
+        data["damage_taken"] = self.damage_taken
+        data["gold_spent"] = self.gold_spent
+        data["deaths"] = self.total_deaths
 
         return data
 
@@ -780,12 +787,14 @@ class Player(Entity):
     def from_dict(cls, data):
         from core.progression import Quest, Achievement
         from engine.difficulty import GameMode
+        import time
+        from core.player_class import PlayerClass
 
         player = cls(data.get("name", "Adventurer"), GameMode.from_dict(data.get("mode", {})))
 
         # Remplissage générique
         for key, value in data.items():
-            if key in ("equipment", "inventory", "skills", "quests", "completed_quests", "achievements", "stats", "mode", "seen_events", "displayed_set_bonuses"):
+            if key in ("equipment", "inventory", "skills", "quests", "completed_quests", "achievements", "stats", "mode", "seen_events", "displayed_set_bonuses", "playtime_seconds", "player_id", "deaths_per_room", "levels_completed", "total_deaths", "total_play_sessions", "player_class"):
                 continue  # On gère ceux-là à part
             setattr(player, key, value)
 
@@ -807,7 +816,6 @@ class Player(Entity):
         if player.equipment:
             player.apply_all_equipment_effects()
             
-
         from core.status_effects import status_effect_from_dict
 
         player.status_effects = [
@@ -816,6 +824,23 @@ class Player(Entity):
 
         player.masteries = {k: Mastery.from_dict(v) for k, v in data.get("masteries", {}).items()}
 
+        # Restore playtime_seconds and reset _playtime_start to current time
+        player.playtime_seconds = data.get("playtime_seconds", 0)
+        player._playtime_start = time.time()
+
+        # Restore new stats
+        player.player_id = data.get("player_id", str(uuid.uuid4()))
+        player.deaths_per_room = data.get("deaths_per_room", {})
+        player.levels_completed = data.get("levels_completed", 0)
+        player.total_deaths = data.get("total_deaths", 0)
+        player.total_play_sessions = data.get("total_play_sessions", 1)
+
+        # Restore player_class from dict if present
+        player_class_data = data.get("player_class")
+        if player_class_data:
+            player.player_class = PlayerClass.from_dict(player_class_data)
+        else:
+            player.player_class = None
 
         return player
 
@@ -954,8 +979,8 @@ class Player(Entity):
                 slot = armor_slot_map.get(item.__class__.__name__, None)  
                 if debug > 1:
                     print(f"Slot for {item.__class__.__name__}: {slot}")
-            else:
-                slot = armor_slot_map.get(item.armor_type, None)  # Pour les armures classiques
+            elif isinstance(item, Armor):
+                slot = armor_slot_map.get(item.armor_type) if isinstance(item.armor_type, str) else None  # Pour les armures classiques
                 if debug > 1:
                     print(f"Slot for {item.armor_type}: {slot}")
 
@@ -985,7 +1010,7 @@ class Player(Entity):
                     print(f"\n{Colors.GREEN}You equipped {item.name} in {slot}!{Colors.RESET}")
                     self.inventory.remove(item)
             else:
-                print(f"\n{Colors.RED}Invalid armor type: {item.armor_type}{Colors.RESET}")
+                print(f"\n{Colors.RED}Invalid armor type: {getattr(item, 'armor_type', 'Unknown')}{Colors.RESET}")
 
         else:
             print(f"\n{Colors.YELLOW}You can't equip this item.{Colors.RESET}")
@@ -995,7 +1020,10 @@ class Player(Entity):
         if slot in self.equipment.slots and self.equipment.slots[slot]:
             item = self.equipment.unequip(slot, self)  # Utilise la méthode unequip de Equipment
             self.inventory.append(item)  # Remet l'objet dans l'inventaire
-            print(f"\n{Colors.YELLOW}You unequipped {item.name} and placed it back in your inventory.{Colors.RESET}")
+            if item is not None:
+                print(f"\n{Colors.YELLOW}You unequipped {item.name} and placed it back in your inventory.{Colors.RESET}")
+            else:
+                print(f"\n{Colors.RED}Error: Unequipped item is None.{Colors.RESET}")
         else:
             print(f"\n{Colors.RED}No item equipped in {slot}.{Colors.RESET}")
 
@@ -1027,6 +1055,7 @@ class Player(Entity):
 
     def get_equipment_stats(self):
         global debug
+        debug = 1
 
         total_stats = {}
 
@@ -1037,8 +1066,8 @@ class Player(Entity):
             if item:
                 if debug >= 1:
                     print(f"{Colors.CYAN}DEBUG: Processing item: {item.name}{Colors.RESET}")
-                if hasattr(item, "stats"):
-                    for stat, value in item.stats.items():
+                if hasattr(item, "effects") and isinstance(item.effects, dict):
+                    for stat, value in item.effects.items():
                         total_stats[stat] = total_stats.get(stat, 0) + value
                         if debug >= 1:
                             print(f"{Colors.CYAN}DEBUG: Adding {stat}: {value}{Colors.RESET}")
@@ -1048,6 +1077,7 @@ class Player(Entity):
 
         return total_stats
 
+    """
     def get_set_bonus_stats(self):
         global debug
 
@@ -1082,6 +1112,7 @@ class Player(Entity):
             print(f"{Colors.GREEN}DEBUG: Total set bonus stats: {total_bonus}{Colors.RESET}")
 
         return total_bonus
+    """
 
 
     def apply_all_equipment_effects(self, show_text=False):
@@ -1218,8 +1249,8 @@ class Player(Entity):
 
         # Remettre les ressources à fond
         self.heal(self.stats.max_hp // 4)
-        self.stats.permanent_stats["mana"] = self.stats.permanent_stats["max_mana"]
-        self.stats.permanent_stats["stamina"] = self.stats.permanent_stats["max_stamina"]
+        self.regen_mana(self.stats.permanent_stats["max_mana"] // 2)
+        self.rest_stamina(self.stats.permanent_stats["max_stamina"] // 2)
 
         self.stats.update_total_stats()
 
@@ -1372,6 +1403,9 @@ class Player(Entity):
         if critical:
             base_damage *= 2
             print(f"{Colors.BRIGHT_YELLOW}{Colors.BOLD}CRITICAL HIT!{Colors.RESET}")
+            self.critical_count += 1
+
+        self.attack_count += 1
 
         total_damage = int(base_damage * multiplier)
         damage, absorbed_damage = target.stats.take_damage(base_damage)
@@ -1390,21 +1424,28 @@ class Player(Entity):
         """Displays player stats: kills, rooms explored, dungeon level, difficulty, and ng_plus in a nice box.""" 
         box_width = 40
         title = "PLAYER STATS SUMMARY"
-        ng = self.ng_plus.get(self.mode, 0)
+        ng = self.ng_plus.get(self.mode.name if hasattr(self.mode, "name") else str(self.mode), 0)
 
         def print_box_template():
             print(f"\n{Colors.YELLOW}╔{'═' * (box_width)}╗{Colors.RESET}")
             print(f"{Colors.YELLOW}║{Colors.BRIGHT_CYAN}{Colors.BOLD}{title.center(box_width)}{Colors.RESET}{Colors.YELLOW}║{Colors.RESET}")
             print(f"{Colors.YELLOW}╠{'═' * (box_width)}╣{Colors.RESET}")
-            for _ in range(19):
+            for _ in range(24):
                 print(f"{Colors.YELLOW}║{' ' * box_width}║{Colors.RESET}")
             print(f"{Colors.YELLOW}╚{'═' * (box_width)}╝{Colors.RESET}")
 
         print_box_template()
 
         # Move cursor up to start filling the box
-        print(f"\033[21A")  # Move cursor up 21 lines
+        print(f"\033[26A")  # Move cursor up 26 lines
 
+        # Print player ID card info
+        print(f"\r{Colors.YELLOW}║ Name:             {Colors.BRIGHT_CYAN}{self.name.ljust(box_width - 20)}{Colors.RESET}")
+        print(f"\r{Colors.YELLOW}║ Class:            {Colors.BRIGHT_MAGENTA}{self.class_name.ljust(box_width - 20)}{Colors.RESET}")
+        print(f"\r{Colors.YELLOW}║ Level:            {Colors.BRIGHT_GREEN}{str(self.level).ljust(box_width - 20)}{Colors.RESET}")
+        print(f"\r{Colors.YELLOW}║ Playtime:         {Colors.BRIGHT_YELLOW}{self.get_formatted_playtime().ljust(box_width - 20)}{Colors.RESET}")
+        print()
+        # Print the rest of the stats
         print(f"\r{Colors.YELLOW}║ Difficulty:        {Colors.BRIGHT_MAGENTA}{self.mode.capitalize().ljust(box_width - 20)}{Colors.RESET}")
         print(f"\r{Colors.YELLOW}║ NG+:               {Colors.BRIGHT_YELLOW}{str(ng).ljust(box_width - 20)}{Colors.RESET}")
         print(f"\r{Colors.YELLOW}║ Dungeon Level:     {Colors.BRIGHT_BLUE}{str(self.dungeon_level).ljust(box_width - 20)}{Colors.RESET}")
@@ -1643,7 +1684,7 @@ class Player(Entity):
             content_lines.append(f"{Colors.YELLOW}║ {Colors.BRIGHT_CYAN}{slot_line}")
 
         # Skills
-        skill_list = ", ".join(f"{skill.name} (Lv{skill.level})" for skill in self.skills) if self.skills else "None"
+        skill_list = ", ".join(f"{skill.name}" for skill in self.skills) if self.skills else "None"
         content_lines.append(f"{Colors.YELLOW}║ {Colors.MAGENTA}Skills:{Colors.RESET} {truncate_text(skill_list, 39)}")
 
         # Add a blank line to end the box
@@ -1766,7 +1807,7 @@ class Player(Entity):
         content_lines.append("")
         
         # Level and NG+
-        ng = self.ng_plus[self.mode]
+        ng = self.ng_plus.get(self.mode.name if hasattr(self.mode, "name") else str(self.mode), 0)
         ng_text = f"{Colors.RED}NG+{ng}{Colors.RESET}" if ng != 0 else ""
         content_lines.append(f"{Colors.YELLOW}║ {Colors.GREEN}{Colors.UNDERLINE}{glitch_text('Level: ' + str(self.level))}{Colors.RESET}{' ' * (38 - len(ng_text))}{ng_text}".ljust(46))
 
@@ -1890,7 +1931,7 @@ class Player(Entity):
             content_lines.append(f"{Colors.YELLOW}║ {Colors.BRIGHT_CYAN}{glitch_text(slot_line)}")
 
         # Skills
-        skill_list = ", ".join(f"{skill.name} (Lv{skill.level})" for skill in self.skills) if self.skills else "None"
+        skill_list = ", ".join(f"{skill.name} (Lv)" for skill in self.skills) if self.skills else "None"
         content_lines.append(f"{Colors.YELLOW}║ {Colors.MAGENTA}{glitch_text('Skills:')}{Colors.RESET} {truncate_text(glitch_text(skill_list), 39)}")
 
         # Add a blank line to end the box
@@ -2191,6 +2232,13 @@ class Player(Entity):
     def save_player(self, filename="player_save.json"):
         """Saves the player's data to a JSON file.""" 
 
+        import time
+        # Update playtime_seconds before saving
+        current_time = time.time()
+        elapsed = current_time - self._playtime_start
+        self.playtime_seconds += elapsed
+        self._playtime_start = current_time
+
         SAVE_ENABLED = True # Supposed to work
 
         if not SAVE_ENABLED:
@@ -2214,6 +2262,187 @@ class Player(Entity):
 
         print(f"{Colors.GREEN}Game saved successfully!{Colors.RESET}")
 
+        # Save analytics data separately with nested structure expected by generate_global_stats.py
+        import datetime
+        analytics_data = {
+                "timestamp": datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=2))).isoformat(),            "overview": {
+                "totalPlayers": 1,
+                "gamesPlayed": 1,
+                "avgRoomsExplored": self.total_rooms_explored,
+                "survivalRate": 100.0 if self.total_deaths == 0 else 0.0
+            },
+            "combat": {
+                "totalDamageDealt": self.damage_dealt,
+                "totalDamageTaken": self.damage_taken,
+                "enemiesDefeated": self.kills,  # Not handled
+                "critical_count": self.critical_count, # Need to be handled with criticalHitRate
+                "attack_count": self.attack_count, # Need to add the criticalHitRate calculus
+            },
+            "exploration": {
+                "roomsExplored": self.total_rooms_explored,
+                "treasuresFound": self.treasures_found,
+                "puzzlesSolved": self.puzzles_solved,
+                "trapsTriggered": self.traps_triggered
+            },
+            "economy": {
+                "totalGoldSpent": self.gold_spent,
+                "itemsPurchased": len(self.purchased_items),  # Not tracked per player here
+                "avgGoldPerPlayer": self.gold_spent,  # For aggregation
+                "shopUtilization": 100.0 if self.gold_spent > 0 else 0.0
+            },
+            "progression": {
+                "avgLevel": self.level,
+                "tutorialCompletion": 1.0 if self.tutorial_completed else 0.0,
+                "ngPlusPlayers": self.ng_plus.get(self.mode.name if hasattr(self.mode, "name") else str(self.mode), 0),
+                "achievementsEarned": len(self.achievements) if hasattr(self, "achievements") else 0
+            },
+            "deathsByRoomPerDifficulty": self.deaths_per_room,
+
+            "mostDeadlyEnemies": {name: self.mostDeadlyEnemies.count(name) for name in set(self.mostDeadlyEnemies)},
+            "combatSuccessByLevel": self.combatSuccessByLevel,
+            "damageDealt": self.damage_dealt,
+            "damageTaken": self.damage_taken,
+            "skillsUsageFrequency": self.skillsUsageFrequency,
+            "roomTypePreferences": self.roomTypePreferences,
+            "explorationDepthByDifficulty": self.explorationDepthByDifficulty,
+            "puzzleSuccessRateOverTime": self.puzzleSuccessRateOverTime,
+            "bossEncounterOutcomes": self.bossEncounterOutcomes,
+            "purchased_items": self.purchased_items, # Need to be processed
+            "goldSpendingPatterns": self.goldSpendingPatterns,
+            "equipmentUsageByType": self.equipmentUsageByType,
+            "shopVisitFrequency": self.shopVisitFrequency,
+            "levelDistribution": self.levelDistribution,
+            "classSpecializationChoices": self.classSpecializationChoices,
+            "xpGainOverTime": self.xpGainOverTime,
+            "achievementCompletionRates": self.achievementCompletionRates
+        }
+
+        analytics_dir = "analytics_saves"
+        if not os.path.exists(analytics_dir):
+            os.makedirs(analytics_dir)
+
+        analytics_filepath = os.path.join(analytics_dir, f"analytics_{self.player_id}.json")
+
+        # Use user_id in analytics filename to group players by user
+        analytics_filepath = os.path.join(analytics_dir, f"analytics_user_{self.user_id}.json")
+
+        with open(analytics_filepath, "w") as analytics_file:
+            json.dump(analytics_data, analytics_file, indent=4)
+
+        print(f"{Colors.GREEN}Analytics data saved successfully to {analytics_filepath}!{Colors.RESET}")
+
+        if can_send_analytics() == True:
+            try:
+                print(f"{Colors.YELLOW}Sending analytics data...{Colors.RESET}")
+                from network.client import send_analytics_files
+                send_analytics_files()
+            except Exception as e:
+                print(f"{Colors.RED}Error sending analytics data: {e}{Colors.RESET}")
+
+    def reset_player(self):
+        """Reset the player state but keep persistent data such as name, playtime, deaths_per_room, total_deaths, total_play_sessions, player_id."""
+        import time
+
+        # Preserve persistent data
+        persistent_data = {
+            "name": self.name,
+            "playtime_seconds": self.playtime_seconds,
+            "deaths_per_room": self.deaths_per_room,
+            "total_deaths": self.total_deaths,
+            "total_play_sessions": self.total_play_sessions,
+            "player_id": self.player_id,
+            "levels_completed": self.levels_completed,
+            "tutorial_completed": self.tutorial_completed,
+            "mode": self.mode,
+            "_playtime_start": time.time()
+        }
+
+        # Reset gameplay state attributes to initial values
+        self.level = 1
+        self.xp = 0
+        self.max_xp = 100
+        self.gold = 50
+        self.souls = 0
+        self.sin = 0
+        self.kills = 0
+        self.dungeon_level = 1
+        self.current_room_number = 0
+        self.total_rooms_explored = 0
+        self.shops_visited = 0
+        self.combat_encounters = 0
+        self.rest_rooms_visited = 0
+        self.puzzles_solved = 0
+        self.treasures_found = 0
+        self.traps_triggered = 0
+        self.bosses_defeated = 0
+        self.items_collected = 0
+        self.gold_spent = 0
+        self.damage_dealt = 0
+        self.damage_taken = 0
+
+        # Reset stats to base values
+        self.stats.permanent_stats = {
+            "hp": 100, "max_hp": 100,
+            "attack": 5, "defense": 5,
+            "magic_damage": 1, "magic_defense": 1,
+            "agility": 5, "luck": 5,
+            "mana": 20, "max_mana": 20,
+            "stamina": 50, "max_stamina": 50,
+            "critical_chance": 5
+        }
+        self.stats.temporary_stats = {key: 0 for key in self.stats.permanent_stats}
+        self.stats.equipment_stats = {key: 0 for key in self.stats.permanent_stats}
+        self.stats.update_total_stats()
+
+        # Reset equipment
+        from items.items import Equipment
+        self.equipment = Equipment(
+            main_hand=None, off_hand=None, helmet=None, chest=None,
+            gauntlets=None, leggings=None, boots=None, shield=None,
+            ring=None, amulet=None, belt=None
+        )
+        self.stats.equipment = self.equipment
+
+        # Reset inventory and add starting potion
+        from items.inventory import Inventory
+        from items.items import Potion
+        self.inventory = Inventory(self)
+        self.inventory.append(Potion("Minor Health Potion", "Restores some health", 100, "heal", 50))
+
+        # Reset skills, quests, completed quests, status effects, masteries
+        self.skills = []
+        self.quests = []
+        self.completed_quests = []
+        self.status_effects = []
+        self.masteries = {}
+
+        # Reset class name and profession
+        self.class_name = "Novice"
+        self.profession = None
+
+        # Reset achievements and other gameplay related sets
+        self.achievements = []
+        self.seen_events = set()
+        self.displayed_set_bonuses = set()
+        self.set_bonuses = {}
+
+        # Restore persistent data
+        self.name = persistent_data["name"]
+        self.playtime_seconds = persistent_data["playtime_seconds"]
+        self.deaths_per_room = persistent_data["deaths_per_room"]
+        self.total_deaths = persistent_data["total_deaths"]
+        self.total_play_sessions = persistent_data["total_play_sessions"]
+        self.player_id = persistent_data["player_id"]
+        self.levels_completed = persistent_data["levels_completed"]
+        self.tutorial_completed = persistent_data["tutorial_completed"]
+        self.mode = persistent_data["mode"]
+        self._playtime_start = persistent_data["_playtime_start"]
+
+        # Update stats after reset
+        self.stats.update_total_stats()
+        self.apply_all_equipment_effects()
+
+
 
 def load_player(filename=None):
     """Loads the player's data from a JSON file and reconstructs objects."""
@@ -2222,8 +2451,18 @@ def load_player(filename=None):
     if filename is None:
         filename = "default_player.json"
     
-    with open("./saves/" + filename, "r") as file:
-        data = json.load(file)
+    try:
+        with open("./saves/" + filename, "r") as file:
+            data = json.load(file)
+    except json.JSONDecodeError as e:
+        print(f"{Colors.RED}Error loading save file '{filename}': Invalid JSON format. {e}{Colors.RESET}")
+        return None
+    except FileNotFoundError:
+        print(f"{Colors.RED}Save file '{filename}' not found.{Colors.RESET}")
+        return None
+    except Exception as e:
+        print(f"{Colors.RED}Unexpected error loading save file '{filename}': {e}{Colors.RESET}")
+        return None
     
     return Player.from_dict(data)
 
@@ -2231,8 +2470,9 @@ def continue_game(filename):
     """Loads a saved game from a file."""
     try:
         player = load_player(filename)
-        print(f"{Colors.GREEN}Welcome back, {player.name}!{Colors.RESET}")
-        return player
+        if player:
+            print(f"{Colors.GREEN}Welcome back, {player.name}!{Colors.RESET}")
+            return player
     except Exception as e:
         print(f"{Colors.RED}Error loading saved game: {e}{Colors.RESET}")
         handle_error()

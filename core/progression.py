@@ -1,4 +1,4 @@
-__version__ = "84.0"
+__version__ = "87.0"
 __creation__ = "09-03-2025"
 
 import time
@@ -68,7 +68,7 @@ class Quest:
     @classmethod
     def from_dict(cls, data):
         """Creates a quest from a dictionary."""
-        from items import Item
+        from items.items import Item
         quest = cls(
             data["title"],
             data["description"],
@@ -78,7 +78,7 @@ class Quest:
             data["reward_xp"],
             Item.from_dict(data["reward_item"]) if data["reward_item"] else None
         )
-        quest.progress = data["progress"]
+        quest.current_progress = data["progress"]
         quest.completed = data["completed"]
         return quest
 
