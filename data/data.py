@@ -1,4 +1,4 @@
-__version__ = "320.0"
+__version__ = "328.0"
 __creation__ = "16-03-2025"
 
 import random
@@ -83,6 +83,10 @@ puzzle_choices = [
 ]
 
 # Player
+
+def can_send_analytics():
+    from main import send_analytics
+    return send_analytics
 
 # Random names for player
 from interface.colors import Colors
@@ -236,7 +240,7 @@ boss_types = [
     {"name": "Dark Elf Queen",  "type": "Dark Elf",   "hp_mod": 2.3, "atk_mod": 2.4, "def_mod": 2.0, "agl_mod": 2.0, "min_level": 7},
     {"name": "Wraith King",     "type": "Wraith",     "hp_mod": 2.5, "atk_mod": 2.5, "def_mod": 2.1, "agl_mod": 3.0, "min_level": 8},
     {"name": "Ancient Golem",   "type": "Golem",      "hp_mod": 3.0, "atk_mod": 2.0, "def_mod": 2.5, "agl_mod": 0.0, "min_level": 9},
-    {"name": "Elder Dragon",    "type": "Dragon",     "hp_mod": 3.5, "atk_mod": 2.7, "def_mod": 2.2, "agl_mod": 1.0, "min_level": 10},
+    {"name": "Ancient Dragon",  "type": "Dragon",     "hp_mod": 3.5, "atk_mod": 2.7, "def_mod": 2.2, "agl_mod": 1.0, "min_level": 10},
     {"name": "Dark Lord",       "type": "Dark Shape", "hp_mod": 3.5, "atk_mod": 3.5, "def_mod": 2.0, "agl_mod": 1.5, "min_level": 11},
     {"name": "Iron Dragon",     "type": "Dragon",     "hp_mod": 5.0, "atk_mod": 5.0, "def_mod": 5.0, "agl_mod": 5.0, "min_level": 12},
 ]
@@ -350,93 +354,105 @@ spells = [
         "name": "Fireball",
         "description": "A ball of fire that burns enemies.",
         "mana_cost": 10,
-        "effects": {"burn_damage": 10}
+        "effect": {"burn_damage": 10}
     },
     {
         "name": "Greater Fireball",
         "description": "A larger ball of fire that burns enemies more intensely.",
         "mana_cost": 20,
-        "effects": {"burn_damage": 20}
+        "effect": {"burn_damage": 20}
     },
     {
         "name": "Ice Shard",
         "description": "Sharp shards of ice that pierce enemies.",
         "mana_cost": 8,
-        "effects": {"freeze": 8}
+        "effect": {"freeze": 8}
     },
     {
         "name": "Greater Ice Shard",
         "description": "Larger shards of ice that pierce enemies deeply.",
         "mana_cost": 16,
-        "effects": {"freeze": 16}
+        "effect": {"freeze": 16}
     },
     {
         "name": "Healing Light",
         "description": "A warm light that heals allies.",
         "mana_cost": 12,
-        "effects": {"heal": 12}
+        "effect": {"heal": 12}
     },
     {
         "name": "Greater Healing Light",
         "description": "A powerful light that heals allies significantly.",
         "mana_cost": 24,
-        "effects": {"heal": 24}
+        "effect": {"heal": 24}
     },
     {
         "name": "Lightning Bolt",
         "description": "A bolt of lightning that shocks enemies.",
         "mana_cost": 15,
-        "effects": {"shock": 15}
+        "effect": {"shock": 15}
     },
     {
         "name": "Greater Lightning Bolt",
         "description": "A stronger bolt of lightning that shocks enemies severely.",
         "mana_cost": 30,
-        "effects": {"shock": 30}
+        "effect": {"shock": 30}
     },
     {
         "name": "Arcane Shield",
         "description": "A magical shield that absorbs damage.",
         "mana_cost": 20,
-        "effects": {"shield": 20}
+        "effect": {"shield": 20}
     },
     {
         "name": "Greater Arcane Shield",
         "description": "A powerful magical shield that absorbs more damage.",
         "mana_cost": 40,
-        "effects": {"shield": 40}
+        "effect": {"shield": 40}
     },
     {
         "name": "Earthquake",
         "description": "A powerful tremor that damages all enemies.",
         "mana_cost": 25,
-        "effects": {"area_damage": 25}
+        "effect": {"area_damage": 25}
     },
     {
         "name": "Wind Gust",
         "description": "A gust of wind that pushes enemies back.",
         "mana_cost": 7,
-        "effects": {"knockback": 7}
+        "effect": {"knockback": 7}
     },
     {
         "name": "Shadow Bind",
         "description": "Binds the target in shadows, immobilizing them.",
         "mana_cost": 18,
-        "effects": {"immobilize": 18}
+        "effect": {"immobilize": 18}
     },
     {
         "name": "Holy Smite",
         "description": "A holy attack that damages undead enemies.",
         "mana_cost": 22,
-        "effects": {"holy_damage": 22}
+        "effect": {"holy_damage": 22}
     },
     {
         "name": "Mana Drain",
         "description": "Drains mana from the target and restores caster's mana.",
         "mana_cost": 14,
-        "effects": {"mana_drain": 14}
+        "effect": {"mana_drain": 14}
     }
 ]
+
+# Skills
+from core.skills import Skill
+skills_dict = {
+    "Berserk Rage": Skill("Berserk Rage", "Unleash a furious attack.", damage_multiplier=2.0, temporary_bonus={}, cost={"stamina": 10}),
+    "Shadow Strike": Skill("Shadow Strike", "A swift and deadly strike.", damage_multiplier=1.5, temporary_bonus={}, cost={"stamina": 8}),
+    "Arcane Blast": Skill("Arcane Blast", "A powerful burst of arcane energy.", damage_multiplier=2.5, temporary_bonus={}, cost={"mana": 15}),
+    "Divine Shield": Skill("Divine Shield", "Raises a protective barrier reducing damage.", damage_multiplier=1.0, temporary_bonus={"defense": 5}, cost={"mana": 10}),
+    # more skills
+    "Healing Wave": Skill("Healing Wave", "Heals yourself with some magics.", damage_multiplier=0.0, temporary_bonus={"hp": 10}, cost={"mana": 5}),
+    "Shield Bash": Skill("Shield Bash", "Bashes the enemy with your shield.", damage_multiplier=1.0, temporary_bonus={"attack": 5}, cost={"stamina": 5}),
+}
 
 
 # Special attacks
