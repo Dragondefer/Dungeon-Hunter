@@ -1,4 +1,10 @@
-__version__ = "716.0"
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from core.entity import Player
+
+__version__ = "740.0"
 __creation__ = "09-03-2025"
 
 import random
@@ -7,7 +13,6 @@ from interface.colors import Colors
 from engine.game_utility import clear_screen
 from data.data import enemy_sets
 from engine.logger import logger
-
 debug = 0
 
 #̶̼͝ B̵̕͜ë̵͕́ẅ̷̙́ä̷̪́r̷͍̈́ë̵͕́:̴̨͝ I̴̡̛ẗ̴̗́ë̵͕́m̴̛̠s̸̱̅ m̴̛̠ä̷̪́ÿ̸̡́ h̵̤͒o̶͙͝l̷̫̈́ď̶̙ h̵̤͒i̴̊͜ď̶̙ď̶̙ë̵͕́n̸̻̈́ c̴̱͝ŭ̵͇r̷͍̈́s̸̱̅ë̵͕́s̸̱̅ ẗ̴̗́h̵̤͒ä̷̪́ẗ̴̗́ ď̶̙r̷͍̈́ä̷̪́i̴̊͜n̸̻̈́ ÿ̸̡́o̶͙͝ŭ̵͇r̷͍̈́ s̸̱̅o̶͙͝ŭ̵͇l̷̫̈́ s̸̱̅l̷̫̈́o̶͙͝ẅ̷̙́l̷̫̈́ÿ̸̡́.̵͇̆
@@ -111,11 +116,13 @@ class Gear(Item):
 
 
 #̶̼͝ B̵̕͜ë̵͕́ẅ̷̙́ä̷̪́r̷͍̈́ë̵͕́:̴̨͝ E̶͍̚q̴̨͝ŭ̵͇i̴̊͜p̵̦̆m̴̛̠ë̵͕́n̸̻̈́ẗ̴̗́ m̴̛̠ä̷̪́ÿ̸̡́ c̴̱͝ä̷̪́r̷͍̈́r̷͍̈́ÿ̸̡́ ẗ̴̗́h̵̤͒ë̵͕́ ẅ̷̙́h̵̤͒i̴̊͜s̸̱̅p̵̦̆ë̵͕́r̷͍̈́s̸̱̅ o̶͙͝f̷̠͑ f̷̠͑ä̷̪́l̷̫̈́l̷̫̈́ë̵͕́n̸̻̈́ h̵̤͒ë̵͕́r̷͍̈́o̶͙͝ë̵͕́s̸̱̅.̵͇̆
+from .items import Gear
+
 class Equipment:
     """Gère l'équipement du joueur (slots et bonus appliqués)."""
     def __init__(self, **kwargs):
         """Initialise les slots de l'équipement."""
-        self.slots = {
+        self.slots: dict[str, Gear|None] = {
             "main_hand": None,
             "off_hand": None,
             "helmet": None,
@@ -142,8 +149,12 @@ class Equipment:
         eq = cls()
         for slot, item_data in data.items():
             if item_data is not None:
-                from items.items import Item
-                eq.slots[slot] = Item.from_dict(item_data)
+                from items.items import Item, Gear
+                item = Item.from_dict(item_data)
+                if isinstance(item, Gear):
+                    eq.slots[slot] = item
+                else:
+                    eq.slots[slot] = None
             else:
                 eq.slots[slot] = None
         return eq
@@ -192,11 +203,13 @@ class Equipment:
         """Déséquipe un objet d'un slot."""
         if slot in self.slots and self.slots[slot]:
             removed_item = self.slots[slot]
-            self.slots[slot] = None
-            logger.info(f"Unequipped {removed_item.name} from {slot}")
-            print(f"{Colors.YELLOW}Unequipped {removed_item.name} from {slot}.{Colors.RESET}")
-            player.stats.update_total_stats()
-            return removed_item
+            if removed_item:  # Check if there was an item to remove
+                self.slots[slot] = None
+                logger.info(f"Unequipped {removed_item.name} from {slot}")
+                print(f"{Colors.YELLOW}Unequipped {removed_item.name} from {slot}.{Colors.RESET}")
+                player.stats.update_total_stats()
+                return removed_item
+            return None
         logger.warning(f"No item equipped in {slot} to unequip()")
         print(f"{Colors.RED}No item equipped in {slot}.{Colors.RESET}")
         return None
@@ -305,17 +318,21 @@ class Shield(Gear):
 #̶̼͝ B̵̕͜ë̵͕́ẅ̷̙́ä̷̪́r̷͍̈́ë̵͕́:̴̨͝ G̵̨̽ä̷̪́ŭ̵͇n̸̻̈́ẗ̴̗́l̷̫̈́ë̵͕́ẗ̴̗́s̸̱̅ m̴̛̠ä̷̪́ÿ̸̡́ b̸̼̅i̴̊͜n̸̻̈́ď̶̙ ẗ̴̗́h̵̤͒ë̵͕́ ẅ̷̙́ë̵͕́ä̷̪́r̷͍̈́ë̵͕́r̷͍̈́'̸̱̅s̸̱̅ s̸̱̅o̶͙͝ŭ̵͇l̷̫̈́ ẗ̴̗́o̶͙͝ ď̶̙ä̷̪́r̷͍̈́k̵̢͝ f̷̠͑o̶͙͝r̷͍̈́c̴̱͝ë̵͕́s̸̱̅.̵͇̆
 class Gauntlets(Gear):
     """Represents an equippable gauntlet that increases strength and defense."""
-    def __init__(self, name, description, value, defense, strength_boost):
+    def __init__(self, name, description, value, defense, strength_boost, effect=None):
         super().__init__(name, description, value, {"defense": defense, "strength": strength_boost})
         logger.debug(f"Gauntlets created: {self.name} with defense {defense} and strength boost {strength_boost}")
-    
+        self.defense = defense
+        self.strength_boost = strength_boost
+        self.effects = effect if effect else {}
+
+
     def apply_effect(self, player):
         """Applique les effets des gants au joueur."""
-        for stat, bonus in self.effect.items():
+        for stat, bonus in self.effects.items():
             player.stats.__dict__[stat] += bonus
     
     def __str__(self):
-        return f"{self.name} - {self.description} (Defense: +{self.defense}, Effects: {self.effect}, Value: {self.value} gold)"
+        return f"{self.name} - {self.description} (Defense: +{self.defense}, Effects: {self.effects}, Value: {self.value} gold)"
 
     def to_dict(self):
         return super().to_dict()
@@ -388,14 +405,21 @@ class Potion(Item):
             effect_class = EFFECT_MAP.get(effect_class_name)
             if effect_class_name == "Healing":
                 # Healing effect is immediate, no duration
-                effect = effect_class(self.effect_value)
-                effect.apply(player)
+                if effect_class:
+                    effect = effect_class(self.effect_value)
+                    effect.apply(player)
+                else:
+                    # Fallback healing logic if effect class not found
+                    player.heal(self.effect_value)
                 logger.info(f"Player used a healing potion: {self.name}")
                 print(f"{Colors.GREEN}You drink the {self.name} and recover {self.effect_value} HP!{Colors.RESET}")
             else:
                 # For other effects, create with duration = effect_value
-                effect = effect_class(duration=self.effect_value)
-                effect.apply(player)
+                if effect_class:
+                    effect = effect_class(duration=self.effect_value)
+                    effect.apply(player)
+                else:
+                    print(f"{Colors.RED}Effect type {effect_class_name} not found in EFFECT_MAP!{Colors.RESET}")
                 logger.info(f"Player used a {self.effect_type} potion: {self.name}")
                 print(f"{Colors.CYAN}You drink the {self.name} and gain {self.effect_type.replace('_', ' ')} for {self.effect_value} turns!{Colors.RESET}")
 
@@ -676,7 +700,8 @@ def create_potion(level, rarity, prefix, item_name, value_base, rarity_data):
     
     return Potion(colored_name, effect_desc, value_base, potion["effect_type"], potion["effect_value"])
 
-def generate_random_item(player=None, enemy=None, item_type=None, rarity=None, item_name=None, rarity_boost=None, available_rarities=None, level_boost=0, enemy_type=None):
+
+def generate_random_item(player:Player, enemy=None, item_type=None, rarity=None, item_name=None, rarity_boost=None, available_rarities=None, level_boost=0, enemy_type=None):
     """Generate a specific or random item with customizable attributes."""
     global debug
     debug = 0
@@ -744,8 +769,7 @@ def generate_random_item(player=None, enemy=None, item_type=None, rarity=None, i
         return create_potion(level, rarity, prefix, item_name, value_base, rarity_data)
         
     else:
-        print(f"{Colors.RED}Invalid item type: {item_type}{Colors.RESET}")
-        return None
+        raise ValueError(f"Invalid item type: {item_type}")
 
 def generate_item_by_name(name, item_type):
     """Recreate an item based on its name and type from save data."""
