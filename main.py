@@ -6,7 +6,7 @@ project_root = abspath(dirname(__file__))
 if project_root not in sys_path:
     sys_path.insert(0, project_root)
 
-__version__ = "678.0"
+__version__ = "700.0"
 __creation__ = "09-03-2025"
 
 import random
@@ -34,6 +34,7 @@ except Exception as e:
 
 maximize_terminal()
 
+send_analytics:bool = False
 logger.info(f"dev_mode: {dev_mode}")
 debug = 0
 
@@ -81,10 +82,9 @@ def main(continue_game=False, loaded_player=None):
         print(f"{Colors.RED}3. Rest{Colors.RESET}")
         print(f"{Colors.MAGENTA}4. Information submenu{Colors.RESET}")
         print(f"{Colors.BRIGHT_YELLOW}5. Save game{Colors.RESET}")
-        print(f"{Colors.BRIGHT_RED}6. Quit game{Colors.RESET}")
+        print(f"{Colors.BRIGHT_RED}6. Quit game{Colors.RESET}\n")
 
 
-        
         choice = input(f"{Colors.CYAN}Your choice: {Colors.RESET}")
         logger.info(f"Player choice: {choice}")
         
@@ -101,7 +101,7 @@ def main(continue_game=False, loaded_player=None):
                 player.dungeon_level += 1
 
                 # After finishing level 10 dungeon for the first time, 
-                if player.dungeon_level == 11 and player.mode.get_ng_plus(player) == 0:
+                if player.dungeon_level == 11 and player.ng_plus.get(str(player.mode), 0) == 0:
                     print(f"\n{Colors.BRIGHT_YELLOW}You have finished level 10 dungeon!{Colors.RESET}")
                     
                     # Unlock the two difficulty:
@@ -119,7 +119,7 @@ def main(continue_game=False, loaded_player=None):
                         print(f"\n{Colors.YELLOW}You have chosen to make a new game +.{Colors.RESET}")
                         print(f"\n{Colors.YELLOW}Generating a new dungeon...{Colors.RESET}")
                         time.sleep(2)
-                        player.ng_plus[player.mode.name] += 1
+                        player.ng_plus[str(player.mode)] += 1
                     player.dungeon_level = 1
                     player.current_room_number = 0
                 
@@ -179,9 +179,16 @@ def main(continue_game=False, loaded_player=None):
                             player.completed_quests.append(quest)
                 
                 if not player_survived or not player.is_alive() and end == False:
-                    game_over("died in battle")
-                    game_running = False
-                    end = True
+                    # Instead of game over and stopping the game, reset the player and dungeon to respawn
+                    print(f"\n{Colors.RED}You have died! Respawning...{Colors.RESET}")
+                    player.reset_player()
+                    dungeon = Dungeon()
+                    dungeon.extend(generate_dungeon(player=player))
+                    game_running = True
+                    end = False
+                    player.current_room_number = 0
+                    player.total_rooms_explored = 0
+                    time.sleep(2)
                     continue
                 
                 time.sleep(0.5)
@@ -250,6 +257,23 @@ def main(continue_game=False, loaded_player=None):
             save_name = input(f"\n{Colors.YELLOW}Enter a save name: {Colors.RESET}")
             player.save_player(save_name)
             time.sleep(0.5)
+
+            # Nicely formatted question to ask player for analytics consent
+            print(f"\n{Colors.BRIGHT_CYAN}Would you like to send anonymous analytics to help improve the game?{Colors.RESET}")
+            print(f"{Colors.CYAN}This data includes your playtime, levels completed, rooms explored, and more.")
+            print(f"It is completely anonymous and cannot be traced back to you.")
+            print(f"Your contribution helps us make Dungeon Hunter better for everyone!")
+            print(f"See global analytics here: https://dragondefer.github.io/Dungeon-Hunter/analytics/analytics.html\n{Colors.RESET}")
+
+            # Not implemented yet
+            # consent = input(f"{Colors.BRIGHT_YELLOW}Send analytics? (y/n): {Colors.RESET}").lower()
+            consent = "n"
+            if consent == 'y':
+                send_analytics = True
+                print(f"{Colors.GREEN}Thank you for contributing to the analytics!{Colors.RESET}")
+            else:
+                print(f"{Colors.YELLOW}Analytics not sent. You can send them later from the main menu.{Colors.RESET}")
+
             input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
         
         elif choice == "6":  # Quit game
@@ -264,7 +288,8 @@ def main(continue_game=False, loaded_player=None):
         
         elif choice == "dev" and dev_mode == True: # activate dev debug test
             print(Colors.gradient_text('dev mode activated', (0, 0, 255), (0, 255, 0)))
-            debug_menu(player, dungeon)
+            debug_dungeon = Dungeon(dungeon) if isinstance(dungeon, list) else dungeon
+            debug_menu(player, debug_dungeon)
         
         elif choice == "stats":
             print(player.stats)
@@ -389,6 +414,6 @@ if __name__ == '__main__':
 
     main_menu()
     
-collect_feedback(player=player)
+collect_feedback()
 print(f"\n{Colors.CYAN}Thanks for playing Dungeon Hunter !{Colors.RESET}")
 print(f"{Colors.UNDERLINE}Made by {Colors.BOLD}Dragondefer{Colors.RESET}")

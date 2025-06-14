@@ -1,4 +1,4 @@
-__version__ = "943.0"
+__version__ = "996.0"
 __creation__ = "23-04-2025"
 
 # Changelog
@@ -22,12 +22,11 @@ Here is the schematic of the logs:
 ---
 Order of each version: ['colors.py', 'data.py', 'difficulty.py', 'dungeon.py', 'entity.py', 'game_utility.py', 'inventory.py', 'items.py', 'main.py', 'progression.py', 'story.py']
 
-
 ## [Unreleased]
 ### Upcomming features
 
 - **Dungeon environment**
-  - Better difficulty managment (game core changement for each separated difficutly)
+  - Add the room number variable to calculus so the difficulty isn't a staircase that increment with each levels, but more like a ramp.
 
 - **Combat improvement**
   - Planned: Improve combat balancing
@@ -37,9 +36,7 @@ Order of each version: ['colors.py', 'data.py', 'difficulty.py', 'dungeon.py', '
 
 - **Items**
   - Artéfacts (Use Point ? Limit of 3 ?) (Increase inv ? live steal)
-
 ---
-
 ### Later features
 
 - **Dungeon Theme Expansion**
@@ -63,34 +60,32 @@ Order of each version: ['colors.py', 'data.py', 'difficulty.py', 'dungeon.py', '
 
 ### Major Future Roadmap  
 #### The Eternal Forge Expansion
-- NPC integration
+- NPC integration with quests lines and lore
 
-#### Realms Beyond Update (3.0.0)  
-- Deity allegiance system with divine interventions
+#### Realms Beyond Update
+- Deity allegiance system with "divine" interventions
 - Time manipulation mechanics (rewind combat turns/freeze puzzles)
 - 100+ hour New Game+ mode with scaling challenges
 
-#### Ascension Patch (4.0.0)  
+#### Ascension Patch
 - Neural network-driven dynamic storytelling
 
 ---
 
 ## QoL Hotfixes (Next Patch)  
-- Combat log history viewer (last 50 actions)
+- Combat log history viewer
 - Quick-swap equipment loadouts
 - Localized tooltip delay adjustment
 
-## Ideas (not planned)
-- **Save System** (not planned for now)
-  - Save file corruption recovery system  
-
+## Ideas (not planned: I don't think 3 players is enough, especially with only 1 active (the creator))
 - **Multiplayer Foundations**  
   - Local co-op support for 2-4 players  
   - Shared inventory system with item trading  
   - Synced puzzle solutions requiring team coordination  
 
+
 ---
----
+
 
 ## [1.x.x] - 11-03-2025
 ### Added
@@ -256,7 +251,6 @@ Your code explicitly defines all of these, so the counts are **verifiable**, not
   - **~200 lines** for UI/UX (menus, colors, text effects)  
   - The rest: utilities, quests, saves, etc.  
 
-
 ### **3. 60+ interactive elements**  
 Counted from:
 - **Room types**: 7 (combat, treasure, shop, rest, boss, puzzle, start)  
@@ -265,7 +259,6 @@ Counted from:
 - **Quests**: 6+ objective types (kill, explore, collect, etc.)  
 - **UI interactions**: Menus, inventory, shops, puzzles (**10+**)  
 - **Traps/Events**: 4 trap types + random events  
-
 
 ### **4. 100+ gameplay variables**  
 Tally of tunable parameters like:
@@ -559,18 +552,19 @@ Need to be fixed in the future:
 ---
 
 ## [5.x.x] : Echoes of Depth - 05-05-2025
-  - [5.0.0] : **Save system** + **player's statistics** - 07-05-2025
-  - [5.1.0] : **Difficulty core class** + **Inventory class** 08-05-2025
-  - [5.2.0] : **Progression** + **L̷̻̎o̶͙͝r̷͍̈́ë̵͕́** - 10-05-2025
+  - [5.0.0] : **Save system** & **player's statistics** - 07-05-2025
+  - [5.1.0] : **Difficulty core class** & **Inventory class** 08-05-2025
+  - [5.2.0] : **Progression** & **L̷̻̎o̶͙͝r̷͍̈́ë̵͕́** - 10-05-2025
     - [51.0, 224.0, 50.0, 1050.0, 1819.0, 340.0, 17.0, 641.0, 476.0, 76.0, 34.0]
-  - [5.3.0] : **Items** + **Equipment update** - 15-05-2025
+  - [5.3.0] : **Items** & **Equipment update** - 15-05-2025
     - [53.0, 228.0, 66.0, 1230.0, 2007.0, 355.0, 21.0, 690.0, 594.0, 81.0, 66.0]
-  - [5.4.0] : **Magic implementation** + **Tutorials** - 18-05-2025
+  - [5.4.0] : **Magic implementation** & **Tutorials** - 18-05-2025
     - [53.0, 290.0, 66.0, 1653.0, 2217.0, 465.0, 21.0, 698.0, 650.0, 81.0, 78.0]
-  - [5.5.0] : **Mastery implementation** + **Special attack** - 29-055-2025
+  - [5.5.0] : **Mastery implementation** & **Special attack** - 29-055-2025
     - As there is new file, here is the new order:
-    - ['colors.py', 'data.py', 'difficulty.py', 'dungeon.py', 'entity.py', 'game_utility.py', 'inventory.py', 'items.py', 'main.py', 'masteries.py', 'progression.py', 'spells.py', 'status_effects.py', 'story.py']
-    - [53.0, 320.0, 69.0, 1671.0, 2285.0, 468.0, 21.0, 716.0, 678.0, 10.0, 84.0, 7.0, 8.0, 82.0] 
+    - ['colors.py', 'data.py', 'difficulty.py', 'dungeon.py', 'entity.py', 'game_utility.py', 'inventory.py', 'items.py', 'main.py', 'masteries.py', 'player_class.py', 'progression.py', 'skills.py', 'spells.py', 'status_effects.py', 'story.py']
+    - [53.0, 320.0, 69.0, 1671.0, 2285.0, 468.0, 21.0, 716.0, 678.0, 10.0, 3.0, 84.0, 3.0, 7.0, 8.0, 82.0]
+  - [5.6.0] : **Web Dashboard** & **Global Analytics**
 
 ### Added
 - **Debug and core**
@@ -580,8 +574,10 @@ Need to be fixed in the future:
 
 - **QoL**: (Quality of Life):
   - Added loading animation
-  - Added two option for displaying dungeon level: top mid or top right
+  - Added two option for displaying dungeon level: top mid or top right (choosed automatically with the terminal's size)
   - The stats and dungeon level display are now at the same height
+  - Added a new selling option: Sell items by group (by rarity, or by effect type and a value)
+
 
 - **Breath of the Dungeon**
   - **progression**:
@@ -592,7 +588,6 @@ Need to be fixed in the future:
     - Refactored `Potion.use()` method to utilize modular status effect classes from `core/status_effects.py` for better extensibility and maintainability.
     - Added new status effect classes: `AttackBoost`, `DefenseBoost`, `LuckBoost`, and `HealingEffect` in `core/status_effects.py`.
       
-
 - **Ascension Protocol**
   - **Player**:
     - Added a new stats summary display for player kills, rooms explored, dungeon level, difficulty, NG+...
@@ -609,6 +604,15 @@ Need to be fixed in the future:
     - Added some L̷̻̎o̶͙͝r̷͍̈́ë̵͕́, ready to be used
     - Added function to display text
 
+- **UI**:
+  - **Analytics**:
+    - Added new statistics
+    - Added playtime in the player stats
+    - Added more a lot of analytics such as the death/room/difficulties counter and a lot more
+  - **Web-site**:
+    - Added new official [WEB-SITE](https://dragondefer.github.io/Dungeon-Hunter/)
+    - Added sub website [analytics](https://dragondefer.github.io/Dungeon-Hunter/analytics/analytics.html) (Acceced with the button "📊 Analytics" on the web-site)
+
 ### Fixed
 - **Player**:
   - **Saves / Load finaly work !!**
@@ -623,7 +627,8 @@ Need to be fixed in the future:
 
 - **Effects**
   - Fixed issue where potion effect durations decreased too quickly when applied multiple times in a single turn.
-  
+
+
 ### Changed
 - **Player**:
   - Modifed the basics functions like `append` and `remove` of the new Inventory(list) class
@@ -645,22 +650,17 @@ Need to be fixed in the future:
 - **Core**:
   - Changed the whole file management: created folders (core, engine, data, items, interface)
 
+- Activated Pylance for deeper error scan: about 87 fixes around every files
 
+### Key Metrics  
+| Category          | v4.5.5 | v5.6.0 | Change  |  
+|-------------------|--------|--------|---------|  
+| Lines of Code     | 5,415  | 8,200  | +52%↑   |  
+| Avg. game Size    | 247Ko  | 363Ko  | +47%↑   |  
+| Tracked Stats     | 23     | 47     | +104%↑  |  
 
+> **Development Notes**: 85h focused on extensible telemetry systems. Analytics will drive v6.0's "The Whispering Void" balance overhaul.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+---
 
 ## [6.0.0] : T̸̻̈́h̵̤͒␊ W̸͕̆h̵̤͒␋s̸̱̅p̵̦̆ë̵͕́⎼i̴̊͜┼g̸̻̿ V̵̰͊o̶͙͝i̴̊͜␍ - ??-06-2025

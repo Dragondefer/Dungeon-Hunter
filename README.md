@@ -1,7 +1,7 @@
-__version__ = "300.0"
+__version__ = "305.0"
 __creation__ = "23-04-2025"
 
-# Dungeon Hunter - Version 5.5.0
+# Dungeon Hunter - Version 5.6.3
 
 Dungeon Hunter is a text-based dungeon exploration RPG game where you play as a brave adventurer exploring dangerous dungeons, battling enemies, completing quests, collecting loot, and leveling up your character.
 
@@ -30,7 +30,7 @@ Check out the game website here: [Dungeon Hunter Website](https://dragondefer.gi
 You can find the latest version of the game with the 3 different ways to run it.
 Under here, you will find the 3 ways to run the game, and the one I recommend who is the one that automatically update the game at launch as it save a lot of time and so it check for update for you.
 
-### Recomanded : Auto-Update (req: GIT + Python 3)
+### Recomanded : Auto-Update (req: GIT + Python 3.10+)
 Why is this the best option:
    - Whenever you launch the game with `play.bat`, it **automatically download the latest version** of each files from the repo on github!
 
@@ -99,7 +99,7 @@ And now your main.exe file is marked with the given hash
 
 ---
 
-### If you only want to test the game quickly (req: Python 3)
+### If you only want to test the game quickly (req: Python 3.10+)
 1. Ensure you have python 3 installed
    - You can verify by typing `python --version` in the terminal
 
