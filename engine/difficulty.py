@@ -1,4 +1,4 @@
-__version__ = "69.0"
+__version__ = "74.0"
 __creation__ = "08-05-2025"
 
 import random
@@ -72,7 +72,7 @@ class GameMode:
         # Valeur par défaut
         return random.randint(5, 8)
 
-    def maybe_trigger_event(player):
+    def maybe_trigger_event(self, player):
         if random.random() < 0.2:  # 20% de chance
             event = random.choice(EVENTS)
             event.trigger(player)
@@ -82,6 +82,16 @@ class GameMode:
 
     def get_rarity_boost(self):
         return 1.0
+
+    def level_up_bonus(self):
+        return {
+            "hp": 10,
+            "mana": 5,
+            "stamina": 5,
+            "attack": 2,
+            "defense": 2,
+            "agility": 1
+        }
 
     def get_ng_plus(self, player) -> int:
         return player.ng_plus[self.name]

@@ -1,4 +1,4 @@
-__version__ = "1671.0"
+__version__ = "1795.0"
 __creation__ = "09-03-2025"
 
 import time
@@ -11,12 +11,15 @@ from engine.game_utility import (clear_screen, typewriter_effect,
                           choose_difficulty,
                           loading,
                           execute_command,
+                          strip_ansi
                           )
 from interface.colors import Colors
 from core.entity import Player, Enemy, generate_enemy, load_player
-from items.items import Armor, Weapon, Potion, generate_random_item
+from items.items import Item, Armor, Weapon, Potion, generate_random_item
+from items.spells import get_random_scroll, get_random_spell
 from data.data import room_descriptions, puzzle_choices, rest_events
 from engine.logger import logger
+
 
 debug = 0
 
@@ -121,6 +124,8 @@ class Room:
         return self.handle_room(player)
     
     def trigger_trap(self, player):
+        if not self.trap:
+            return None
         print(f"\n{Colors.RED}{Colors.BOLD}*CLICK*{Colors.RESET}")
         player.traps_triggered +=1
         logger.info(f"Trap activated: {self.trap['description']}")
@@ -360,9 +365,10 @@ class Room:
                 
                 if dice1 == dice2 == dice3:
                     prize = generate_random_item(player=player)
-                    player.inventory.append(prize)
-                    print("\n",Colors.rainbow_text("JACKPOT! You won a special prize !"))
-                    print(f"{Colors.GREEN}You received: {prize.name}!{Colors.RESET}")
+                    if prize:
+                        player.inventory.append(prize)
+                        print("\n",Colors.rainbow_text("JACKPOT! You won a special prize !"))
+                        print(f"{Colors.GREEN}You received: {prize.name}!{Colors.RESET}")
                 elif total > 10:
                     gold_won = random.randint(15, 30)
                     player.gold += gold_won
@@ -409,19 +415,21 @@ class Room:
                 print(f"{Colors.RED}Your attack increases by {effect_value} !{Colors.RESET}")
             elif effect_type == "weapon":
                 weapon = generate_random_item(player, item_type="weapon", rarity_boost=1.2)
-                player.inventory.append(weapon)
-                print(f"{Colors.GREEN}You find a {weapon.name} !{Colors.RESET}")
+                if weapon:
+                    player.inventory.append(weapon)
+                    print(f"{Colors.GREEN}You find a {weapon.name} !{Colors.RESET}")
             elif effect_type == "armor":
                 armor = generate_random_item(player, item_type="armor", rarity_boost=1.2)
-                player.inventory.append(armor)
-                print(f"{Colors.GREEN}You find a {armor.name} !{Colors.RESET}")
+                if armor:
+                    player.inventory.append(armor)
+                    print(f"{Colors.GREEN}You find a {armor.name} !{Colors.RESET}")
 
             return True
 
         print(f"\n{Colors.RED}Invalid choice. The puzzle remains sealed.{Colors.RESET}")
         return True
     
-    def handle_sequence_puzzle(self, player):
+    def handle_sequence_puzzle(self, player:Player):
         """Managing a mathematical sequence puzzle."""
         sequence_type = random.choice(["arithmetic", "geometric"])
 
@@ -445,7 +453,7 @@ class Room:
                 print(f"{Colors.RED}You have 10 seconds, be quick!{Colors.RESET}")
                 answer = timed_input(f"\n{Colors.YELLOW}Your response (attempt {attempt+1}/3) : {Colors.RESET}", 10, "")
                 if answer == "":
-                    print(f"{Colors.RED}No input received. Please try again.{Colors.RESET}")
+                    #print(f"{Colors.RED}No input received. Please try again.{Colors.RESET}")
                     continue
                 answer_int = int(answer)
 
@@ -460,8 +468,9 @@ class Room:
                         print(f"{Colors.YELLOW}You find {gold_amount} gold !{Colors.RESET}")
                     elif reward_type == "objet":
                         item = generate_random_item(player=player, rarity_boost=1.2)
-                        player.inventory.append(item)
-                        print(f"{Colors.GREEN}You find a {item.name} !{Colors.RESET}")
+                        if item:
+                            player.inventory.append(item)
+                            print(f"{Colors.GREEN}You find a {item.name} !{Colors.RESET}")
                     elif reward_type == "stat":
                         stat_type = random.choice(["attack", "defense", "hp", "luck", "mana", "stamina"])
                         if stat_type == "attack":
@@ -606,7 +615,7 @@ class Room:
             else:
                 typewriter_effect(f"\n[Assistant]: {Colors.GREEN}This is your first combat against a boss.{Colors.RESET}", 0.05)
                 time.sleep(0.5)
-                typewriter_effect(f"\n[Assistant]: {Colors.GREEN}Don't worry, i will help you if needed.{Colors.RESET}", 0.05)
+                typewriter_effect(f"[Assistant]: {Colors.GREEN}Don't worry, i will help you if needed.{Colors.RESET}", 0.05)
                 time.sleep(0.5)
 
         enemy = self.enemies[0]
@@ -687,9 +696,12 @@ class Room:
                 # Critical hit chance
                 critical = random.random() < (0.025 + player.stats.luck * 0.01 + player.stats.critical_chance * 0.02)
                 if critical:
+                    player.critical_count += 1
                     base_damage *= 2
                     print(f"{Colors.BRIGHT_YELLOW}{Colors.BOLD}CRITICAL HIT!{Colors.RESET}")
                     time.sleep(0.1)
+                else:
+                    player.attack_count += 1
 
                 # Stamina cost
                 if player.equipment.main_hand:
@@ -708,7 +720,7 @@ class Room:
                 # Use special attacks if any
                 if player.equipment.main_hand and hasattr(player.equipment.main_hand, "special_attacks") and player.equipment.main_hand.special_attacks:
                     print(f"{Colors.CYAN}You use a special attack!{Colors.RESET}")
-                    for attack_name, attack_func in player.equipment.main_hand.special_attacks:
+                    for attack_name, attack_func in player.equipment.main_hand.attacks:
                         if attack_func:
                             print(f"Using {attack_name}...")
                             attack_func(player, enemy)
@@ -766,24 +778,23 @@ class Room:
                 print(f"{Colors.BRIGHT_BLACK}You gain 1 souls !{Colors.RESET}\n")
 
                 # Item drop
-                if tutorial is False:
-                    if is_boss_room:
-                        dropped_item = generate_random_item(player=player, enemy=enemy, rarity_boost=1.5)
+                if is_boss_room:
+                    dropped_item = generate_random_item(player=player, enemy=enemy, rarity_boost=1.5)
 
-                    elif random.random() < (0.2 + player.stats.luck * 0.02):
+                if tutorial is False:
+                    if random.random() < (0.2 + player.stats.luck * 0.02):
                         dropped_item = generate_random_item(player=player, enemy=enemy)
                         player.inventory.append(dropped_item)
-                        print(f"{Colors.GREEN}The {enemy.name} dropped: {dropped_item.name} !{Colors.RESET}")
+                        if dropped_item:
+                            print(f"{Colors.GREEN}The {enemy.name} dropped: {dropped_item.name} !{Colors.RESET}")
                         time.sleep(2)
                 
-                else:
-                    typewriter_effect(f"[Assistant]: ", end='')
+                elif tutorial is True and not is_boss_room:
+                    time.sleep(0.5)
+                    # Tell the player he can get an item
+                    typewriter_effect(f"[Assistant]: {Colors.BRIGHT_BLACK}After combat, there is a chance that you get an item depending on the enemy type.{Colors.RESET}", 0.05, "")
                     time.sleep(0.2)
-                    typewriter_effect(f"{Colors.BRIGHT_BLACK}...{Colors.RESET}", 0.5)
-                    time.sleep(0.2)
-                    typewriter_effect(f"[Assistant]: {Colors.CYAN}Something is wrong.. ", end='')
-                    time.sleep(0.2)
-                    typewriter_effect(f"for the tutorial, the enemy should drop an item but it didn't..{Colors.RESET}", 0.05)
+                    typewriter_effect(f"As it's a tutorial, I will grant you one.{Colors.RESET}", 0.05)
                     time.sleep(1)
                     typewriter_effect(f"[Assistant]: {Colors.BLUE}Requesting permission..{Colors.RESET}", 0.05)
                     loading(2)
@@ -807,11 +818,12 @@ class Room:
                         prnt=True,
                         context={
                             "player":player,
+                            "generated_item": generated_item,
                         }
                     )
                     time.sleep(0.5)
                     typewriter_effect(f"\n[Assistant]: {Colors.GREEN}Item added succesfully.{Colors.RESET}\n", 0.03)
-                    print(f"{Colors.GREEN}The {enemy.name} dropped: {generated_item.name} !{Colors.RESET}")
+                    print(f"{Colors.GREEN}The {enemy.name} dropped: {generated_item.name if isinstance(generated_item, Item) else 'Unknow error'} !{Colors.RESET}")
                     time.sleep(2)
 
 
@@ -853,6 +865,9 @@ class Room:
         if tutorial is True:
             self.items.append(generate_random_item(player))
             typewriter_effect(f"\n[Assistant]: {Colors.GREEN}In treasure room, you can up to 2 random items.{Colors.RESET}", 0.03)
+            time.sleep(0.3)
+            typewriter_effect(f"[Assistant]: {Colors.BRIGHT_BLACK}I heard you can find ancient scrolls{Colors.RESET}", 0.03)
+            time.sleep(0.2)
             typewriter_effect(f"[Assistant]: {Colors.GREEN}For now, everything is unlocked..{Colors.RESET}", 0.075)
         
         if not self.items:
@@ -931,9 +946,11 @@ class Room:
         print_merchant_dialogue_box(merchant_name, merchant_dialogue)
 
         # Generate shop inventory
-        shop_inventory = []
+        shop_inventory: list[Item] = []
         for _ in range(player.mode.get_shop_item_num()):
-            shop_inventory.append(generate_random_item(player=player))
+            generated_item = generate_random_item(player=player)
+            if generated_item: # To make Pylance happy
+                shop_inventory.append(generated_item)
 
         shop_inventory.sort(key=lambda item: item.value, reverse=True)
 
@@ -984,6 +1001,7 @@ class Room:
                         elif player.gold >= item.value:
                             player.gold -= item.value
                             player.gold_spent += item.value
+                            player.purchased_items[item] = player.purchased_items.get(item, 0) + 1 # Create or increment by 1 the item count (to track purchases)
                             print(f"\n{Colors.GREEN}You bought {item.name} for {item.value} gold.{Colors.RESET}")
                         else:
                             print(f"\n{Colors.RED}You don't have enough gold!{Colors.RESET}")
@@ -1008,30 +1026,139 @@ class Room:
             return
         
         print(f"\n{Colors.BRIGHT_CYAN}{shopkeeper}: What would you like to sell?{Colors.RESET}")
-        
-        for i, item in enumerate(player.inventory, 1):
-            sell_value = int(item.value * 0.5)  
-            print(f"{Colors.YELLOW}{i}. {item} - Sell for {Colors.BRIGHT_YELLOW}{sell_value} gold{Colors.RESET}")
-        
+        print(f"{Colors.YELLOW}1. Sell a single item{Colors.RESET}")
+        print(f"{Colors.YELLOW}2. Sell items by group{Colors.RESET}")
         print(f"{Colors.RED}0. Cancel{Colors.RESET}")
         
         try:
-            choice = int(input(f"\n{Colors.CYAN}Choose an item to sell (0 to cancel): {Colors.RESET}"))
+            choice = int(input(f"\n{Colors.CYAN}Choose an option (0 to cancel): {Colors.RESET}"))
             
             if choice == 0:
                 return
-            elif 1 <= choice <= len(player.inventory):
-                item = player.inventory[choice - 1]
-                sell_value = int(item.value * 0.5)
+            elif choice == 1:
+                for i, item in enumerate(player.inventory, 1):
+                    sell_value = int(item.value * 0.5)  
+                    print(f"{Colors.YELLOW}{i}. {item} - Sell for {Colors.BRIGHT_YELLOW}{sell_value} gold{Colors.RESET}")
                 
-                if debug >= 1:
-                    print(f"DEBUG: Selling {item.name} for {sell_value} gold")
+                try:
+                    item_choice = int(input(f"\n{Colors.CYAN}Choose an item to sell (0 to cancel): {Colors.RESET}"))
+                    
+                    if item_choice == 0:
+                        return
+                    elif 1 <= item_choice <= len(player.inventory):
+                        item = player.inventory[item_choice - 1]
+                        sell_value = int(item.value * 0.5)
+                        
+                        if debug >= 1:
+                            print(f"DEBUG: Selling {item.name} for {sell_value} gold")
+                        
+                        player.gold += sell_value
+                        player.inventory.remove(item)
+                        print(f"\n{Colors.GREEN}You sold {item.name} for {sell_value} gold.{Colors.RESET}\n")
+                    else:
+                        print(f"\n{Colors.RED}Invalid choice.{Colors.RESET}")
                 
-                player.gold += sell_value
-                player.inventory.remove(item)
-                print(f"\n{Colors.GREEN}You sold {item.name} for {sell_value} gold.{Colors.RESET}\n")
+                except ValueError as e:
+                    logger.warning(f"ValueError in sell item choice input: {e}")
+                    print(f"\n{Colors.RED}Please enter a number.{Colors.RESET}")
+            elif choice == 2:
+                print(f"\n{Colors.CYAN}Sell by group options:{Colors.RESET}")
+                print(f"{Colors.YELLOW}1. By rarity{Colors.RESET}")
+                print(f"{Colors.YELLOW}2. By effect type{Colors.RESET}")
+                print(f"{Colors.RED}0. Cancel{Colors.RESET}")
+                
+                try:
+                    group_choice = int(input(f"\n{Colors.CYAN}Choose a group option (0 to cancel): {Colors.RESET}"))
+                    
+                    if group_choice == 0:
+                        return
+                    elif group_choice == 1:
+                        rarities = set(item.rarity for item in player.inventory if hasattr(item, 'rarity'))
+                        if not rarities:
+                            print(f"\n{Colors.RED}No items with rarity found in inventory.{Colors.RESET}")
+                            return
+                        print(f"\n{Colors.CYAN}Available rarities:{Colors.RESET}")
+                        rarity_list = sorted(rarities)
+                        for i, rarity in enumerate(rarity_list, 1):
+                            print(f"{Colors.YELLOW}{i}. {rarity}{Colors.RESET}")
+                        try:
+                            rarity_choice = int(input(f"\n{Colors.CYAN}Choose rarity to sell (0 to cancel): {Colors.RESET}"))
+                            if rarity_choice == 0:
+                                return
+                            elif 1 <= rarity_choice <= len(rarity_list):
+                                chosen_rarity = rarity_list[rarity_choice - 1]
+                                filtered_items = [item for item in player.inventory if getattr(item, 'rarity', None) == chosen_rarity]
+                                if not filtered_items:
+                                    print(f"\n{Colors.RED}No items found with rarity {chosen_rarity}.{Colors.RESET}")
+                                    return
+                                print(f"\n{Colors.CYAN}You have {len(filtered_items)} items with rarity {chosen_rarity}.{Colors.RESET}")
+                                limit = input(f"Enter the maximum number of items to sell (or press Enter to sell all): ")
+                                try:
+                                    limit = int(limit) if limit.strip() != "" else len(filtered_items)
+                                except ValueError:
+                                    limit = len(filtered_items)
+                                to_sell = filtered_items[:limit]
+                                total_value = sum(int(item.value * 0.5) for item in to_sell)
+                                for item in to_sell:
+                                    player.inventory.remove(item)
+                                player.gold += total_value
+                                print(f"\n{Colors.GREEN}You sold {len(to_sell)} items of rarity {chosen_rarity} for {total_value} gold.{Colors.RESET}")
+                            else:
+                                print(f"\n{Colors.RED}Invalid choice.{Colors.RESET}")
+                        except ValueError as e:
+                            logger.warning(f"ValueError in rarity choice input: {e}")
+                            print(f"\n{Colors.RED}Please enter a number.{Colors.RESET}")
+                    elif group_choice == 2:
+                        effect_types = set()
+                        for item in player.inventory:
+                            if hasattr(item, 'effect_type'):
+                                effect_types.add(item.effect_type)
+                            elif hasattr(item, 'effect'):
+                                effect_types.add(item.effect)
+                        if not effect_types:
+                            print(f"\n{Colors.RED}No items with effect type found in inventory.{Colors.RESET}")
+                            return
+                        effect_types = sorted(effect_types)
+                        print(f"\n{Colors.CYAN}Available effect types:{Colors.RESET}")
+                        for i, effect_type in enumerate(effect_types, 1):
+                            print(f"{Colors.YELLOW}{i}. {effect_type}{Colors.RESET}")
+                        try:
+                            effect_choice = int(input(f"\n{Colors.CYAN}Choose effect type to sell (0 to cancel): {Colors.RESET}"))
+                            if effect_choice == 0:
+                                return
+                            elif 1 <= effect_choice <= len(effect_types):
+                                chosen_effect = effect_types[effect_choice - 1]
+                                filtered_items = []
+                                for item in player.inventory:
+                                    if (hasattr(item, 'effect_type') and item.effect_type == chosen_effect) or (hasattr(item, 'effect') and item.effect == chosen_effect):
+                                        filtered_items.append(item)
+                                if not filtered_items:
+                                    print(f"\n{Colors.RED}No items found with effect type {chosen_effect}.{Colors.RESET}")
+                                    return
+                                print(f"\n{Colors.CYAN}You have {len(filtered_items)} items with effect type {chosen_effect}.{Colors.RESET}")
+                                limit = input(f"Enter the maximum number of items to sell (or press Enter to sell all): ")
+                                try:
+                                    limit = int(limit) if limit.strip() != "" else len(filtered_items)
+                                except ValueError:
+                                    limit = len(filtered_items)
+                                to_sell = filtered_items[:limit]
+                                total_value = sum(int(item.value * 0.5) for item in to_sell)
+                                for item in to_sell:
+                                    player.inventory.remove(item)
+                                player.gold += total_value
+                                print(f"\n{Colors.GREEN}You sold {len(to_sell)} items with effect type {chosen_effect} for {total_value} gold.{Colors.RESET}")
+                            else:
+                                print(f"\n{Colors.RED}Invalid choice.{Colors.RESET}")
+                        except ValueError as e:
+                            logger.warning(f"ValueError in effect type choice input: {e}")
+                            print(f"\n{Colors.RED}Please enter a number.{Colors.RESET}")
+                    else:
+                        print(f"\n{Colors.RED}Invalid group option choice.{Colors.RESET}")
+                except ValueError as e:
+                    logger.warning(f"ValueError in group option choice input: {e}")
+                    print(f"\n{Colors.RED}Please enter a number.{Colors.RESET}")
             else:
-                print(f"\n{Colors.RED}Invalid choice.{Colors.RESET}")
+                print(f"\n{Colors.RED}Invalid option choice.{Colors.RESET}")
         
         except ValueError as e:
             logger.warning(f"ValueError in sell item choice input: {e}")
@@ -1144,7 +1271,7 @@ class Room:
         
         return True
     
-    def random_rest_event(self, player):
+    def random_rest_event(self, player:Player):
         
         rest_event = random.choice(rest_events)
         print(f"\n{Colors.YELLOW}While resting: {rest_event['description']}{Colors.RESET}")
@@ -1160,8 +1287,9 @@ class Room:
             print(f"{Colors.BLUE}Defense increased by {rest_event['value']}!{Colors.RESET}")
         elif rest_event["effect"] == "item":
             item = generate_random_item(player=player)
-            player.inventory.append(item)
-            print(f"{Colors.GREEN}You received: {item.name}!{Colors.RESET}")
+            if item:
+                player.inventory.append(item)
+                print(f"{Colors.GREEN}You received: {item.name}!{Colors.RESET}")
         elif rest_event["effect"] == "gold":
             player.gold = max(0, player.gold + rest_event["value"])
             if rest_event["value"] < 0:
@@ -1171,6 +1299,17 @@ class Room:
 
 
     def handle_inter_level(self, player:Player):
+        """Handles the inter-level room, which is a special room between levels."""
+        global debug
+        if debug >= 1:
+            print(f"\n{Colors.YELLOW}DEBUG: Entering handle_inter_level() for \"{self.room_type}\"{Colors.RESET}")
+        logger.debug(f"handle_inter_level() called for room type \"{self.room_type}\"")
+
+        # Saving stats
+        player.save_difficulty_data()
+        filename = f"autosave-{strip_ansi(player.name)}-{player.player_id}.json"
+        player.save_player(filename)
+
         clear_screen()
         time.sleep(1)
         typewriter_effect(f"{Colors.GREEN}...\n{Colors.RESET}", 0.3)
@@ -1260,9 +1399,9 @@ class Dungeon(list):
     A class representing a dungeon, which is a collection of rooms.
     Inherits from list to allow for easy manipulation of rooms.
     """
-    def __init__(self):
+    def __init__(self, rooms: list[Room]|None = None):
         super().__init__()
-        self.rooms = []
+        self.rooms = rooms or []
         self.current_room = 0
         self.level = 1
     
@@ -1290,7 +1429,7 @@ def generate_shop_inventory(level):
     return random.sample(shop_items, min(len(shop_items), 5))  # Randomly pick 5 items for sale
 
 
-def generate_random_room(player, room_type=None, is_boss_room=False, tutorial=False):
+def generate_random_room(player: Player, room_type: str|None = None, is_boss_room=False, tutorial=False):
     """Generate a random room for the given dungeon level"""
     global debug
 
@@ -1325,8 +1464,11 @@ def generate_random_room(player, room_type=None, is_boss_room=False, tutorial=Fa
     # Generate items for treasure rooms
     if room_type == "treasure":
         num_items = random.randint(1, 2)
+        if num_items == 1 and random.random() < 0.5:
+            items.append(get_random_scroll())
         for _ in range(num_items):
             items.append(generate_random_item(player=player))
+        
     if debug >= 1:
         print(f"{Colors.YELLOW}DEBUG: Items generated: {items}{Colors.RESET}")
     logger.debug(f"Generated item: {items}")
@@ -1353,7 +1495,7 @@ def generate_random_room(player, room_type=None, is_boss_room=False, tutorial=Fa
 
     return room
 
-def generate_dungeon(player:Player):
+def generate_dungeon(player:Player) -> list[Room]:
     """Generates a dungeon with rooms based on the level and difficulty."""
     global debug
     debug = 0

@@ -1,4 +1,4 @@
-__version__ = "468.0"
+__version__ = "488.0"
 __creation__ = "09-03-2025"
 
 import os
@@ -39,6 +39,31 @@ def normalize_terminal(cols=210, lines=52):
     else:
         sys.stdout.write("\x1b[8;40;120t")
         sys.stdout.flush()
+
+import os
+import uuid
+
+USER_ID_FILE = os.path.expanduser("~/.dungeon_hunter_user_id")
+
+def get_or_create_user_id():
+    """
+    Retrieves the persistent anonymous user ID from a local file.
+    If the file does not exist, generates a new UUID, saves it, and returns it.
+    """
+    try:
+        if os.path.exists(USER_ID_FILE):
+            with open(USER_ID_FILE, "r") as f:
+                user_id = f.read().strip()
+                if user_id:
+                    return user_id
+        # If file does not exist or is empty, create a new user ID
+        user_id = str(uuid.uuid4())
+        with open(USER_ID_FILE, "w") as f:
+            f.write(user_id)
+        return user_id
+    except Exception as e:
+        # In case of any error, fallback to a new UUID without saving
+        return str(uuid.uuid4())
 
 def move_cursor(row, col):
     print(f"\x1b[{row};{col}H", end='')
@@ -216,7 +241,7 @@ def timed_input(prompt, timeout, default=None):
             if msvcrt.kbhit():
                 char = msvcrt.getwch()
                 if char == '\r':  # Enter key
-                    print()
+                    #print()
                     return input_str
                 elif char == '\b':  # Backspace
                     if len(input_str) > 0:
@@ -336,18 +361,18 @@ ancient_map = {
     "[": "[̷̫̈́", "]": "]̸̱̅", "<": "<̴̨͝", ">": ">̷͍̈́"
 }
 
-def glitch_text(text):
+def glitch_text(text: str) -> str:
     """Convertit un texte normal en version corrompue selon une table fixe."""
-    return "".join(corruption_map.get(char, char) for char in text)
+    return "".join([corruption_map.get(char, char) for char in text])
 
-def ancient_text(text):
+def ancient_text(text: str) -> str:
     """Converti un texte normal en une version lisible mais toujours corrompue"""
-    return "".join(ancient_map.get(char, char) for char in text)
+    return "".join([ancient_map.get(char, char) for char in text])
 
 # random mix of glitch and ancient text
-def random_glitch_text(text):
+def random_glitch_text(text: str) -> str:
     """Convertit un texte normal en une version corrompue aléatoirement selon une table fixe."""
-    return "".join(random.choice([corruption_map.get(char, char), ancient_map.get(char, char)]) for char in text)
+    return "".join([random.choice([corruption_map.get(char, char), ancient_map.get(char, char)]) for char in text])
 
 
 """def glitch_text(text):
@@ -576,7 +601,7 @@ def handle_error():
         f.write(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n{traceback.format_exc()}\n\n")
     input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
 
-def collect_feedback(player=None, ask=True):
+def collect_feedback(ask=True):
     """Collect player feedback about game experience"""
     logger.debug("Collecting feedback")
     if ask == False:
@@ -599,11 +624,8 @@ def collect_feedback(player=None, ask=True):
     
     # Save feedback to file
     with open("feedback.txt", "a") as f:
-        f.write(f"\n[{feedback['timestamp']}]")
-        if player:
-            f.write(f" Player: {player.name} | Level: {player.dungeon_level} | Gold: {player.gold}\n")
-        else:
-            f.write("\n")
+        f.write(f"\n[{feedback['timestamp']}]\n")
+
         f.write(f"Enjoyment: {feedback['enjoyment']}/10 | ")
         f.write(f"Difficulty: {feedback['difficulty']}/10 | ")
         f.write(f"Balance: {feedback['balance']}/10\n")
