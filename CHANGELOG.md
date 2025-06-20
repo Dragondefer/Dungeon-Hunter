@@ -1,4 +1,4 @@
-__version__ = "996.0"
+__version__ = "1000.0"
 __creation__ = "23-04-2025"
 
 # Changelog
@@ -564,7 +564,10 @@ Need to be fixed in the future:
     - As there is new file, here is the new order:
     - ['colors.py', 'data.py', 'difficulty.py', 'dungeon.py', 'entity.py', 'game_utility.py', 'inventory.py', 'items.py', 'main.py', 'masteries.py', 'player_class.py', 'progression.py', 'skills.py', 'spells.py', 'status_effects.py', 'story.py']
     - [53.0, 320.0, 69.0, 1671.0, 2285.0, 468.0, 21.0, 716.0, 678.0, 10.0, 3.0, 84.0, 3.0, 7.0, 8.0, 82.0]
-  - [5.6.0] : **Web Dashboard** & **Global Analytics**
+  - [5.6.0] : **[Web Dashboard](https://dragondefer.github.io/Dungeon-Hunter/)** & **[Global Analytics](https://dragondefer.github.io/Dungeon-Hunter/analytics/analytics.html)**
+    - New file managment, data.py has been split and so i wont add +10 file version so no more __version__ for data file
+    - ['colors.py', 'difficulty.py', 'dungeon.py', 'entity.py', 'game_utility.py', 'inventory.py', 'items.py', 'main.py', 'masteries.py', 'player_class.py', 'progression.py', 'skills.py', 'spells.py', 'status_effects.py', 'story.py']
+    - [53.0, 74.0, 1810.0, 2460.0, 488.0, 21.0, 747.0, 700.0, 19.0, 10.0, 87.0, 10.0, 20.0, 14.0, 82.0]
 
 ### Added
 - **Debug and core**
@@ -596,7 +599,7 @@ Need to be fixed in the future:
     - Added some Achievements
     - *̶̢͌S̶̤̕o̶͙͝m̴̛̠ë̵͕́ ä̷̪́c̴̱͝h̵̤͒i̴̊͜ë̵͕́v̶̼͝ë̵͕́m̴̛̠ë̵͕́n̸̻̈́ẗ̴̗́s̸̱̅ ä̷̪́r̷͍̈́ë̵͕́ n̸̻̈́o̶͙͝ẗ̴̗́ m̴̛̠ë̵͕́ä̷̪́n̸̻̈́ẗ̴̗́ ẗ̴̗́o̶͙͝ b̸̼̅ë̵͕́ f̷̠͑o̶͙͝ŭ̵͇n̸̻̈́ď̶̙.̵͇̆.̵͇̆.̵͇̆*̶̢͌
     - Added hidden Achievements
-    - Added some Tutorials !
+    - Added Tutorials !
     - Added one time Events (can be really basic, e.g: Help notes...)
 
 - **Fragments of Self**
@@ -634,10 +637,10 @@ Need to be fixed in the future:
   - Modifed the basics functions like `append` and `remove` of the new Inventory(list) class
   - Modified `player.room_explored` to `player.current_room_number` and `player.total_rooms_explored`
   - Now, player only heal 25% of their max_hp instead of 100% when they level up
-  - From now, the two options : "7. Save game" and "8. Quit game" will be available only in inter-level rooms.
   - Modified the function `generate_random_item(...)` into more functions to make it more readable and easier.
   - The WHOLE Equipments Stats core such as how it work and apply to items and stats
   - Modified tutorials: no random text poping as it was bothering, instead it's a whole room for specific tutorials.
+  - From now, the two options : "7. Save game" and "8. Quit game" will be available only in inter-level rooms.
 
 - **Enemy**:
   - Modified some stats coefficients to balance the game a bit more
@@ -656,7 +659,7 @@ Need to be fixed in the future:
 | Category          | v4.5.5 | v5.6.0 | Change  |  
 |-------------------|--------|--------|---------|  
 | Lines of Code     | 5,415  | 8,200  | +52%↑   |  
-| Avg. game Size    | 247Ko  | 363Ko  | +47%↑   |  
+| Game Size         | 247Ko  | 363Ko  | +47%↑   |  
 | Tracked Stats     | 23     | 47     | +104%↑  |  
 
 > **Development Notes**: 85h focused on extensible telemetry systems. Analytics will drive v6.0's "The Whispering Void" balance overhaul.
@@ -664,3 +667,15 @@ Need to be fixed in the future:
 ---
 
 ## [6.0.0] : T̸̻̈́h̵̤͒␊ W̸͕̆h̵̤͒␋s̸̱̅p̵̦̆ë̵͕́⎼i̴̊͜┼g̸̻̿ V̵̰͊o̶͙͝i̴̊͜␍ - ??-06-2025
+  - [6.0.0] : **2D Dungeon Generation** & **PuzzleMode** - 19-06-2025
+
+### Added
+- **Puzzle Mode**:
+  - Added a new game mode: Puzzle Mode
+  - Added class: `GeneratedRoom` and `DungeonGenerator`
+  - Added new algorithm for dungeon generation : `generate_2d_organic` (Need testing)
+
+### Fixed
+
+### Changed
+

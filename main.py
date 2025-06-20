@@ -19,7 +19,7 @@ from engine.game_utility import (clear_screen, game_over, choose_difficulty,
                                  move_cursor, maximize_terminal)
 from engine.dungeon import Room, Dungeon, generate_dungeon 
 from core.entity import Player, continue_game
-from data.data import get_quests_dict, get_random_names
+from data import get_random_names, quests_dict
 from core.story import display_title
 from engine.logger import logger
 
@@ -49,7 +49,6 @@ def main(continue_game=False, loaded_player=None):
         choose_difficulty(player)
 
         # Give player a starting quest
-        quests_dict = get_quests_dict()
         starting_quest = quests_dict.get("Dungeon Explorer")
         if starting_quest:
             player.quests.append(starting_quest)
