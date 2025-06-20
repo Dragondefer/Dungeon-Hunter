@@ -100,7 +100,9 @@ class HealingEffect(StatusEffect):
         target.heal(self.heal_amount)
         print(f"{target.name} healed for {target.stats.hp - old_hp} HP.")
 
-EFFECT_MAP = {
+from typing import Type, Callable
+
+EFFECT_MAP: dict[str, Callable[..., StatusEffect]] = {
     "Poison": Poison,
     "Burn": Burn,
     "Freeze": Freeze,
@@ -114,7 +116,9 @@ EFFECT_MAP = {
 def status_effect_from_dict(data):
     cls = EFFECT_MAP.get(data["name"])
     if cls:
-        instance = cls()
+        # Pass all data keys except 'name' as arguments, fallback to update for extra fields
+        args = {k: v for k, v in data.items() if k != "name"}
+        instance = cls(**args)
         instance.__dict__.update(data)
         return instance
     return None

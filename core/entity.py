@@ -1,4 +1,4 @@
-__version__ = "2426.0"
+__version__ = "2460.0"
 __creation__ = "09-03-2025"
 
 # This file contains the core entity classes for the Dungeon Hunter game.
@@ -13,6 +13,7 @@ import json
 import os
 import shutil
 import uuid
+from typing import Type
 
 from interface.colors import Colors
 from engine.game_utility import (clear_screen, handle_error, typewriter_effect,
@@ -20,12 +21,14 @@ from engine.game_utility import (clear_screen, handle_error, typewriter_effect,
                           glitch_burst, timed_input_pattern, strip_ansi)
 from items.items import (Item, Equipment, Gear, Weapon, Armor,
                    Ring, Amulet, Belt, Potion)
-from data.data import armor_sets, enemy_types, boss_types, achievements, skills_dict, can_send_analytics
+# Removed top-level import of data to fix circular import
+# from data import armor_sets, enemy_types, boss_types, achievements, skills_dict, can_send_analytics
 from items.inventory import Inventory
 from items.spells import Spell, Scroll
 from core.masteries import Mastery
 from core.skills import Skill
 from core.player_class import PlayerClass
+from core.status_effects import StatusEffect
 from items.items import Equipment
 
 debug = 0
@@ -292,7 +295,7 @@ class Entity:
             defense=defense
         )
 
-        self.status_effects = []  # liste d'effets actifs
+        self.status_effects: list[StatusEffect] = []  # liste d'effets actifs
 
         # <0: vulnérabilité ; >0: résistance
         self.resistances = {
@@ -341,7 +344,19 @@ class Entity:
                 print(f"{self.name} is no longer affected by {effect.name}.")
                 self.status_effects.remove(effect)
     
-    def try_apply_status(self, effect):
+    def try_apply_status(self, effect: StatusEffect | str):
+        from .status_effects import EFFECT_MAP
+        if not isinstance(effect, StatusEffect) and isinstance(effect, str):
+            if effect in EFFECT_MAP:
+                try:
+                    effect = EFFECT_MAP[effect]()
+                except TypeError as e:
+                    print(f"Error: cannot instantiate effect '{effect}' from EFFECT_MAP: {e}")
+                    return
+            else:
+                print(f"Error: trying to apply effect: {effect}\nbut it isn't a StatusEffect instance and not in EFFECT_MAP")
+                return
+
         resistance = self.resistances.get(effect.name.lower(), 0)
         if random.randint(0, 100) < (100 - resistance):
             # Check if effect of same name already exists
@@ -504,6 +519,7 @@ class Player(Entity):
         self.profession = None
         self.quests = []
         self.completed_quests = []
+        from data import achievements
         self.achievements = achievements
         self.seen_events = set()
 
@@ -519,6 +535,8 @@ class Player(Entity):
         self.dungeon_level = 1
         self.current_room_number = 0
         self.total_rooms_explored = 0
+        self.position: tuple[int, int] = (0, 0)
+
 
         # New stats for tracking player activities
         self.shops_visited = 0
@@ -567,7 +585,7 @@ class Player(Entity):
         self.inventory.append(Potion("Minor Health Potion", "Restores some health", 100, "heal", 50))
 
         self.known_spells: list[Spell] = []
-        self.masteries:dict[str, Mastery] = {}  # exemple : {"sword": Mastery("sword"), "fire_magic": Mastery("fire_magic")}
+        self.masteries: dict[str, Mastery] = {}  # exemple : {"sword": Mastery("sword"), "fire_magic": Mastery("fire_magic")}
 
 
         # Met à jour les stats avec l'équipement initial (même s'il est vide)
@@ -617,6 +635,22 @@ class Player(Entity):
         """Increment the count of total play sessions."""
         self.total_play_sessions += 1
 
+    def move_player(self, direction, dungeon_grid):
+        if direction in dungeon_grid[player.position].connections:
+            new_pos = dungeon_grid[player.position].connections[direction]
+            if new_pos in dungeon_grid:
+                self.position = new_pos
+                return dungeon_grid[new_pos]
+        return None  # Invalid move
+
+
+    def get_mastery(self, key: str) -> Mastery:
+        if key not in self.masteries:
+            self.masteries[key] = Mastery(name=key)
+        return self.masteries[key]
+
+    def gain_mastery_xp(self, key: str, amount: int):
+        self.get_mastery(key).gain_xp(amount)
 
 
     def display_logbook(self):
@@ -780,6 +814,9 @@ class Player(Entity):
         data["damage_taken"] = self.damage_taken
         data["gold_spent"] = self.gold_spent
         data["deaths"] = self.total_deaths
+
+        # Fix for JSON serialization: convert purchased_items keys to strings
+        data["purchased_items"] = {str(k): v for k, v in self.purchased_items.items()}
 
         return data
 
@@ -1151,6 +1188,7 @@ class Player(Entity):
         for slot in ["helmet", "chest", "gauntlets", "leggings", "boots"]:
             item = self.equipment.slots.get(slot)
             if item:
+                from data.enemies_data import armor_sets
                 # prefix = item.name.split()[1] # here, we assume the prefix is the second word in the name so it can be wrong as if it's in pos 1
                 prefix = next((prefix for prefix in armor_sets if prefix in item.name), None)
                 if debug >= 1:
@@ -1257,7 +1295,7 @@ class Player(Entity):
         # XP progression
         if self.level <= 1740:
             self.max_xp = int(self.max_xp * 1.5)
-        else:
+        else: # Would need to be * 1.08104849064 instad of * 1.5 to not reach inf
             self.max_xp = 166291628028091842613009095009266495195675719663122313883385367291708148049287571070332769258231929566843581503287283337414771535086454589469476502004191810875221462134119793315060067813232587839056216279794984264298677002182295914072532150201829472437592045207860103637703316939267547371315877194678772170752
 
         # Affichage
@@ -1274,87 +1312,46 @@ class Player(Entity):
         print()
 
         # Choix de classe
-        if self.level == 5:
-            self.choose_class1()
-        elif self.level == 10:
-            self.choose_class2()
+        from data import unlockable_classes
 
+        if self.level in unlockable_classes:
+            self.choose_class(self.level, unlockable_classes[self.level])
 
-    def choose_class1(self):
+    def choose_class(self, level, classes):
         clear_screen()
         print(f"\n{Colors.BRIGHT_YELLOW}{Colors.BOLD}╔══════════════════════════════════════════╗")
         print(f"║     CLASS SPECIALIZATION AVAILABLE!     ║")
         print(f"╚══════════════════════════════════════════╝{Colors.RESET}")
-        
-        classes = {
-            "1": PlayerClass("Warrior", {"max_hp": 30, "attack": 5, "defense": 8, "agility": 3}, "Berserk Rage"),
-            "2": PlayerClass("Archer", {"max_hp": 15, "attack": 8, "defense": 3, "agility": 8}, "Shadow Strike"),
-            "3": PlayerClass("Mage", {"max_hp": 10, "attack": 10, "defense": 0, "agility": 2}, "Arcane Blast"),
-            "4": PlayerClass("Knight", {"max_hp": 25, "attack": 3, "defense": 10, "agility": 5}, "Divine Shield")
-        }
-        
-        for key, player_class in classes.items():
-            print(f"\n{Colors.CYAN}[{key}] {player_class.name}{Colors.RESET}")
+
+        for idx, player_class in enumerate(classes, 1):
+            print(f"\n{Colors.CYAN}[{idx}] {player_class.name}{Colors.RESET}")
             print(f"  {Colors.GREEN}+{player_class.bonuses.get('max_hp', 0)} Max HP{Colors.RESET}")
             print(f"  {Colors.RED}+{player_class.bonuses.get('attack', 0)} Attack{Colors.RESET}")
             print(f"  {Colors.BLUE}+{player_class.bonuses.get('defense', 0)} Defense{Colors.RESET}")
             print(f"  Skill: {Colors.MAGENTA}{player_class.skill_name}{Colors.RESET}")
-        
-        while True:
-            choice = input(f"\n{Colors.YELLOW}Choose your class (1-4): {Colors.RESET}")
-            if choice in classes:
-                self.player_class = classes[choice]
-                self.class_name = self.player_class.name
-                self.player_class.apply_to_player(self)
-                print(f"\n{Colors.BRIGHT_GREEN}You are now a {self.class_name}!{Colors.RESET}")
-                print(f"You've learned the {Colors.MAGENTA}{self.player_class.skill_name}{Colors.RESET} skill!")
-                input(f"\n{Colors.YELLOW}Press Enter to continue your adventure...{Colors.RESET}")
-                break
-            else:
-                print(f"{Colors.RED}Invalid choice. Please enter a number between 1 and 4.{Colors.RESET}")
 
+        print(f"\n{Colors.CYAN}[0] Skip class specialization for now{Colors.RESET}")
 
-    def choose_class2(self):
-        clear_screen()
-        print(f"\n{Colors.BRIGHT_YELLOW}{Colors.BOLD}╔══════════════════════════════════════════╗")
-        print(f"║     CLASS SPECIALIZATION AVAILABLE!     ║")
-        print(f"╚══════════════════════════════════════════╝{Colors.RESET}")
-        
-        classes = {
-            "1": {"name": "Warrior", "hp": 30, "attack": 5, "defense": 8, "agility": 3, "skill": "Berserk Rage"},
-            "2": {"name": "Rogue", "hp": 15, "attack": 8, "defense": 3, "agility": 8, "skill": "Shadow Strike"},
-            "3": {"name": "Mage", "hp": 10, "attack": 10, "defense": 0, "agility": 2, "skill": "Arcane Blast"},
-            "4": {"name": "Knight", "hp": 25, "attack": 3, "defense": 10, "agility": 5, "skill": "Divine Shield"}
-        }
-        
-        for key, cls_data in classes.items():
-            print(f"\n{Colors.CYAN}[{key}] {cls_data['name']}{Colors.RESET}")
-            print(f"  {Colors.GREEN}+{cls_data['hp']} Max HP{Colors.RESET}")
-            print(f"  {Colors.RED}+{cls_data['attack']} Attack{Colors.RESET}")
-            print(f"  {Colors.BLUE}+{cls_data['defense']} Defense{Colors.RESET}")
-            print(f"  Skill: {Colors.MAGENTA}{cls_data['skill']}{Colors.RESET}")
-        
         while True:
-            choice = input(f"\n{Colors.YELLOW}Choose your class (1-4): {Colors.RESET}")
-            if choice in classes:
-                cls_data = classes[choice]
-                self.class_name = cls_data["name"]
-                self.stats.max_hp += cls_data["hp"]
-                self.stats.hp = self.stats.max_hp
-                self.stats.attack += cls_data["attack"]
-                self.stats.defense += cls_data["defense"]
-                # Ajout du Skill correspondant via le dictionnaire skills_dict
-                skill_name = cls_data["skill"]
-                if skill_name in skills_dict:
-                    self.skills.append(skills_dict[skill_name])
+            choice = input(f"\n{Colors.YELLOW}Choose your class (0-{len(classes)}): {Colors.RESET}")
+            if choice.isdigit():
+                choice = int(choice)
+                if choice == 0:
+                    print(f"\n{Colors.YELLOW}You chose to skip class specialization for now.{Colors.RESET}")
+                    break
+                elif 1 <= choice <= len(classes):
+                    selected_class = classes[choice - 1]
+                    self.player_class = selected_class
+                    self.class_name = selected_class.name
+                    selected_class.apply_to_player(self)
+                    print(f"\n{Colors.BRIGHT_GREEN}You are now a {self.class_name}!{Colors.RESET}")
+                    print(f"You've learned the {Colors.MAGENTA}{selected_class.skill_name}{Colors.RESET} skill!")
+                    input(f"\n{Colors.YELLOW}Press Enter to continue your adventure...{Colors.RESET}")
+                    break
                 else:
-                    print(f"{Colors.RED}Error: Skill {skill_name} not found.{Colors.RESET}")
-                print(f"\n{Colors.BRIGHT_GREEN}You are now a {self.class_name}!{Colors.RESET}")
-                print(f"You've learned the {Colors.MAGENTA}{cls_data['skill']}{Colors.RESET} skill!")
-                input(f"\n{Colors.YELLOW}Press Enter to continue your adventure...{Colors.RESET}")
-                break
+                    print(f"{Colors.RED}Invalid choice. Please enter a number between 0 and {len(classes)}.{Colors.RESET}")
             else:
-                print(f"{Colors.RED}Invalid choice. Please enter a number between 1 and 4.{Colors.RESET}")
+                print(f"{Colors.RED}Invalid input. Please enter a number.{Colors.RESET}")
 
 
     def gain_xp(self, amount):
@@ -2331,6 +2328,7 @@ class Player(Entity):
 
         print(f"{Colors.GREEN}Analytics data saved successfully to {analytics_filepath}!{Colors.RESET}")
 
+        from data.player_data import can_send_analytics
         if can_send_analytics() == True:
             try:
                 print(f"{Colors.YELLOW}Sending analytics data...{Colors.RESET}")
@@ -2455,7 +2453,8 @@ def load_player(filename=None):
         with open("./saves/" + filename, "r") as file:
             data = json.load(file)
     except json.JSONDecodeError as e:
-        print(f"{Colors.RED}Error loading save file '{filename}': Invalid JSON format. {e}{Colors.RESET}")
+        print(f"{Colors.RED}Error while loading save file '{filename}': Invalid JSON format. {e}{Colors.RESET}")
+        time.sleep(2)
         return None
     except FileNotFoundError:
         print(f"{Colors.RED}Save file '{filename}' not found.{Colors.RESET}")
@@ -2541,6 +2540,7 @@ def generate_enemy(level:int, is_boss:bool, player: Player):
         print(f"DEBUG: Generating {'boss' if is_boss else 'enemy'} for level {level}")
 
     # Sélection des ennemis ou des boss disponibles pour ce niveau
+    from data.enemies_data import boss_types, enemy_types
     if is_boss:
         valid_types = [e for e in boss_types if e["min_level"] == level]
     else:

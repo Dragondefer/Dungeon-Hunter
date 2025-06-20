@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from core.entity import Player
 
-__version__ = "6.0"
+__version__ = "10.0"
 __creation__ = "06-06-2025"
 
 from interface.colors import Colors
@@ -42,6 +42,9 @@ class Skill:
             temporary_bonus=data.get("temporary_bonus", {}),
             cost=data.get("cost", {})
         )
+    
+    def get_mastery_key(self):
+        return f"weapon::{self.__class__.__name__}"
 
     def __str__(self):
         cost_str = ", ".join(f"{k}: {v}" for k, v in self.cost.items()) if self.cost else "No cost"
