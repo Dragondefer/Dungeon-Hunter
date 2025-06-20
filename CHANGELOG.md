@@ -658,8 +658,8 @@ Need to be fixed in the future:
 ### Key Metrics  
 | Category          | v4.5.5 | v5.6.0 | Change  |  
 |-------------------|--------|--------|---------|  
-| Lines of Code     | 5,415  | 8,200  | +52%↑   |  
-| Game Size         | 247Ko  | 363Ko  | +47%↑   |  
+| Lines of Code     | 5,415  | 8,700  | +60%↑   |  
+| Game Size         | 247Ko  | 392Ko  | +59%↑   |  
 | Tracked Stats     | 23     | 47     | +104%↑  |  
 
 > **Development Notes**: 85h focused on extensible telemetry systems. Analytics will drive v6.0's "The Whispering Void" balance overhaul.
