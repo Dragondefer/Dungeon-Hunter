@@ -3,7 +3,7 @@ __creation__ = "08-05-2025"
 
 import random
 
-from data.data import EVENTS
+from data import EVENTS
 
 
 class GameMode:
@@ -32,6 +32,8 @@ class GameMode:
             return RealisticMode()
         elif name == "hardcore":
             return HardcoreMode()
+        elif name == "puzzle":
+            return PuzzleMode()
         else:
             # Default fallback
             return NormalMode()
@@ -256,3 +258,44 @@ class RealisticMode(GameMode):
 
     def get_shop_item_num(self):
         return random.randint(2, 5)
+
+class PuzzleMode(GameMode):
+    def __init__(self):
+        super().__init__("puzzle")
+
+    def take_damage(self, player, damage):
+        # Puzzle mode reduces damage taken by 30%
+        true_damage = int(damage * 0.7)
+        player.stats.permanent_stats["hp"] = max(0, player.stats.permanent_stats["hp"] - true_damage)
+        player.stats.hp = player.stats.permanent_stats["hp"]
+        return true_damage
+
+    def modify_damage_dealt(self, player, damage):
+        # Puzzle mode increases damage dealt by 10%
+        return int(damage * 1.1)
+
+    def modify_damage_taken(self, player, damage):
+        # Puzzle mode reduces damage taken by 30%
+        return int(damage * 0.7)
+
+    def level_up_bonus(self):
+        return {
+            "hp": 8,
+            "mana": 6,
+            "stamina": 6,
+            "attack": 2,
+            "defense": 2,
+            "agility": 1
+        }
+
+    def get_room_count(self):
+        return random.randint(5, 7)
+
+    def get_available_rarities(self):
+        return ["common", "uncommon", "rare", "epic", "legendary", "divine", "???"]
+
+    def get_rarity_boost(self):
+        return 1.1
+
+    def get_shop_item_num(self):
+        return random.randint(3, 5)
