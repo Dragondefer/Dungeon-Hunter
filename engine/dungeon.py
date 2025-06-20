@@ -1,4 +1,4 @@
-__version__ = "1795.0"
+__version__ = "1810.0"
 __creation__ = "09-03-2025"
 
 import time
@@ -14,10 +14,10 @@ from engine.game_utility import (clear_screen, typewriter_effect,
                           strip_ansi
                           )
 from interface.colors import Colors
-from core.entity import Player, Enemy, generate_enemy, load_player
+from core.entity import Player, Enemy, generate_enemy
 from items.items import Item, Armor, Weapon, Potion, generate_random_item
 from items.spells import get_random_scroll, get_random_spell
-from data.data import room_descriptions, puzzle_choices, rest_events
+from data import room_descriptions, puzzle_choices, rest_events
 from engine.logger import logger
 
 
@@ -82,7 +82,7 @@ class Room:
         handle_dice_puzzle(player: Player) -> bool:
             Manages dice roll puzzles with rewards based on outcomes.
     """
-    def __init__(self, room_type, description:str, enemies=None, items=None, trap=None):
+    def __init__(self, room_type, description:str, enemies=None, items=None, trap=None, coords: tuple[int, int] | None = (0, 0)):
         self.available_room_type = ["combat", "treasure", "shop", "rest", "puzzle"] # and "boss"
         self.room_type = room_type  # "combat", "treasure", "shop", "rest", "boss", "puzzle", etc.
         self.description = description
@@ -90,6 +90,7 @@ class Room:
         self.items = items or []
         self.trap = trap
         self.visited = False
+        self.coords = coords
 
     def __str__(self): # str lisible
         return f"\nDEBUG: Room type: {Colors.YELLOW}{self.room_type}{Colors.RESET}, Description: {Colors.MAGENTA}{self.description}{Colors.RESET}, Enemies: {Colors.RED}{self.enemies}{Colors.RESET}, Items: {Colors.GREEN}{self.items}{Colors.RESET}, Trap: {Colors.BLUE}{self.trap}{Colors.RESET}"
@@ -717,20 +718,12 @@ class Room:
                     print(f"{Colors.RED}You're exhausted! Your attack is weaker...{Colors.RESET}")
                     base_damage /= 2
 
-                # Use special attacks if any
-                if player.equipment.main_hand and hasattr(player.equipment.main_hand, "special_attacks") and player.equipment.main_hand.special_attacks:
-                    print(f"{Colors.CYAN}You use a special attack!{Colors.RESET}")
-                    for attack_name, attack_func in player.equipment.main_hand.attacks:
-                        if attack_func:
-                            print(f"Using {attack_name}...")
-                            attack_func(player, enemy)
-                            time.sleep(0.5)
-                else:
-                    damage, absorbed_damage = enemy.stats.take_damage(base_damage)
-                    actual_damage = damage + absorbed_damage
-                    player.damage_dealt += actual_damage
-                    logger.info(f"Player attack: {'critical hit' if critical else ''} {actual_damage} dmg, {stamina_cost} stm")
-                    print(f"You deal {Colors.RED}{math.ceil(actual_damage)}{Colors.RESET} damage to {enemy.name}!")
+                # Attacks
+                damage, absorbed_damage = enemy.stats.take_damage(base_damage)
+                actual_damage = damage + absorbed_damage
+                player.damage_dealt += actual_damage
+                logger.info(f"Player attack: {'critical hit' if critical else ''} {actual_damage} dmg, {stamina_cost} stm")
+                print(f"You deal {Colors.RED}{math.ceil(actual_damage)}{Colors.RESET} damage to {enemy.name}!")
 
             elif choice == "2" and player.skills:  # Use skill with timing mechanic
                 player.use_skill(enemy)
@@ -792,7 +785,7 @@ class Room:
                 elif tutorial is True and not is_boss_room:
                     time.sleep(0.5)
                     # Tell the player he can get an item
-                    typewriter_effect(f"[Assistant]: {Colors.BRIGHT_BLACK}After combat, there is a chance that you get an item depending on the enemy type.{Colors.RESET}", 0.05, "")
+                    typewriter_effect(f"[Assistant]: {Colors.BRIGHT_BLACK}After combat, there is a chance that you get an item depending on the enemy type.{Colors.RESET}", 0.05, " ")
                     time.sleep(0.2)
                     typewriter_effect(f"As it's a tutorial, I will grant you one.{Colors.RESET}", 0.05)
                     time.sleep(1)
@@ -994,19 +987,23 @@ class Room:
                     # Grant one free item if in tutorial mode
                     if 0 <= item_index < len(shop_inventory):
                         item = shop_inventory[item_index]
-                        if tutorial and tutorial_items_bought ==0:
+                        purchased = False
+                        if tutorial and tutorial_items_bought == 0:
                             tutorial_items_bought += 1
                             item_index = 0
                             print(f"\n{Colors.GREEN}You bought {shop_inventory[item_index].name} for free!{Colors.RESET}")
+                            purchased = True
                         elif player.gold >= item.value:
                             player.gold -= item.value
                             player.gold_spent += item.value
                             player.purchased_items[item] = player.purchased_items.get(item, 0) + 1 # Create or increment by 1 the item count (to track purchases)
                             print(f"\n{Colors.GREEN}You bought {item.name} for {item.value} gold.{Colors.RESET}")
+                            purchased = True
                         else:
                             print(f"\n{Colors.RED}You don't have enough gold!{Colors.RESET}")
-                        player.inventory.append(item)
-                        shop_inventory.remove(item)
+                        if purchased:
+                            player.inventory.append(item)
+                            shop_inventory.remove(item)
                     else:
                         print(f"\n{Colors.RED}Invalid choice.{Colors.RESET}")
                 except ValueError as e:
@@ -1307,7 +1304,7 @@ class Room:
 
         # Saving stats
         player.save_difficulty_data()
-        filename = f"autosave-{strip_ansi(player.name)}-{player.player_id}.json"
+        filename = f"autosave-{strip_ansi(player.name)}(lv{player.level})-{player.player_id}.json"
         player.save_player(filename)
 
         clear_screen()
@@ -1495,6 +1492,8 @@ def generate_random_room(player: Player, room_type: str|None = None, is_boss_roo
 
     return room
 
+from engine.dungeon_generator import DungeonGenerator
+
 def generate_dungeon(player:Player) -> list[Room]:
     """Generates a dungeon with rooms based on the level and difficulty."""
     global debug
@@ -1505,31 +1504,60 @@ def generate_dungeon(player:Player) -> list[Room]:
     if debug >= 1:
         print(f"{Colors.YELLOW}DEBUG: Generating dungeon level {dungeon_level} with difficulty {difficulty}{Colors.RESET}")
     logger.info(f"Starting dungeon generation for level {dungeon_level} with difficulty {difficulty}")
-    
-    # Définition du nombre de salles selon la difficulté
-    """
-    if difficulty == "normal":
-        num_rooms = random.randint(5, 8)
-    elif difficulty == "soul_enjoyer":
-        num_rooms = random.randint(5, 8)
-    elif difficulty == "realistic":
-        num_rooms = random.randint(10, 20)
-    else:
-        print(f"{Colors.RED}Invalid difficulty level.{Colors.RESET}")
-        print(difficulty)
-        num_rooms = random.randint(5, 8)
-        input()
-    """
+
     num_rooms = player.mode.get_room_count()
     logger.debug(f"Number of rooms to generate: {num_rooms}")
-    
+
     if debug >= 1:
         print(f"{Colors.YELLOW}DEBUG: Number of rooms: {num_rooms}{Colors.RESET}")
-    
-    # Starting room
+
+    # Use dimensional room-based generation for PuzzleMode
+    if difficulty.name == "puzzle":
+        logger.info("Using dimensional room-based dungeon generation for PuzzleMode")
+        generator = DungeonGenerator(dimensions=2, time_enabled=False)
+        generator.generate_2d_organic(width=20, height=20, branch_probability=0.3)
+
+        # Convert generated rooms to engine.dungeon.Room
+        # Add starting room explicitly
+        rooms.append(Room("start", "You noticed the entrance to the dungeon.\nYou finally decided to open the door and step in.\nTorches flicker on the damp walls, and the air is heavy with anticipation.", [], [], None))
+
+        # Limit rooms to num_rooms - 1 (excluding start)
+        generated_rooms = list(generator.rooms.values())
+        # Remove start room from generated_rooms to avoid duplication
+        generated_rooms = [r for r in generated_rooms if r.room_type != "start"]
+
+        # Sort or shuffle rooms to pick num_rooms - 1 rooms
+        # Here, just take first num_rooms - 1 rooms
+        selected_rooms = generated_rooms[:max(0, num_rooms - 1)]
+
+        for gen_room in selected_rooms:
+            # Map DungeonGenerator.Room types to engine.dungeon.Room types
+            room_type_map = {
+                "start": "start",
+                "end": "boss",
+                "treasure": "treasure",
+                "normal": "combat",  # treat normal rooms as combat rooms for gameplay
+                "temporal": "puzzle"
+            }
+            room_type = room_type_map.get(gen_room.room_type, "combat")
+            description = f"A {room_type} room at coordinates {gen_room.coords}."
+            rooms.append(Room(room_type, description, [], [], None))
+
+        # Add boss room if not already added
+        if not any(r.room_type == "boss" for r in rooms):
+            rooms.append(generate_random_room(player=player, is_boss_room=True))
+
+        if debug >= 1:
+            print(f"{Colors.YELLOW}DEBUG: Generated {len(rooms)} rooms for PuzzleMode:{Colors.RESET}")
+            for room in rooms:
+                print(f"{Colors.YELLOW}DEBUG: Room type: {room.room_type}, Description: {room.description}{Colors.RESET}")
+
+        return rooms
+
+    # Existing generation for other difficulties
     if dungeon_level == 1:
         logger.debug(f"Generating Starting room")
-        rooms.append(Room("start", f"You noticed the entrance to the dungeon.\nYou finaly decided to open the door and step in.\nTorches flicker on the damp walls, and the air is heavy with anticipation.", [], [], None))
+        rooms.append(Room("start", f"You noticed the entrance to the dungeon.\nYou finally decided to open the door and step in.\nTorches flicker on the damp walls, and the air is heavy with anticipation.", [], [], None))
         if debug >= 1:
             print(f"{Colors.YELLOW}DEBUG: Starting room added{Colors.RESET}")
     else:
@@ -1543,14 +1571,13 @@ def generate_dungeon(player:Player) -> list[Room]:
         rooms.append(generate_random_room(player=player))
         logger.debug(f"Room generated: {rooms[i]}")
 
-    
     if debug >= 1:
         print(f"{Colors.YELLOW}DEBUG: Generated {len(rooms)} rooms :{Colors.RESET}")
         for room in rooms:
             print(f"{Colors.YELLOW}DEBUG: Room type: {room.room_type}, Description: {room.description}, Enemies: {room.enemies}, Items: {room.items}, Trap: {room.trap}{Colors.RESET}")
 
     rooms.append(generate_random_room(player=player, is_boss_room=True))
-    
+
     if debug >= 1:
         print(f"{Colors.YELLOW}DEBUG: Boss room added{Colors.RESET}")
 
