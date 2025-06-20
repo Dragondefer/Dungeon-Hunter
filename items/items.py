@@ -4,14 +4,13 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from core.entity import Player
 
-__version__ = "740.0"
+__version__ = "747.0"
 __creation__ = "09-03-2025"
 
 import random
 
 from interface.colors import Colors
 from engine.game_utility import clear_screen
-from data.data import enemy_sets
 from engine.logger import logger
 debug = 0
 
@@ -240,7 +239,7 @@ class Weapon(Gear):
         data = super().to_dict()
         data["extra"]["damage"] = self.damage
         # Save only the names of special attacks for serialization
-        data["special_attacks"] = [name for name, _ in self.attacks]
+        data["special"] = [name for name, _ in self.attacks]
         return data
     
     @classmethod
@@ -249,15 +248,18 @@ class Weapon(Gear):
         extras = data.get("extra", {})
         special_attack_names = data.get("special_attacks", [])
         # Import special_attacks_dict from data module to map names to functions
-        from data.data import special_attacks_dict
-        special_attacks = [(name, special_attacks_dict.get(name)) for name in special_attack_names if name in special_attacks_dict]
+        from data import special_attacks_dict
+        attacks = [(name, special_attacks_dict.get(name)) for name in special_attack_names if name in special_attacks_dict]
         return Weapon(
             data["name"],
             data["description"],
             data["value"],
             extras.get("damage", 0),
-            special_attacks=special_attacks
+            attacks=attacks
         )
+    
+    def get_mastery_key(self):
+        return f"weapon::{self.__class__.__name__}"
 
 # New weapon subclasses with class bonuses
 class Sword(Weapon):
@@ -600,6 +602,7 @@ def get_rarity_data():
 
 def get_enemy_set_info(enemy_type):
     """Get armor and weapon set info for a specific enemy type."""
+    from data import enemy_sets
     if enemy_type and enemy_type in enemy_sets:
         set_type = enemy_sets[enemy_type]
         return {
@@ -750,7 +753,7 @@ def generate_random_item(player:Player, enemy=None, item_type=None, rarity=None,
         if weapon_set_type:
             weapon_type = weapon_set_type
             # Import weapon_special_attacks from data
-            from data.data import weapon_special_attacks
+            from data import weapon_special_attacks
             special_attacks = weapon_special_attacks.get(weapon_type, None)
         else:
             weapon_type = item_name if item_name in weapon_types else random.choice(weapon_types)
