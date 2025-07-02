@@ -1,9 +1,16 @@
+<!--
+D​un​g​e​o​n ​H​u​nt​e​r​ ​-​ ​(​c​)​ ​D​r​a​g​o​n​d​e​f​er​ ​20​2​5
+L​i​c​e​ns​e​d​ ​u​n​de​r ​C​C​ ​BY​-N​C​ 4​.​0
+-->
+
 __version__ = "307.0"
 __creation__ = "23-04-2025"
 
 # Dungeon Hunter - Version 5.6.4
 
 Dungeon Hunter is a text-based dungeon exploration RPG game where you play as a brave adventurer exploring dangerous dungeons, battling enemies, completing quests, collecting loot, and leveling up your character.
+
+![Demo Image](img/demo1.PNG)
 
 Made by Dragondefer,
 You can contact me on discord : https://discord.gg/3V7xGCvxEP
