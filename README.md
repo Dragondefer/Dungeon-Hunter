@@ -6,6 +6,15 @@ L​i​c​e​ns​e​d​ ​u​n​de​r ​C​C​ ​BY​-N​C​ 4�
 __version__ = "307.0"
 __creation__ = "23-04-2025"
 
+![Star](https://img.shields.io/github/stars/dragondefer/dungeon-hunter)
+![License](https://img.shields.io/github/license/dragondefer/Dungeon-Hunter)
+![Issues](https://img.shields.io/github/issues/dragondefer/Dungeon-Hunter)
+![Stars](https://img.shields.io/github/stars/dragondefer/Dungeon-Hunter)
+![Forks](https://img.shields.io/github/forks/dragondefer/Dungeon-Hunter)
+![Repo Size](https://img.shields.io/github/repo-size/dragondefer/Dungeon-Hunter)
+![Last Commit](https://img.shields.io/github/last-commit/dragondefer/Dungeon-Hunter)
+![Language](https://img.shields.io/github/languages/top/dragondefer/Dungeon-Hunter)
+
 # Dungeon Hunter - Version 5.6.4
 
 Dungeon Hunter is a text-based dungeon exploration RPG game where you play as a brave adventurer exploring dangerous dungeons, battling enemies, completing quests, collecting loot, and leveling up your character.
@@ -21,14 +30,13 @@ Check out the game website here: [Dungeon Hunter Website](https://dragondefer.gi
 
 ## Features
 
-- Procedurally generated dungeons with various room types: combat, treasure, shop, rest, puzzle, and boss rooms.
-- Turn-based combat system with skills, critical hits, and stamina management.
-- Character progression with leveling, class specialization, and skill acquisition.
-- Inventory management with weapons, armor, potions, and other items.
-- Quest system with objectives and rewards.
-- Save and load your game progress.
-- Colorful console interface for immersive gameplay.
-- Debug mode for testing and development.
+- 🧩 **Procedurally generated dungeons** with various room types: combat, treasure, shop, rest, puzzle, and boss rooms.
+- ⚔️ **Turn-based combat system** with skills, critical hits, and stamina management.
+- 🧙 **Character progression** with leveling, class specialization, and skill acquisition.
+- 🧰 **Inventory management** with weapons, armor, potions, and other items.
+- 📜 **Quest system** with objectives and rewards.
+- 💾 **Save and load** your game progress.
+- 🎨 **Colorful console interface** for immersive gameplay.
 
 ---
 
