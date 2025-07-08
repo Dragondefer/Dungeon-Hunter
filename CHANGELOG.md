@@ -1,4 +1,9 @@
-__version__ = "1000.0"
+<!--
+D​un​ge​o​n ​H​u​nt​e​r​ ​-​ ​(​c​)​ ​D​r​a​g​o​n​d​e​f​er​ ​20​2​5
+L​i​c​e​ns​e​d​ ​u​n​de​r ​C​C​ ​BY​-N​C​ 4​.​0
+-->
+
+__version__ = "1016.0"
 __creation__ = "23-04-2025"
 
 # Changelog
@@ -24,12 +29,10 @@ Order of each version: ['colors.py', 'data.py', 'difficulty.py', 'dungeon.py', '
 
 ## [Unreleased]
 ### Upcomming features
-
 - **Dungeon environment**
   - Add the room number variable to calculus so the difficulty isn't a staircase that increment with each levels, but more like a ramp.
 
 - **Combat improvement**
-  - Planned: Improve combat balancing
   - Boss special attack system with unique abilities
   - Critical hit visualization ?
   - Specific attacks for each weapons
@@ -662,12 +665,13 @@ Need to be fixed in the future:
 | Game Size         | 247Ko  | 392Ko  | +59%↑   |  
 | Tracked Stats     | 23     | 47     | +104%↑  |  
 
-> **Development Notes**: 85h focused on extensible telemetry systems. Analytics will drive v6.0's "The Whispering Void" balance overhaul.
+> **Development Notes**: 85h focused on extensible telemetry systems. Analytics will drive v6.0 and futher versions balance overhaul.
 
 ---
 
-## [6.0.0] : T̸̻̈́h̵̤͒␊ W̸͕̆h̵̤͒␋s̸̱̅p̵̦̆ë̵͕́⎼i̴̊͜┼g̸̻̿ V̵̰͊o̶͙͝i̴̊͜␍ - ??-06-2025
+## [6.0.0] : T̸̻̈́h̵̤͒␊ W̸͕̆h̵̤͒␋s̸̱̅p̵̦̆ë̵͕́⎼i̴̊͜┼g̸̻̿ V̵̰͊o̶͙͝i̴̊͜␍ - 19-06-2025
   - [6.0.0] : **2D Dungeon Generation** & **PuzzleMode** - 19-06-2025
+  - [6.1.0] : **Living Forms** - 04-07-2025
 
 ### Added
 - **Puzzle Mode**:
@@ -675,7 +679,16 @@ Need to be fixed in the future:
   - Added class: `GeneratedRoom` and `DungeonGenerator`
   - Added new algorithm for dungeon generation : `generate_2d_organic` (Need testing)
 
+- **Machin Learning**:
+  - Added a ML-Agent (q-table) that act as a beta-tester sincec it's really quick and that i'm all alone :/
+  - Added reward system for better choice making (for agents)
+
+- **Analytics**:
+  - Added a new menu **data** to [analytics.html](https://dragondefer.github.io/Dungeon-Hunter/analytics/analytics.html) who contain all the items types, enemies, spells, attacks and so on.
+
 ### Fixed
 
 ### Changed
+- **Core game**:
+  - Replaced the default `input()` function with mine `get_input()` to handle both human input and AI one
 

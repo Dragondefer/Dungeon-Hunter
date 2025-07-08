@@ -3,11 +3,11 @@ D​un​g​e​o​n ​H​u​nt​e​r​ ​-​ ​(​c​)​ ​D​r
 L​i​c​e​ns​e​d​ ​u​n​de​r ​C​C​ ​BY​-N​C​ 4​.​0
 -->
 
-__version__ = "307.0"
+__version__ = "324.0"
 __creation__ = "23-04-2025"
 
 ![Star](https://img.shields.io/github/stars/dragondefer/dungeon-hunter)
-![License](https://img.shields.io/github/license/dragondefer/Dungeon-Hunter)
+[![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
 ![Issues](https://img.shields.io/github/issues/dragondefer/Dungeon-Hunter)
 ![Stars](https://img.shields.io/github/stars/dragondefer/Dungeon-Hunter)
 ![Forks](https://img.shields.io/github/forks/dragondefer/Dungeon-Hunter)
@@ -15,14 +15,16 @@ __creation__ = "23-04-2025"
 ![Last Commit](https://img.shields.io/github/last-commit/dragondefer/Dungeon-Hunter)
 ![Language](https://img.shields.io/github/languages/top/dragondefer/Dungeon-Hunter)
 
-# Dungeon Hunter - Version 5.6.4
+# Dungeon Hunter - Version 6.0.0
 
 Dungeon Hunter is a text-based dungeon exploration RPG game where you play as a brave adventurer exploring dangerous dungeons, battling enemies, completing quests, collecting loot, and leveling up your character.
 
 ![Demo Image](img/demo1.PNG)
 
 Made by Dragondefer,
-You can contact me on discord : https://discord.gg/3V7xGCvxEP
+You can get the upcoming features, become a beta tester or even just chat with me on discord : https://discord.gg/3V7xGCvxEP
+
+You can also check out the Twitter account to see what's new: https://x.com/Dungeon__Hunter
 
 ## Official Website
 
@@ -30,7 +32,7 @@ Check out the game website here: [Dungeon Hunter Website](https://dragondefer.gi
 
 ## Features
 
-- 🧩 **Procedurally generated dungeons** with various room types: combat, treasure, shop, rest, puzzle, and boss rooms.
+- 🧩 **Procedurally generated dungeons** with various room types: combat, treasure, shop, rest, puzzle, and boss.
 - ⚔️ **Turn-based combat system** with skills, critical hits, and stamina management.
 - 🧙 **Character progression** with leveling, class specialization, and skill acquisition.
 - 🧰 **Inventory management** with weapons, armor, potions, and other items.

@@ -1,3 +1,6 @@
+# Du​n​g​e​o​n​ ​H​u​n​t​e​r​ ​-​ ​(​c​)​ ​Dr​ag​o​nd​ef​er​ ​2​025
+# L​ic​e​ns​ed​ ​un​de​r​ ​C​C ​B​Y​-​N​C​ 4​.​0
+
 from sys import path as sys_path
 from os.path import abspath, dirname
 
@@ -6,24 +9,26 @@ project_root = abspath(dirname(__file__))
 if project_root not in sys_path:
     sys_path.insert(0, project_root)
 
-__version__ = "700.0"
+__version__ = "760.0"
 __creation__ = "09-03-2025"
 
 import random
 import time
 import os
 
+import config
+
 from interface.colors import Colors
 from engine.game_utility import (clear_screen, game_over, choose_difficulty,
                                  handle_error, collect_feedback, interactive_bar,
-                                 move_cursor, maximize_terminal)
+                                 move_cursor, maximize_terminal, get_input)
 from engine.dungeon import Room, Dungeon, generate_dungeon 
-from core.entity import Player, continue_game
-from data import get_random_names, quests_dict
-from core.story import display_title
 from engine.logger import logger
+from core.entity import Player, continue_game
+from core.story import display_title
+from data import get_random_names, quests_dict
 
-# Note: You need to be at least beta tester to get the dev tools (as it can easley break everything and also spoil), look at the game's discord: https://discord.gg/3V7xGCvxEP
+# Note: You need to be at least beta tester to get the dev tools (as it can easley break everything and also spoil), look at the game's discord for more info: https://discord.gg/3V7xGCvxEP
 try:
     dev_mode = False
     if os.path.exists("./engine/dev_mod.py"):
@@ -34,9 +39,35 @@ except Exception as e:
 
 maximize_terminal()
 
-send_analytics:bool = False
 logger.info(f"dev_mode: {dev_mode}")
 debug = 0
+
+import engine.game_utility as gu
+from engine.game_utility import set_game_speed_multiplier
+
+
+# AI dev integration
+USE_AGENT = False
+try:
+    if os.path.exists("./ai/agent.py"):
+        print("AI agent detected. Would you like to enable AI agent to play? (y/n): ", end="")
+        choice = input().lower()
+        print(f"AI agent choice: {choice}")
+        if choice == "y":
+            set_game_speed_multiplier(0.1)
+            print(f"Enabling AI agent...")
+            gu.enable_agent()
+            USE_AGENT = True
+            logger.info("AI enabeled by user choice.")
+        else:
+            print(f"Disabling AI agent...")
+            gu.disable_agent()
+            logger.info("AI agent disabled by user choice.")
+    else:
+        gu.disable_agent()
+        logger.info("AI agent disabled because ai/agent.py file not found.")
+except Exception as e:
+    logger.warning(f"Error while trying to import AI agent: {e}")
 
 def main(continue_game=False, loaded_player=None):
     global debug
@@ -44,7 +75,7 @@ def main(continue_game=False, loaded_player=None):
 
     if continue_game == False:
         # Ask player for their name
-        name = input(f"\n{Colors.CYAN}Enter your name, brave adventurer: {Colors.RESET}")
+        name = get_input(f"\n{Colors.CYAN}Enter your name, brave adventurer: {Colors.RESET}")
         player = Player(name if name else get_random_names())
         choose_difficulty(player)
 
@@ -56,10 +87,8 @@ def main(continue_game=False, loaded_player=None):
     elif continue_game and loaded_player is not None:
         player:Player = loaded_player
     else:
-        input(f'{Colors.RED} hein? continue_game != False & continue_game and loaded_player IS None')
+        get_input(f'{Colors.RED} hein? continue_game != False & continue_game and loaded_player IS None')
 
-    
-    
     # Main game loop
     game_running = True
     end = False
@@ -68,7 +97,7 @@ def main(continue_game=False, loaded_player=None):
     
     while game_running and player.is_alive():
         if debug >= 1:
-            input()
+            get_input()
         clear_screen()
 
         player.display_dungeon_level(player.current_room_number)
@@ -81,10 +110,10 @@ def main(continue_game=False, loaded_player=None):
         print(f"{Colors.RED}3. Rest{Colors.RESET}")
         print(f"{Colors.MAGENTA}4. Information submenu{Colors.RESET}")
         print(f"{Colors.BRIGHT_YELLOW}5. Save game{Colors.RESET}")
-        print(f"{Colors.BRIGHT_RED}6. Quit game{Colors.RESET}\n")
+        print(f"{Colors.BRIGHT_BLACK}6. Settings{Colors.RESET}\n")
 
-
-        choice = input(f"{Colors.CYAN}Your choice: {Colors.RESET}")
+        # Use get_input instead of input to allow agent control if enabled
+        choice = get_input(f"{Colors.CYAN}Your choice: {Colors.RESET}", options=["1","2","3"], player=player, use_agent=USE_AGENT)
         logger.info(f"Player choice: {choice}")
         
         if choice == "1":  # Explore a new room
@@ -109,7 +138,7 @@ def main(continue_game=False, loaded_player=None):
                     player.unlocked_difficulties["realistic"] = True
 
                     print(f"\n{Colors.BRIGHT_YELLOW}You can now change difficulty or start a new game + (NG+).{Colors.RESET}")
-                    choice = input(f"\n{Colors.YELLOW}Do you want to change difficulty ? (y/n): {Colors.RESET}").lower()
+                    choice = get_input(f"\n{Colors.YELLOW}Do you want to change difficulty ? (y/n): {Colors.RESET}", options=["y","n"], player=player, use_agent=USE_AGENT).lower()
                     if choice == "y":
                         print(f"\n{Colors.YELLOW}You can now choose a new difficulty level.{Colors.RESET}")
                         player.mode = choose_difficulty(player)
@@ -148,7 +177,7 @@ def main(continue_game=False, loaded_player=None):
                 player.current_room_number = 0
                 
                 time.sleep(0.5)
-                input(f"\n{Colors.YELLOW}Press Enter to continue to dungeon level {player.dungeon_level}...{Colors.RESET}")
+                get_input(f"\n{Colors.YELLOW}Press Enter to continue to dungeon level {player.dungeon_level}...{Colors.RESET}")
             else:
                 if debug >= 1:
                     print(f"{Colors.CYAN}DEBUG: Dungeon size before exploration: {len(dungeon)}{Colors.RESET}")
@@ -191,7 +220,7 @@ def main(continue_game=False, loaded_player=None):
                     continue
                 
                 time.sleep(0.5)
-                input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
+                get_input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
         
         elif choice == "2":  # Check inventory
             player.manage_inventory()
@@ -220,7 +249,7 @@ def main(continue_game=False, loaded_player=None):
                 print(f"\n{Colors.RED}You don't have enough gold to rest.{Colors.RESET}")
             time.sleep(0.1)
 
-            input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
+            get_input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
         
 
         elif choice == "4":  # Information submenu
@@ -233,7 +262,7 @@ def main(continue_game=False, loaded_player=None):
                 print(f"{Colors.BRIGHT_YELLOW}4. View Achievements{Colors.RESET}")
                 print(f"{Colors.RED}5. Back to Main Menu{Colors.RESET}")
 
-                choice = input(f"\n{Colors.CYAN}Your choice: {Colors.RESET}")
+                choice = get_input(f"\n{Colors.CYAN}Your choice: {Colors.RESET}")
 
                 if choice == "1":  # View Player Stats
                     player.display_stats_summary()
@@ -253,7 +282,7 @@ def main(continue_game=False, loaded_player=None):
         elif choice == "5":  # Save game
             # Save does not work for now
             # Ask the save name:
-            save_name = input(f"\n{Colors.YELLOW}Enter a save name: {Colors.RESET}")
+            save_name = get_input(f"\n{Colors.YELLOW}Enter a save name: {Colors.RESET}")
             player.save_player(save_name)
             time.sleep(0.5)
 
@@ -265,35 +294,54 @@ def main(continue_game=False, loaded_player=None):
             print(f"See global analytics here: https://dragondefer.github.io/Dungeon-Hunter/analytics/analytics.html\n{Colors.RESET}")
 
             # Not implemented yet
-            # consent = input(f"{Colors.BRIGHT_YELLOW}Send analytics? (y/n): {Colors.RESET}").lower()
+            # consent = get_input(f"{Colors.BRIGHT_YELLOW}Send analytics? (y/n): {Colors.RESET}").lower()
             consent = "n"
             if consent == 'y':
-                send_analytics = True
+                from data.player_data import change_analytics
+                change_analytics(True)
                 print(f"{Colors.GREEN}Thank you for contributing to the analytics!{Colors.RESET}")
             else:
                 print(f"{Colors.YELLOW}Analytics not sent. You can send them later from the main menu.{Colors.RESET}")
 
-            input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
+            get_input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
         
-        elif choice == "6":  # Quit game
-            confirm = input(f"{Colors.RED}Are you sure you want to quit? (y/n): {Colors.RESET}").lower()
-            if confirm == "y":
-                try:
-                    player.save_player("auto_save")
-                except Exception as e:
-                    handle_error()
-                    print(f"{Colors.RED}Error saving auto-save: {e}{Colors.RESET}")
-                game_running = False
+        elif choice == "6":  # Settings submenu
+            while True:
+                clear_screen()
+                print(f"\n{Colors.YELLOW}{Colors.UNDERLINE}Settings Submenu{Colors.RESET}")
+                print(f"{Colors.CYAN}1. Change game speed{Colors.RESET}")
+                print(f"{Colors.RED}2. Quit game{Colors.RESET}")
+                print(f"{Colors.BRIGHT_RED}3. Back to Main Menu{Colors.RESET}")
+
+                setting_choice = get_input(f"\n{Colors.CYAN}Your choice: {Colors.RESET}")
+
+                if setting_choice == "1":
+                    print(f"{Colors.GREEN}Option 1 selected.{Colors.RESET}")
+                    # Implement game speed change submenu
+                    from engine.game_utility import game_speed_settings
+                    
+                elif setting_choice == "2": # Quit game
+                    confirm = get_input(f"{Colors.RED}Are you sure you want to quit? (y/n): {Colors.RESET}").lower()
+                    if confirm == "y":
+                        try:
+                            player.save_player("auto_save")
+                        except Exception as e:
+                            handle_error()
+                            print(f"{Colors.RED}Error saving auto-save: {e}{Colors.RESET}")
+                        game_running = False
+
+                elif setting_choice == "3":
+                    break
+                else:
+                    print(f"{Colors.RED}Invalid choice. Try again.{Colors.RESET}")
+                    time.sleep(1)
         
         elif choice == "dev" and dev_mode == True: # activate dev debug test
             print(Colors.gradient_text('dev mode activated', (0, 0, 255), (0, 255, 0)))
             debug_dungeon = Dungeon(dungeon) if isinstance(dungeon, list) else dungeon
             debug_menu(player, debug_dungeon)
-        
-        elif choice == "stats":
-            print(player.stats)
-            input()
-        
+
+
         else:
             # Mode développeur : exécute une commande Python
             if dev_mode and choice.startswith("!"):
@@ -301,10 +349,10 @@ def main(continue_game=False, loaded_player=None):
                     result = eval(choice[1:], globals(), locals())
                     if result is not None:
                         print(result)
-                        input()
+                        get_input()
                 except Exception as e:
                     print(f"[ERROR] {e}")
-                    input()
+                    get_input()
                 continue
             print(f"{Colors.RED}Invalid choice. Try again.{Colors.RESET}")
             time.sleep(1)
@@ -313,6 +361,8 @@ def main(continue_game=False, loaded_player=None):
         game_over("died in battle")
         end = True
 
+# Du​ng​e​o​n​ ​H​u​n​t​e​r​ ​-​ ​(​c​)​ ​Drag​o​nd​efer​ 2​025
+# Lic​e​ns​ed​ ​un​der​ ​C​C ​B​Y​-​N​C​ 4​.​0
 
 if __name__ == '__main__':
     player = None
@@ -339,6 +389,9 @@ if __name__ == '__main__':
             # Define gold color using RGB ANSI escape sequence
             # GOLD = '\033[38;2;255;215;0m'
             
+            # D​u​n​g​eo​n​ H​u​n​t​e​r ​-​ ​(​c​)​ ​Dr​a​g​o​n​de​f​e​r​ 2​0​2​5
+            # L​i​ce​n​s​e​d​ u​n​de​r​ ​C​C​-​BY​-​N​C​ ​4.​0
+
             # Calculate box width as max of title length and longest option text plus padding
             box_title = " MAIN MENU "
             title_len = len(box_title)
@@ -380,7 +433,7 @@ if __name__ == '__main__':
                         print(f"\n{Colors.BRIGHT_MAGENTA}Saved games found:{Colors.RESET}\n")
                         for idx, save_file in enumerate(saves, 1):
                             print(f"{Colors.CYAN}{idx}. {save_file}{Colors.RESET}")
-                        save_choice = input(f"\n{Colors.BRIGHT_YELLOW}Choose a save file number to load or 'b' to go back: {Colors.RESET}")
+                        save_choice = get_input(f"\n{Colors.BRIGHT_YELLOW}Choose a save file number to load or 'b' to go back: {Colors.RESET}")
                         if save_choice.lower() == 'b':
                             continue
                         try:
@@ -413,6 +466,6 @@ if __name__ == '__main__':
 
     main_menu()
     
-collect_feedback()
-print(f"\n{Colors.CYAN}Thanks for playing Dungeon Hunter !{Colors.RESET}")
-print(f"{Colors.UNDERLINE}Made by {Colors.BOLD}Dragondefer{Colors.RESET}")
+    collect_feedback()
+    print(f"\n{Colors.CYAN}Thanks for playing Dungeon Hunter !{Colors.RESET}")
+    print(f"{Colors.UNDERLINE}Made by {Colors.BOLD}Dragondefer{Colors.RESET}")
