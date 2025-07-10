@@ -1,22 +1,34 @@
-__version__ = "1810.0"
+__version__ = "1870.0"
 __creation__ = "09-03-2025"
 
-import time
+# D​u​n​ge​o​n​ ​H​un​t​e​r​ ​-​ ​(​c​)​ ​D​r​ag​o​n​de​fer​ 2​0​2​5
+# Li​c​en​s​e​d ​u​n​d​e​r ​C​C​-​BY​-​NC​ ​4.​0
+
+
 import random
+
+import config
+if config.DEV_AGENT_MODE:
+    try:
+        from ai.reward_engine import try_reward
+        from ai.agent_wrapper import get_agent, _qtable_path, _memory_path
+    except ImportError: pass
+
 
 from engine.game_utility import (clear_screen, typewriter_effect,
                           dice_animation, handle_error,
                           timed_input_pattern,
-                          timed_input,
+                          timed_input, sleep,
                           choose_difficulty,
                           loading,
                           execute_command,
-                          strip_ansi
+                          strip_ansi,
+                          get_input
                           )
 from interface.colors import Colors
 from core.entity import Player, Enemy, generate_enemy
 from items.items import Item, Armor, Weapon, Potion, generate_random_item
-from items.spells import get_random_scroll, get_random_spell
+from core.spells import get_random_scroll, get_random_spell
 from data import room_descriptions, puzzle_choices, rest_events
 from engine.logger import logger
 
@@ -110,8 +122,8 @@ class Room:
             print()
             for i, desc_part in enumerate(splited_desc):
                 if i > 0:  # Ajoute une pause uniquement après la première ligne
-                    input()
-                typewriter_effect(f"{Colors.CYAN}{desc_part}{Colors.RESET}", 0.02, end='')
+                    get_input()
+                typewriter_effect(f"{Colors.CYAN}{desc_part}{Colors.RESET}", 0.02 * config.game_speed_multiplier, end='')
             print()
             self.visited = True
         else:
@@ -124,13 +136,13 @@ class Room:
             
         return self.handle_room(player)
     
-    def trigger_trap(self, player):
+    def trigger_trap(self, player: Player):
         if not self.trap:
             return None
         print(f"\n{Colors.RED}{Colors.BOLD}*CLICK*{Colors.RESET}")
         player.traps_triggered +=1
         logger.info(f"Trap activated: {self.trap['description']}")
-        time.sleep(0.5)
+        sleep(0.5 * config.game_speed_multiplier)
         print(f"{Colors.RED}It's a trap! {self.trap['description']}{Colors.RESET}")
         
         # Give player a chance to avoid the trap based on luck
@@ -157,7 +169,7 @@ class Room:
                     print(f"{Colors.RED}Your defense is temporary reduced by {value}!{Colors.RESET}")
         
         self.trap["triggered"] = True
-    
+        
     def handle_room(self, player):
         global debug
 
@@ -229,11 +241,11 @@ class Room:
         print(f"\n{Colors.CYAN}You encounter a puzzle.{Colors.RESET}")
 
         if tutorial is True:
-            typewriter_effect(f"\n[Assistant]: {Colors.GREEN}This is a puzzle room, you need to solve it to proceed.{Colors.RESET}", 0.03)
-            time.sleep(1)
-            typewriter_effect(f"[Assistant]: {Colors.GREEN}But be carful, {Colors.RESET}", 0.05, "")
-            time.sleep(0.5)
-            typewriter_effect(f"{Colors.GREEN}these ancient mechanisms can reveal traps.. or even forgotten knowledge.{Colors.RESET}", 0.05)
+            typewriter_effect(f"\n[Assistant]: {Colors.GREEN}This is a puzzle room, you need to solve it to proceed.{Colors.RESET}", 0.03 * config.game_speed_multiplier)
+            sleep(1)
+            typewriter_effect(f"[Assistant]: {Colors.GREEN}But be carful, {Colors.RESET}", 0.05 * config.game_speed_multiplier, "")
+            sleep(0.5)
+            typewriter_effect(f"{Colors.GREEN}these ancient mechanisms can reveal traps.. or even forgotten knowledge.{Colors.RESET}", 0.05 * config.game_speed_multiplier)
         
         result = False
         if puzzle_type == "riddle":
@@ -265,7 +277,8 @@ class Room:
         
         for attempt in range(attempts):
             try:
-                guess = int(input(f"\n{Colors.YELLOW}Your guess (attempt {attempt+1}/{attempts}): {Colors.RESET}"))
+                guess_str = get_input(f"\n{Colors.YELLOW}Your guess (attempt {attempt+1}/{attempts}): {Colors.RESET}", options=None)
+                guess = int(guess_str)
                 logger.debug(f"Player guessed {guess} on attempt {attempt+1}")
                 if guess == target:
                     print(f"\n{Colors.GREEN}Correct! The device whirs and opens.{Colors.RESET}")
@@ -295,6 +308,7 @@ class Room:
 
     def handle_riddle(self, player):
         """Managing a riddle."""
+        from ai.agent_wrapper import USE_AGENT
         riddles = [
             {"question": "I speak without a mouth and hear without ears. I have no one, but I live with the wind. Who am I?", "answer": "echo"},
             {"question": "The more you take, the more you leave behind. What am I?", "answer": "footprint"},
@@ -308,7 +322,7 @@ class Room:
 
         # Le joueur a 3 tentatives
         for attempt in range(3):
-            answer = input(f"\r{Colors.YELLOW}Your response (attempt {attempt+1}/3) : {Colors.RESET}").lower().strip()
+            answer = get_input(f"\r{Colors.YELLOW}Your response (attempt {attempt+1}/3) : {Colors.RESET}", options=["echo", "footprint", "keyboard"], player=player, use_agent=USE_AGENT).lower().strip()
 
             if answer == riddle["answer"]:
                 print(f"\n{Colors.GREEN}Correct! A secret passage opens up.{Colors.RESET}")
@@ -328,6 +342,7 @@ class Room:
     
     
     def handle_dice_puzzle(self, player):
+        from ai.agent_wrapper import USE_AGENT
         print(f"\n{Colors.CYAN}You find a strange dice game set up on a table.{Colors.RESET}")
         print(f"{Colors.YELLOW}The rules state:{Colors.RESET}")
         print(f"{Colors.YELLOW}Roll three dice. If their sum is greater than 10, you win a prize.{Colors.RESET}")
@@ -336,7 +351,7 @@ class Room:
         
         while True:
             while True:
-                play = input(f"\n{Colors.CYAN}Do you want to play? (10 gold) [y/n]: {Colors.RESET}").lower()
+                play = get_input(f"\n{Colors.CYAN}Do you want to play? (10 gold) [y/n]: {Colors.RESET}", options=["y","n"], player=player, use_agent=USE_AGENT).lower()
                 if play not in ['y', 'n']:
                     print(f"{Colors.RED}Invalid choice. Please enter 'y' or 'n'.{Colors.RESET}")
                     continue
@@ -353,13 +368,13 @@ class Room:
                 print(f"\n{Colors.CYAN}Rolling dice...{Colors.RESET}")
                 dice1 = dice_animation()
                 print(f"\n{Colors.YELLOW}You rolled: {dice1}{Colors.RESET}")
-                time.sleep(0.5)
+                sleep(0.5)
                 dice2 = dice_animation()
                 print(f"\n{Colors.YELLOW}You rolled: {dice2}{Colors.RESET}")
-                time.sleep(0.5)
+                sleep(0.5)
                 dice3 = dice_animation()
                 print(f"\n{Colors.YELLOW}You rolled: {dice3}{Colors.RESET}")
-                time.sleep(0.5)
+                sleep(0.5)
 
                 total = dice1 + dice2 + dice3
                 print(f"\n{Colors.YELLOW}You rolled: {dice1}, {dice2}, {dice3} (Total: {total}){Colors.RESET}")
@@ -377,7 +392,7 @@ class Room:
                 else:
                     print(f"\n{Colors.RED}Sorry, you lose.{Colors.RESET}")
                 
-                play_again = input(f"\n{Colors.CYAN}Play again? [y/n]: {Colors.RESET}").lower()
+                play_again = get_input(f"\n{Colors.CYAN}Play again? [y/n]: {Colors.RESET}", options=["y","n"]).lower()
                 if play_again != 'y':
                     break
             else:
@@ -397,7 +412,7 @@ class Room:
         for key, option in puzzle["options"].items():
             print(f"{Colors.YELLOW}{key}. {option['name']}{Colors.RESET}")
 
-        choice = input(f"\n{Colors.CYAN}Your choice : {Colors.RESET}")
+        choice = get_input(f"\n{Colors.CYAN}Your choice : {Colors.RESET}", options=list(puzzle["options"].keys()))
 
         if choice in puzzle["options"]:
             option = puzzle["options"][choice]
@@ -460,6 +475,8 @@ class Room:
 
                 if answer_int == sequence[-1]:
                     print(f"\n{Colors.GREEN}Correct answer! A secret compartment opens.{Colors.RESET}")
+
+                    if config.DEV_AGENT_MODE: try_reward(10)
 
                     # Récompense aléatoire
                     reward_type = random.choice(["or", "objet", "stat"])
@@ -609,19 +626,19 @@ class Room:
         
         if tutorial is True:
             if is_boss_room is False:
-                typewriter_effect(f"\n[Assistant]: {Colors.GREEN}In this tutorial, you will learn the basics of combat{Colors.RESET}", 0.03)
-                time.sleep(0.5)
-                typewriter_effect(f"[Assistant]: {Colors.GREEN}During combat, you have to manage your Health, Stamuina and Mana.{Colors.RESET}", 0.04)
-                time.sleep(0.5)
+                typewriter_effect(f"\n[Assistant]: {Colors.GREEN}In this tutorial, you will learn the basics of combat{Colors.RESET}", 0.03 * config.game_speed_multiplier)
+                sleep(0.5)
+                typewriter_effect(f"[Assistant]: {Colors.GREEN}During combat, you have to manage your Health, Stamuina and Mana.{Colors.RESET}", 0.04 * config.game_speed_multiplier)
+                sleep(0.5)
             else:
-                typewriter_effect(f"\n[Assistant]: {Colors.GREEN}This is your first combat against a boss.{Colors.RESET}", 0.05)
-                time.sleep(0.5)
-                typewriter_effect(f"[Assistant]: {Colors.GREEN}Don't worry, i will help you if needed.{Colors.RESET}", 0.05)
-                time.sleep(0.5)
+                typewriter_effect(f"\n[Assistant]: {Colors.GREEN}This is your first combat against a boss.{Colors.RESET}", 0.05 * config.game_speed_multiplier)
+                sleep(0.5)
+                typewriter_effect(f"[Assistant]: {Colors.GREEN}Don't worry, i will help you if needed.{Colors.RESET}", 0.05 * config.game_speed_multiplier)
+                sleep(0.5)
 
         enemy = self.enemies[0]
-        input(f'\n{Colors.BOLD}{Colors.RED}Press enter to begin the combat{Colors.RESET}')
-        time.sleep(0.3)
+        get_input(f'\n{Colors.BOLD}{Colors.RED}Press enter to begin the combat{Colors.RESET}')
+        sleep(0.3)
         clear_screen()
 
         if is_boss_room:
@@ -629,12 +646,12 @@ class Room:
             print(f"\n{Colors.RED}{Colors.BOLD}╔══════════════════════════════════════════╗")
             print(f"║              BOSS ENCOUNTER              ║")
             print(f"╚══════════════════════════════════════════╝{Colors.RESET}")
-            typewriter_effect(f"\n{Colors.RED}{Colors.BOLD}The {enemy.name} emerges from the shadows!{Colors.RESET}", 0.03)
-            time.sleep(1)
+            typewriter_effect(f"\n{Colors.RED}{Colors.BOLD}The {enemy.name} emerges from the shadows!{Colors.RESET}", 0.03 * config.game_speed_multiplier)
+            sleep(1)
         else:
             logger.info(f"Enemy enconter: {enemy.name}")
             print(f"\n{Colors.RED}A {enemy.name} appears!{Colors.RESET}")
-            time.sleep(0.5)
+            sleep(0.5)
         
         one_time_message = True
 
@@ -643,20 +660,20 @@ class Room:
 
             if tutorial is True and one_time_message is True:
                 if is_boss_room is False:
-                    typewriter_effect(f"\n[Assistant]: {Colors.GREEN}You can attack, use skills, or items during your turn.{Colors.RESET}", 0.03)
-                    time.sleep(0.5)
-                    typewriter_effect(f"[Assistant]: {Colors.GREEN}You can also try to run away from the fight.{Colors.RESET}", 0.03)
+                    typewriter_effect(f"\n[Assistant]: {Colors.GREEN}You can attack, use skills, or items during your turn.{Colors.RESET}", 0.03 * config.game_speed_multiplier)
+                    sleep(0.5)
+                    typewriter_effect(f"[Assistant]: {Colors.GREEN}You can also try to run away from the fight.{Colors.RESET}", 0.03 * config.game_speed_multiplier)
                 else:
-                    typewriter_effect(f"\n[Assistant]: {Colors.GREEN}The boss is strong, be careful.{Colors.RESET}", 0.03)
-                    time.sleep(0.5)
+                    typewriter_effect(f"\n[Assistant]: {Colors.GREEN}The boss is strong, be careful.{Colors.RESET}", 0.03 * config.game_speed_multiplier)
+                    sleep(0.5)
                     """
                     typewriter_effect(f"[Assistant]: {Colors.GREEN}You arn't alone..{Colors.RESET}", 0.03, "")
-                    time.sleep(0.5)
+                    sleep(0.5)
                     typewriter_effect(f"{Colors.GREEN}for now.{Colors.RESET}", 0.03)
-                    time.sleep(0.5)
+                    sleep(0.5)
                     """
                 one_time_message = False
-                time.sleep(1)
+                sleep(1)
 
 
             # Player turn
@@ -670,26 +687,30 @@ class Room:
 
             if tutorial is True:
                 if player.stats.hp < player.stats.max_hp / 2:
-                    typewriter_effect(f"\n[Assistant]: {Colors.RED}You are low on health, be carful.{Colors.RESET}", 0.03)
-                    typewriter_effect(f"[Assistant]: {Colors.BLUE}Requesting permission..{Colors.RESET}", 0.05)
+                    typewriter_effect(f"\n[Assistant]: {Colors.RED}You are low on health, be carful.{Colors.RESET}", 0.03 * config.game_speed_multiplier)
+                    typewriter_effect(f"[Assistant]: {Colors.BLUE}Requesting permission..{Colors.RESET}", 0.05 * config.game_speed_multiplier)
                     loading(2)
-                    typewriter_effect(f"[Assistant]: {Colors.GREEN}Permission allowed, executing command...{Colors.RESET}\n", 0.03)
-                    time.sleep(1)
+                    typewriter_effect(f"[Assistant]: {Colors.GREEN}Permission allowed, executing command...{Colors.RESET}\n", 0.03 * config.game_speed_multiplier)
+                    sleep(1)
                     execute_command("player.heal(999)", allowed=True, prnt=True, context={"player": player})
-                    time.sleep(0.5)
-                    typewriter_effect(f"\n[Assistant]: {Colors.GREEN}Player healed successfully..{Colors.RESET}", 0.03)
+                    sleep(0.5)
+                    typewriter_effect(f"\n[Assistant]: {Colors.GREEN}Player healed successfully..{Colors.RESET}", 0.03 * config.game_speed_multiplier)
                 if player.stats.stamina < player.stats.max_stamina / 2:
-                    typewriter_effect(f"\n[Assistant]: {Colors.RED}You seem exausted.{Colors.RESET}", 0.03)
-                    typewriter_effect(f"[Assistant]: {Colors.BLUE}Requesting permission..{Colors.RESET}", 0.05)
+                    typewriter_effect(f"\n[Assistant]: {Colors.RED}You seem exausted.{Colors.RESET}", 0.03 * config.game_speed_multiplier)
+                    typewriter_effect(f"[Assistant]: {Colors.BLUE}Requesting permission..{Colors.RESET}", 0.05 * config.game_speed_multiplier)
                     loading(2)
-                    typewriter_effect(f"[Assistant]: {Colors.GREEN}Permission allowed, executing command...{Colors.RESET}\n", 0.03)
-                    time.sleep(1)
+                    typewriter_effect(f"[Assistant]: {Colors.GREEN}Permission allowed, executing command...{Colors.RESET}\n", 0.03 * config.game_speed_multiplier)
+                    sleep(1)
                     execute_command("player.rest_stamina(999)", allowed=True, prnt=True, context={"player": player})
-                    time.sleep(0.5)
-                    typewriter_effect(f"\n[Assistant]: {Colors.GREEN}Player rested successfully...{Colors.RESET}", 0.03)
+                    sleep(0.5)
+                    typewriter_effect(f"\n[Assistant]: {Colors.GREEN}Player rested successfully...{Colors.RESET}", 0.03 * config.game_speed_multiplier)
                     
 
-            choice = input(f"\n{Colors.CYAN}What will you do? {Colors.RESET}")
+            options = ["1", "3", "4"]
+            if player.skills:
+                options.insert(1, "2")
+            from ai.agent_wrapper import USE_AGENT
+            choice = get_input(f"\n{Colors.CYAN}What will you do? {Colors.RESET}", options=options, player=player)
 
             if choice == "1":  # Normal attack without timing mechanic (simpler)
                 base_damage = player.total_domage()
@@ -700,7 +721,7 @@ class Room:
                     player.critical_count += 1
                     base_damage *= 2
                     print(f"{Colors.BRIGHT_YELLOW}{Colors.BOLD}CRITICAL HIT!{Colors.RESET}")
-                    time.sleep(0.1)
+                    sleep(0.1)
                 else:
                     player.attack_count += 1
 
@@ -722,6 +743,7 @@ class Room:
                 damage, absorbed_damage = enemy.stats.take_damage(base_damage)
                 actual_damage = damage + absorbed_damage
                 player.damage_dealt += actual_damage
+                if config.DEV_AGENT_MODE: try_reward(actual_damage // 10)
                 logger.info(f"Player attack: {'critical hit' if critical else ''} {actual_damage} dmg, {stamina_cost} stm")
                 print(f"You deal {Colors.RED}{math.ceil(actual_damage)}{Colors.RESET} damage to {enemy.name}!")
 
@@ -739,7 +761,7 @@ class Room:
                     print(f"{Colors.YELLOW}{i}. {item}{Colors.RESET}")
 
                 try:
-                    item_choice = int(input(f"\n{Colors.CYAN}Choose an item to use (0 to cancel): {Colors.RESET}"))
+                    item_choice = int(get_input(f"\n{Colors.CYAN}Choose an item to use (0 to cancel): {Colors.RESET}", options=[str(i) for i in range(len(potions) + 1)], player=player, use_agent=USE_AGENT))
                     if 1 <= item_choice <= len(potions):
                         potions[item_choice - 1].use(player)
                     else:
@@ -770,6 +792,8 @@ class Room:
                 print(f"{Colors.YELLOW}You gain {enemy.gold_reward} gold !{Colors.RESET}")
                 print(f"{Colors.BRIGHT_BLACK}You gain 1 souls !{Colors.RESET}\n")
 
+                if config.DEV_AGENT_MODE: try_reward(10)
+
                 # Item drop
                 if is_boss_room:
                     dropped_item = generate_random_item(player=player, enemy=enemy, rarity_boost=1.5)
@@ -780,19 +804,19 @@ class Room:
                         player.inventory.append(dropped_item)
                         if dropped_item:
                             print(f"{Colors.GREEN}The {enemy.name} dropped: {dropped_item.name} !{Colors.RESET}")
-                        time.sleep(2)
+                        sleep(2)
                 
                 elif tutorial is True and not is_boss_room:
-                    time.sleep(0.5)
+                    sleep(0.5)
                     # Tell the player he can get an item
-                    typewriter_effect(f"[Assistant]: {Colors.BRIGHT_BLACK}After combat, there is a chance that you get an item depending on the enemy type.{Colors.RESET}", 0.05, " ")
-                    time.sleep(0.2)
-                    typewriter_effect(f"As it's a tutorial, I will grant you one.{Colors.RESET}", 0.05)
-                    time.sleep(1)
-                    typewriter_effect(f"[Assistant]: {Colors.BLUE}Requesting permission..{Colors.RESET}", 0.05)
+                    typewriter_effect(f"[Assistant]: {Colors.BRIGHT_BLACK}After combat, there is a chance that you get an item depending on the enemy type.{Colors.RESET}", 0.05 * config.game_speed_multiplier, " ")
+                    sleep(0.2)
+                    typewriter_effect(f"As it's a tutorial, I will grant you one.{Colors.RESET}", 0.05 * config.game_speed_multiplier)
+                    sleep(1)
+                    typewriter_effect(f"[Assistant]: {Colors.BLUE}Requesting permission..{Colors.RESET}", 0.05 * config.game_speed_multiplier)
                     loading(2)
-                    typewriter_effect(f"[Assistant]: {Colors.GREEN}Permission allowed, executing command...{Colors.RESET}\n", 0.03)
-                    time.sleep(1)
+                    typewriter_effect(f"[Assistant]: {Colors.GREEN}Permission allowed, executing command...{Colors.RESET}\n", 0.03 * config.game_speed_multiplier)
+                    sleep(1)
                     generated_item = execute_command(
                         "generate_random_item(player=player, enemy=enemy)",
                         allowed=True,
@@ -804,7 +828,7 @@ class Room:
                             "enemy": enemy,
                         }
                     )
-                    time.sleep(0.5)
+                    sleep(0.5)
                     execute_command(
                         "player.inventory.append(generated_item)",
                         allowed=True,
@@ -814,10 +838,10 @@ class Room:
                             "generated_item": generated_item,
                         }
                     )
-                    time.sleep(0.5)
-                    typewriter_effect(f"\n[Assistant]: {Colors.GREEN}Item added succesfully.{Colors.RESET}\n", 0.03)
+                    sleep(0.5)
+                    typewriter_effect(f"\n[Assistant]: {Colors.GREEN}Item added succesfully.{Colors.RESET}\n", 0.03 * config.game_speed_multiplier)
                     print(f"{Colors.GREEN}The {enemy.name} dropped: {generated_item.name if isinstance(generated_item, Item) else 'Unknow error'} !{Colors.RESET}")
-                    time.sleep(2)
+                    sleep(2)
 
 
                 self.enemies.remove(enemy)
@@ -835,19 +859,19 @@ class Room:
                 if self.enemies:
                     enemy = self.enemies[0]
                     print(f"\n{Colors.RED}A {enemy.name} appears !{Colors.RESET}")
-                    time.sleep(0.5)
+                    sleep(0.5)
                 else:
                     return True
 
             # Enemy turn
             if enemy.is_alive():
                 print(f"\n{Colors.RED}{enemy.name} attacks !{Colors.RESET}")
-                time.sleep(1.5)
+                sleep(1.5)
                 if random.random() < (player.stats.luck * 0.01 + player.stats.agility * 0.02):
                     print(f"{Colors.GREEN}You dodged the attack !{Colors.RESET}")
                 else:
                     enemy.attack_player(player)
-                time.sleep(1.5)
+                sleep(1.5)
         return player.is_alive()
 
     
@@ -857,11 +881,11 @@ class Room:
 
         if tutorial is True:
             self.items.append(generate_random_item(player))
-            typewriter_effect(f"\n[Assistant]: {Colors.GREEN}In treasure room, you can up to 2 random items.{Colors.RESET}", 0.03)
-            time.sleep(0.3)
-            typewriter_effect(f"[Assistant]: {Colors.BRIGHT_BLACK}I heard you can find ancient scrolls{Colors.RESET}", 0.03)
-            time.sleep(0.2)
-            typewriter_effect(f"[Assistant]: {Colors.GREEN}For now, everything is unlocked..{Colors.RESET}", 0.075)
+            typewriter_effect(f"\n[Assistant]: {Colors.GREEN}In treasure room, you can up to 2 random items.{Colors.RESET}", 0.03 * config.game_speed_multiplier)
+            sleep(0.3)
+            typewriter_effect(f"[Assistant]: {Colors.BRIGHT_BLACK}I heard you can find ancient scrolls{Colors.RESET}", 0.03 * config.game_speed_multiplier)
+            sleep(0.2)
+            typewriter_effect(f"[Assistant]: {Colors.GREEN}For now, everything is unlocked..{Colors.RESET}", 0.075 * config.game_speed_multiplier)
         
         if not self.items:
             print(f"\n{Colors.YELLOW}You've already collected all treasure from this room.{Colors.RESET}")
@@ -869,7 +893,7 @@ class Room:
         
         print(f"\n{Colors.GREEN}You found a treasure!{Colors.RESET}\n")
 
-        time.sleep(0.5)
+        sleep(0.5)
         
         for item in self.items[:]:
             player.inventory.append(item)
@@ -965,8 +989,8 @@ class Room:
                     print(line)
                 
             if tutorial is True and one_time_message is True:
-                typewriter_effect(f"\n[Assistant]: {Colors.GREEN}In the shop, you can buy and sell items.{Colors.RESET}", 0.03)
-                typewriter_effect(f"[Assistant]: {Colors.GREEN}For this time, you are allowed to buy one item for free.{Colors.RESET}", 0.05)
+                typewriter_effect(f"\n[Assistant]: {Colors.GREEN}In the shop, you can buy and sell items.{Colors.RESET}", 0.03 * config.game_speed_multiplier)
+                typewriter_effect(f"[Assistant]: {Colors.GREEN}For this time, you are allowed to buy one item for free.{Colors.RESET}", 0.05 * config.game_speed_multiplier)
                 one_time_message = False
 
             print(f"\n{Colors.BRIGHT_CYAN}{Colors.UNDERLINE}What would you like to do?{Colors.RESET}")
@@ -974,7 +998,7 @@ class Room:
             print(f"{Colors.GREEN}S. Sell items{Colors.RESET}")
             print(f"{Colors.RED}L. Leave shop{Colors.RESET}")
 
-            choice = input(f"\n{Colors.CYAN}Your choice: {Colors.RESET}").upper()
+            choice = get_input(f"\n{Colors.CYAN}Your choice: {Colors.RESET}", options=["1", "S", "L"], player=player).upper()
 
             if choice == "S":
                 self.sell_items(player, shopkeeper)
@@ -1012,7 +1036,7 @@ class Room:
 
         return True
 
-    def sell_items(self, player, shopkeeper):
+    def sell_items(self, player: Player, shopkeeper):
         global debug
         
         if debug >= 1:
@@ -1028,17 +1052,18 @@ class Room:
         print(f"{Colors.RED}0. Cancel{Colors.RESET}")
         
         try:
-            choice = int(input(f"\n{Colors.CYAN}Choose an option (0 to cancel): {Colors.RESET}"))
+            choice = get_input(f"\n{Colors.CYAN}Choose an option (0 to cancel): {Colors.RESET}", options=["0","1","2"])
             
-            if choice == 0:
+            if choice == "0":
                 return
-            elif choice == 1:
+            elif choice == "1":
                 for i, item in enumerate(player.inventory, 1):
                     sell_value = int(item.value * 0.5)  
                     print(f"{Colors.YELLOW}{i}. {item} - Sell for {Colors.BRIGHT_YELLOW}{sell_value} gold{Colors.RESET}")
                 
                 try:
-                    item_choice = int(input(f"\n{Colors.CYAN}Choose an item to sell (0 to cancel): {Colors.RESET}"))
+                    item_choice_str = get_input(f"\n{Colors.CYAN}Choose an item to sell (0 to cancel): {Colors.RESET}", options=None)
+                    item_choice = int(item_choice_str)
                     
                     if item_choice == 0:
                         return
@@ -1058,14 +1083,15 @@ class Room:
                 except ValueError as e:
                     logger.warning(f"ValueError in sell item choice input: {e}")
                     print(f"\n{Colors.RED}Please enter a number.{Colors.RESET}")
-            elif choice == 2:
+            elif choice == "2":
                 print(f"\n{Colors.CYAN}Sell by group options:{Colors.RESET}")
                 print(f"{Colors.YELLOW}1. By rarity{Colors.RESET}")
                 print(f"{Colors.YELLOW}2. By effect type{Colors.RESET}")
                 print(f"{Colors.RED}0. Cancel{Colors.RESET}")
                 
                 try:
-                    group_choice = int(input(f"\n{Colors.CYAN}Choose a group option (0 to cancel): {Colors.RESET}"))
+                    group_choice_str = get_input(f"\n{Colors.CYAN}Choose a group option (0 to cancel): {Colors.RESET}", options=["0","1","2"])
+                    group_choice = int(group_choice_str)
                     
                     if group_choice == 0:
                         return
@@ -1079,7 +1105,8 @@ class Room:
                         for i, rarity in enumerate(rarity_list, 1):
                             print(f"{Colors.YELLOW}{i}. {rarity}{Colors.RESET}")
                         try:
-                            rarity_choice = int(input(f"\n{Colors.CYAN}Choose rarity to sell (0 to cancel): {Colors.RESET}"))
+                            rarity_choice_str = get_input(f"\n{Colors.CYAN}Choose rarity to sell (0 to cancel): {Colors.RESET}", options=[str(i) for i in range(len(rarity_list)+1)])
+                            rarity_choice = int(rarity_choice_str)
                             if rarity_choice == 0:
                                 return
                             elif 1 <= rarity_choice <= len(rarity_list):
@@ -1089,7 +1116,7 @@ class Room:
                                     print(f"\n{Colors.RED}No items found with rarity {chosen_rarity}.{Colors.RESET}")
                                     return
                                 print(f"\n{Colors.CYAN}You have {len(filtered_items)} items with rarity {chosen_rarity}.{Colors.RESET}")
-                                limit = input(f"Enter the maximum number of items to sell (or press Enter to sell all): ")
+                                limit = get_input(f"Enter the maximum number of items to sell (or press Enter to sell all): ", options=None)
                                 try:
                                     limit = int(limit) if limit.strip() != "" else len(filtered_items)
                                 except ValueError:
@@ -1120,7 +1147,8 @@ class Room:
                         for i, effect_type in enumerate(effect_types, 1):
                             print(f"{Colors.YELLOW}{i}. {effect_type}{Colors.RESET}")
                         try:
-                            effect_choice = int(input(f"\n{Colors.CYAN}Choose effect type to sell (0 to cancel): {Colors.RESET}"))
+                            effect_choice_str = get_input(f"\n{Colors.CYAN}Choose effect type to sell (0 to cancel): {Colors.RESET}", options=[str(i) for i in range(len(effect_types)+1)])
+                            effect_choice = int(effect_choice_str)
                             if effect_choice == 0:
                                 return
                             elif 1 <= effect_choice <= len(effect_types):
@@ -1133,7 +1161,7 @@ class Room:
                                     print(f"\n{Colors.RED}No items found with effect type {chosen_effect}.{Colors.RESET}")
                                     return
                                 print(f"\n{Colors.CYAN}You have {len(filtered_items)} items with effect type {chosen_effect}.{Colors.RESET}")
-                                limit = input(f"Enter the maximum number of items to sell (or press Enter to sell all): ")
+                                limit = get_input(f"Enter the maximum number of items to sell (or press Enter to sell all): ", options=None)
                                 try:
                                     limit = int(limit) if limit.strip() != "" else len(filtered_items)
                                 except ValueError:
@@ -1161,6 +1189,8 @@ class Room:
             logger.warning(f"ValueError in sell item choice input: {e}")
             print(f"\n{Colors.RED}Please enter a number.{Colors.RESET}")
 
+    # Du​n‍g​e​o​n​ ‌H​u​n‌t‍e​r​ ‌-​ ‌(c)‌ ‌D​ra​g‍o​n​de‍f​er ​2‍0​2​5
+    # L‍i‍c​e​n​s​e‍d​ ‌u‌n‍d‍e‌r‌ ‌CC-​BY-​N​C ​4​.0
 
     def handle_rest(self, player:Player, tutorial=False):
         """Gère le repos du joueur, permettant de récupérer des PV, de la mana et de l'endurance."""
@@ -1168,12 +1198,12 @@ class Room:
         print(f"\n{Colors.CYAN}You find a safe place to rest.{Colors.RESET}")
 
         if tutorial is True:
-            typewriter_effect(f"\n[Assistant]: {Colors.GREEN}In the rest room, you can recover your health, mana and stamina.{Colors.RESET}", 0.03)
-            time.sleep(0.5)
-            typewriter_effect(f"[Assistant]: {Colors.GREEN}You can also meditate to improve your stats.{Colors.RESET}", 0.03)
-            time.sleep(0.5)
-            typewriter_effect(f"[Assistant]: {Colors.GREEN}There is rumors who said that wierd things can happend in your sleep...{Colors.RESET}\n", 0.05)
-            time.sleep(1)
+            typewriter_effect(f"\n[Assistant]: {Colors.GREEN}In the rest room, you can recover your health, mana and stamina.{Colors.RESET}", 0.03 * config.game_speed_multiplier)
+            sleep(0.5)
+            typewriter_effect(f"[Assistant]: {Colors.GREEN}You can also meditate to improve your stats.{Colors.RESET}", 0.03 * config.game_speed_multiplier)
+            sleep(0.5)
+            typewriter_effect(f"[Assistant]: {Colors.GREEN}There is rumors who said that wierd things can happend in your sleep...{Colors.RESET}\n", 0.05 * config.game_speed_multiplier)
+            sleep(1)
         
         options = [
             "Rest and recover HP, stamina and some mana",
@@ -1185,10 +1215,18 @@ class Room:
         for i, option in enumerate(options, 1):
             print(f"{Colors.YELLOW}{i}. {option}{Colors.RESET}")
         
-        choice = input(f"\n{Colors.CYAN}What would you like to do? {Colors.RESET}")
-        if choice not in ["1", "2", "3", "4"]:
-            print(f"\n{Colors.RED}Invalid choice. It's your last change.{Colors.RESET}")
-            choice = input(f"{Colors.YELLOW}your choice: {Colors.RESET}")
+        choice = get_input(f"\n{Colors.CYAN}What would you like to do? {Colors.RESET}", options=options, player=player)
+
+        # Si l'utilisateur est humain, convertir "1" → option[0], etc.
+        if choice in map(str, range(1, len(options) + 1)):
+            choice = options[int(choice) - 1]
+        
+        # Vérification
+        if choice not in options:
+            print(f"\n{Colors.RED}Invalid choice. It's your last chance.{Colors.RESET}")
+            choice = get_input(f"{Colors.YELLOW}Your choice: {Colors.RESET}", options=options, player=player)
+            if choice in map(str, range(1, len(options) + 1)):
+                choice = options[int(choice) - 1]
         
         if choice == "1":
             # Rest and recover 30-50% of max HP
@@ -1307,12 +1345,18 @@ class Room:
         filename = f"autosave-{strip_ansi(player.name)}(lv{player.level})-{player.player_id}.json"
         player.save_player(filename)
 
+        if config.DEV_AGENT_MODE:
+            agent = get_agent()
+            if agent:
+                agent.save_q_table(_qtable_path)
+                agent.save_memory_data(_memory_path)
+
         clear_screen()
-        time.sleep(1)
-        typewriter_effect(f"{Colors.GREEN}...\n{Colors.RESET}", 0.3)
-        time.sleep(1)
-        typewriter_effect(f"{Colors.BRIGHT_BLACK}It feel empty for now..\nSeems that this room is currently under construction.{Colors.RESET}", 0.1)
-        time.sleep(1)
+        sleep(1)
+        typewriter_effect(f"{Colors.GREEN}...\n{Colors.RESET}", 0.3 * config.game_speed_multiplier)
+        sleep(1)
+        typewriter_effect(f"{Colors.BRIGHT_BLACK}It feel empty for now..\nSeems that this room is currently under construction.{Colors.RESET}", 0.1 * config.game_speed_multiplier)
+        sleep(1)
         return True
 
     @staticmethod
@@ -1511,6 +1555,8 @@ def generate_dungeon(player:Player) -> list[Room]:
     if debug >= 1:
         print(f"{Colors.YELLOW}DEBUG: Number of rooms: {num_rooms}{Colors.RESET}")
 
+    # D​u​n​ge​on​ ​Hu​n​te​r​ ​-​ ​(​c) ​D​ra​g​o​nde​f​e​r​ ​2​025
+    # L​i​ce​n​se​d​ u​nd​er​ ​C​C-​B​Y​-​NC​ ​4​0
     # Use dimensional room-based generation for PuzzleMode
     if difficulty.name == "puzzle":
         logger.info("Using dimensional room-based dungeon generation for PuzzleMode")
@@ -1911,3 +1957,6 @@ def generate_dungeon(player:Player) -> list[Room]:
             },
         ]
 """
+# D‌u​n‍g​e​o​n​ ‌H​u​nt‍e​r​ ‌-​ ‌(c)‌ ‌Drag‍o​n​de‍f​e‍r ​2‍0​2​5
+# L‍ic​en​se‍d​ ‌u‌n‍d‍e‌r‌ ‌C​C-​B​Y-​N​C ​4​.0
+

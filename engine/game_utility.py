@@ -1,5 +1,15 @@
-__version__ = "488.0"
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from core.entity import Player
+
+__version__ = "555.0"
 __creation__ = "09-03-2025"
+
+# D​u​n​ge​o​n​ ​H​u​n​t​e​r​ ​-​ ​(​c​)​ ​D​r​a​go​n​de​f​er​ ​2​02​5
+# L​ic​e​n​s​e​d​ ​u​nd​e​r​ ​C​C​-​BY​-​N​C​ ​4​.​0
+
 
 import os
 import sys
@@ -83,6 +93,94 @@ def maximize_terminal():
 
 from shutil import get_terminal_size
 cols, rows = get_terminal_size()
+
+
+# Safe import
+try:
+    print("Agent system available. Importing agent wrapper...")
+    from ai.agent_wrapper import get_agent, agent_is_enabled
+except ImportError:
+    print(f"Agent system not available. Running without ML agent. ImportError")
+    get_agent = lambda: None
+    USE_AGENT = False
+
+
+def get_input(prompt: str = "", options: list[str] | None = None, player: Player | None = None, use_agent: bool | None = None) -> str:
+    debug=0
+    options = options or []
+    agent_instance = get_agent()
+
+    # If use_agent is None, get current value from global USE_AGENT
+    if use_agent is None:
+        if debug>=1: print("use_agent is None:",use_agent)
+        use_agent = agent_is_enabled()
+        if debug>=1: print("Now use_agent=", use_agent)
+    
+
+    # Cas sans options → pause/lecture, retour simple
+    if not options:
+        if debug>=1: print("No options:", options); print("Agent:", use_agent)
+        if use_agent:
+            print(prompt, "")
+            return ""  # Agent passe (lecture automatique)
+        else:
+            return input(prompt)
+
+    if debug>=1:
+        print("debug: agent_instance:", agent_instance)
+        print("debug: use_agent:", use_agent)
+        print("debug: options:", options)
+    if use_agent and agent_instance and player:
+        data = agent_instance.get_data(prompt, player, options)
+        # Simplify state to tuple of values only for consistency
+        state = tuple(data["player_stats"].values())
+        if debug>=1: print(f"debug: state passed to make_choice: {state}")
+        choice = agent_instance.make_choice(options, state)
+        if debug>=1: print(f"debug: agent choice: {choice}")
+        print(prompt, choice)
+        return choice
+    else:
+        return input(prompt)
+
+
+def game_speed_settings(speed_multipliers: dict[str, float]):
+    while True:
+        clear_screen()
+        print(f"\n{Colors.YELLOW}{Colors.UNDERLINE}Change Game Speed{Colors.RESET}")
+        print(f"{Colors.CYAN}1. Slow{Colors.RESET}")
+        print(f"{Colors.CYAN}2. Normal{Colors.RESET}")
+        print(f"{Colors.CYAN}3. Fast{Colors.RESET}")
+        print(f"{Colors.CYAN}4. Instant{Colors.RESET}")
+        print(f"{Colors.BRIGHT_RED}5. Back to Settings Menu{Colors.RESET}")
+
+        speed_choice = get_input(f"\n{Colors.CYAN}Select speed: {Colors.RESET}")
+
+        if speed_choice == "1":
+            config.game_speed = "slow"
+            print(f"{Colors.GREEN}Game speed set to Slow.{Colors.RESET}")
+            set_game_speed_multiplier(config.speed_multipliers["slow"])
+            get_input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
+        elif speed_choice == "2":
+            config.game_speed = "normal"
+            set_game_speed_multiplier(config.speed_multipliers["normal"])
+            print(f"{Colors.GREEN}Game speed set to Normal.{Colors.RESET}")
+            get_input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
+        elif speed_choice == "3":
+            config.game_speed = "fast"
+            set_game_speed_multiplier(config.speed_multipliers["fast"])
+            print(f"{Colors.GREEN}Game speed set to Fast.{Colors.RESET}")
+            get_input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
+        elif speed_choice == "4":
+            config.game_speed = "instant"
+            set_game_speed_multiplier(config.speed_multipliers["instant"])
+            print(f"{Colors.GREEN}Game speed set to Instant.{Colors.RESET}")
+            get_input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
+        elif speed_choice == "5":
+            break
+        else:
+            print(f"{Colors.RED}Invalid choice. Try again.{Colors.RESET}")
+            time.sleep(1)
+
 
 
 def strip_ansi(text):
@@ -303,12 +401,25 @@ def timed_input(prompt, timeout, default=None):
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
 
+import config
+
+# Remove local game_speed and game_speed_multiplier variables
+# game_speed_multiplier = 1.0
+
+def set_game_speed_multiplier(multiplier: float):
+    config.game_speed_multiplier = multiplier
+
+_original_sleep = time.sleep
+
+def sleep(duration):
+    _original_sleep(duration * config.game_speed_multiplier)
+
 def typewriter_effect(text, delay=0.02, end="\n"):
-    """Affiche du texte avec un effet de machine à écrire sans retour à la ligne forcé."""
+    """Affiche du texte avec un effet de machine à écrire sans retour à la ligne forcé.""" 
     for char in text:
         sys.stdout.write(char)
         sys.stdout.flush()
-        time.sleep(delay)
+        _original_sleep(delay * config.game_speed_multiplier)
     if end:
         sys.stdout.write(end)
     sys.stdout.flush()
@@ -471,7 +582,7 @@ def loading(duration=4):
 
     while True:
         elapsed = time.time() - start_time
-        if elapsed > duration:
+        if elapsed > duration * config.game_speed_multiplier:
             break
 
         cols, rows = get_terminal_size()
@@ -543,12 +654,12 @@ def choose_difficulty(player):
         else:  # Sinon, on affiche une ligne vide pour le suspense
             print("")
 
-    choice = input(f"{Colors.CYAN}Select your mode: {Colors.RESET}")
+    choice = get_input(f"{Colors.CYAN}Select your mode: {Colors.RESET}", options=list(difficulties.keys()), player=player)
     while True:
         if choice in difficulties:
             break
         print(f"{Colors.RED}Mode locked or invalid choice! Defaulting to Normal.{Colors.RESET}")
-        choice = input("Please retry: ")
+        choice = get_input("Please retry: ", options=list(difficulties.keys()), player=player)
 
     if choice == "1":
         player.mode = NormalMode()
@@ -560,7 +671,7 @@ def choose_difficulty(player):
         print(f"{Colors.RED}Mode locked or invalid choice! Defaulting to Normal.{Colors.RESET}")
         player.mode = NormalMode()
         print(Colors.BLUE, 'Press enter to continue...', Colors.RESET, end="")
-        input()
+        get_input()
 
     logger.debug(f"Difficulty chosed: {player.mode}")  
 
