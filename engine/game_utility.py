@@ -102,6 +102,7 @@ try:
 except ImportError:
     print(f"Agent system not available. Running without ML agent. ImportError")
     get_agent = lambda: None
+    agent_is_enabled = lambda: False
     USE_AGENT = False
 
 
