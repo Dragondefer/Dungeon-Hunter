@@ -1,6 +1,9 @@
 __version__ = "14.0"
 __creation__ = "28-05-2025"
 
+# Dung​e​on​ ​H​u​n​te​r​ ​-​ ​(​c)​ ​Dra​gondef​er​ ​2​02​5
+# Li​c​ense​d​ ​und​er​ ​C​C​-​B​Y​-NC​ 4.​0
+
 class StatusEffect:
     def __init__(self, name, duration, damage_per_turn=0, effect_type="debuff"):
         self.name = name
@@ -122,3 +125,4 @@ def status_effect_from_dict(data):
         instance.__dict__.update(data)
         return instance
     return None
+

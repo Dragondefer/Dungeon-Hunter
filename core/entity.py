@@ -1,6 +1,10 @@
 __version__ = "2460.0"
 __creation__ = "09-03-2025"
 
+# Dungeon Hunter - (c) Dragondefer 2025
+# Licensed under CC BY-NC 4.0
+
+
 # This file contains the core entity classes for the Dungeon Hunter game.
 # Entities include players, enemies, and their stats, skills, and interactions.
 
@@ -15,16 +19,24 @@ import shutil
 import uuid
 from typing import Type
 
+import config
+if config.DEV_AGENT_MODE:
+    try:
+        from ai.reward_engine import try_reward
+        from ai.agent_wrapper import agent_is_enabled
+    except ImportError: pass
+
 from interface.colors import Colors
 from engine.game_utility import (clear_screen, handle_error, typewriter_effect,
                           glitch_text, random_glitch_text, ancient_text,
-                          glitch_burst, timed_input_pattern, strip_ansi)
+                          glitch_burst, timed_input_pattern, strip_ansi,
+                          get_input)
 from items.items import (Item, Equipment, Gear, Weapon, Armor,
                    Ring, Amulet, Belt, Potion)
 # Removed top-level import of data to fix circular import
 # from data import armor_sets, enemy_types, boss_types, achievements, skills_dict, can_send_analytics
 from items.inventory import Inventory
-from items.spells import Spell, Scroll
+from core.spells import Spell, Scroll
 from core.masteries import Mastery
 from core.skills import Skill
 from core.player_class import PlayerClass
@@ -195,6 +207,8 @@ class Stats:
         
         # Mise à jour des stats visibles
         self.update_total_stats()
+
+        if config.DEV_AGENT_MODE: try_reward(value)
 
         if debug >= 1:
             print(f"{Colors.GREEN}{stat_name.capitalize()} changed by {value} in {stat_type}! (Now {self.__dict__.get(stat_name, 'N/A')}){Colors.RESET}")
@@ -398,6 +412,7 @@ class Entity:
 
             return actual_damage
 """
+
 
 #̶̼͝ T̸̻̈́h̵̤͒ë̵͕́ p̵̦̆l̷̫̈́ä̷̪́ÿ̸̡́ë̵͕́r̷͍̈́’s̸̱̅ f̷̠͑ä̷̪́ẗ̴̗́ë̵͕́ i̴̊͜s̸̱̅ ẅ̷̙́r̷͍̈́i̴̊͜ẗ̴̗́ẗ̴̗́ë̵͕́n̸̻̈́ i̴̊͜n̸̻̈́ b̸̼̅l̷̫̈́o̶͙͝o̶͙͝ď̶̙ ä̷̪́n̸̻̈́ď̶̙ c̴̱͝o̶͙͝ď̶̙ë̵͕́.̵͇̆
 
@@ -728,7 +743,7 @@ class Player(Entity):
                 self.inventory.append(item)
 
             self.gold = data["gold"]
-            self.level = data["level"]
+            self.level: int = data["level"]
             self.xp = data["xp"]
             self.max_xp = data["max_xp"]
 
@@ -875,6 +890,7 @@ class Player(Entity):
         # Restore player_class from dict if present
         player_class_data = data.get("player_class")
         if player_class_data:
+            from core.player_class import PlayerClass
             player.player_class = PlayerClass.from_dict(player_class_data)
         else:
             player.player_class = None
@@ -1078,7 +1094,7 @@ class Player(Entity):
             print(f"{Colors.YELLOW}{i}. {slot.capitalize()}: {Colors.BRIGHT_CYAN}{item.name}{Colors.RESET}")
 
         try:
-            choice = int(input(f"\n{Colors.CYAN}Enter the number of the item to unequip (0 to cancel): {Colors.RESET}"))
+            choice = int(get_input(f"\n{Colors.CYAN}Enter the number of the item to unequip (0 to cancel): {Colors.RESET}", options=[str(i) for i in range(len(equipped_items) + 1)], player=self))
             if choice == 0:
                 return
             elif 1 <= choice <= len(equipped_items):
@@ -1092,7 +1108,7 @@ class Player(Entity):
 
     def get_equipment_stats(self):
         global debug
-        debug = 1
+        debug = 0
 
         total_stats = {}
 
@@ -1167,7 +1183,9 @@ class Player(Entity):
 
         if debug >= 1:
             print(f"{Colors.CYAN}DEBUG: Cleared temporary effects and set bonuses.{Colors.RESET}")
-
+            
+        # Du​n​g​e​o​n ​H​u​nt​e​r​ ​- ​(​c​) D​r​a​g​on​d​e​fe​r​ ​2​0​25
+        # L​i​ce​n​s​e​d​ ​un​d​e​r ​C​C​-​B​Y​-​NC​ ​4​.0
         # Dictionnaire cumulé des stats
         total_stats = {}
 
@@ -1317,7 +1335,8 @@ class Player(Entity):
         if self.level in unlockable_classes:
             self.choose_class(self.level, unlockable_classes[self.level])
 
-    def choose_class(self, level, classes):
+    def choose_class(self, level: int, classes: list[PlayerClass]):
+        from core.skills import Skill
         clear_screen()
         print(f"\n{Colors.BRIGHT_YELLOW}{Colors.BOLD}╔══════════════════════════════════════════╗")
         print(f"║     CLASS SPECIALIZATION AVAILABLE!     ║")
@@ -1328,12 +1347,19 @@ class Player(Entity):
             print(f"  {Colors.GREEN}+{player_class.bonuses.get('max_hp', 0)} Max HP{Colors.RESET}")
             print(f"  {Colors.RED}+{player_class.bonuses.get('attack', 0)} Attack{Colors.RESET}")
             print(f"  {Colors.BLUE}+{player_class.bonuses.get('defense', 0)} Defense{Colors.RESET}")
-            print(f"  Skill: {Colors.MAGENTA}{player_class.skill_name}{Colors.RESET}")
+            # Convert skill dict to Skill object for display if needed
+            skill_obj = None
+            if isinstance(player_class.skill_name, dict):
+                skill_obj = Skill.from_dict(player_class.skill_name)
+                skill_display_name = skill_obj.name
+            else:
+                skill_display_name = player_class.skill_name
+            print(f"  Skill: {Colors.MAGENTA}{skill_display_name}{Colors.RESET}")
 
         print(f"\n{Colors.CYAN}[0] Skip class specialization for now{Colors.RESET}")
 
         while True:
-            choice = input(f"\n{Colors.YELLOW}Choose your class (0-{len(classes)}): {Colors.RESET}")
+            choice = get_input(f"\n{Colors.YELLOW}Choose your class (0-{len(classes)}): {Colors.RESET}", options=[str(i) for i in range(len(classes)+1)], player=self, use_agent=agent_is_enabled())
             if choice.isdigit():
                 choice = int(choice)
                 if choice == 0:
@@ -1343,10 +1369,13 @@ class Player(Entity):
                     selected_class = classes[choice - 1]
                     self.player_class = selected_class
                     self.class_name = selected_class.name
+                    # Convert skill dict to Skill object before applying
+                    if isinstance(selected_class.skill_name, dict):
+                        selected_class.skill_name = Skill.from_dict(selected_class.skill_name)
                     selected_class.apply_to_player(self)
                     print(f"\n{Colors.BRIGHT_GREEN}You are now a {self.class_name}!{Colors.RESET}")
-                    print(f"You've learned the {Colors.MAGENTA}{selected_class.skill_name}{Colors.RESET} skill!")
-                    input(f"\n{Colors.YELLOW}Press Enter to continue your adventure...{Colors.RESET}")
+                    print(f"You've learned the {Colors.MAGENTA}{selected_class.skill_name if isinstance(selected_class.skill_name, str) else selected_class.skill_name.name}{Colors.RESET} skill!")
+                    get_input(f"\n{Colors.YELLOW}Press Enter to continue your adventure...{Colors.RESET}")
                     break
                 else:
                     print(f"{Colors.RED}Invalid choice. Please enter a number between 0 and {len(classes)}.{Colors.RESET}")
@@ -1994,9 +2023,9 @@ class Player(Entity):
             print(f"{Colors.MAGENTA}S. Search Items{Colors.RESET}")
             print(f"{Colors.BLUE}O. Set Sort Order{Colors.RESET}")
             print(f"{Colors.YELLOW}B. Back{Colors.RESET}")
-            
-            choice = input(f"\n{Colors.CYAN}What would you like to do? {Colors.RESET}").upper()
-            
+
+            choice = get_input(f"\n{Colors.CYAN}What would you like to do? {Colors.RESET}", options=["U", "E", "B"], player=self, use_agent=agent_is_enabled()).upper()
+
             if choice == "B":
                 managing = False
             
@@ -2025,7 +2054,7 @@ class Player(Entity):
 
             elif choice == "U":
                 try:
-                    item_index = int(input(f"\n{Colors.CYAN}Enter item number to use/equip: {Colors.RESET}")) - 1
+                    item_index = int(get_input(f"\n{Colors.CYAN}Enter item number to use/equip: {Colors.RESET}", options=[str(i) for i in range(1, len(sorted_inventory) + 1)], player=self)) - 1
                     if 0 <= item_index < len(sorted_inventory):
                         item = sorted_inventory[item_index]
                         
@@ -2304,7 +2333,7 @@ class Player(Entity):
             "explorationDepthByDifficulty": self.explorationDepthByDifficulty,
             "puzzleSuccessRateOverTime": self.puzzleSuccessRateOverTime,
             "bossEncounterOutcomes": self.bossEncounterOutcomes,
-            "purchased_items": self.purchased_items, # Need to be processed
+            "purchased_items": {str(k): v for k, v in self.purchased_items.items()}, # Convert keys to strings for JSON serialization
             "goldSpendingPatterns": self.goldSpendingPatterns,
             "equipmentUsageByType": self.equipmentUsageByType,
             "shopVisitFrequency": self.shopVisitFrequency,
@@ -2623,6 +2652,9 @@ def generate_enemy(level:int, is_boss:bool, player: Player):
 
     # Création de l'objet Enemy avec le type correspondant
     return Enemy(name, enemy_data["type"], hp, attack, defense, xp_reward, gold_reward, difficulty)
+
+# D‌un‍ge​o​n​ ‌H​u​n‌t‍e​r​ ‌-​ ​(​c​)‌ ‌Dr​ag‍o​n​d‌e‍f​er ​20​2​5
+# L‍ice​n​s​e‍d​ ‌u‌n‍d‍e‌r‌ ‌CC-​B​Y-​N​C ​4​.0
 
 
 if __name__ == '__main__':

@@ -1,6 +1,10 @@
 __version__ = "82.0"
 __creation__ = "13-03-2025"
 
+# Du​n​g​e​o​n​ ​H​u​nt​e​r​ ​-​ ​(​c​)​ ​D​r​ag​o​n​de​f​er​ ​2​02​5
+# L​i​ce​n​s​e​d​ u​n​d​e​r​ ​C​C​-​BY​-​NC​ ​4​.​0
+
+
 from datetime import datetime
 import time
 
@@ -94,7 +98,7 @@ WARNING_MESSAGES = [
 
 DREAD_MESSAGES = [
     "The final boss is watching you... or maybe not.",
-    "The final boss is not a boss. It's a watcher.",
+    "The final boss is not a boss.",
     "You are not the player. You are the prey.",
     "End of line... or just the beginning?",
     "End of file... or the end of you?",
@@ -168,3 +172,4 @@ FINAL_MESSAGES = [
 ║ It is now safe to resume reading.          ║
 ╚════════════════════════════════════════════╝
 """
+

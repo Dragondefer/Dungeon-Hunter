@@ -1,6 +1,9 @@
 __version__ = "87.0"
 __creation__ = "09-03-2025"
 
+# D​u​n​g​e​on​ ​H​u​n​t​e​r​ ​-​ ​(​c)​ ​D​ra​g​o​n​de​f​e​r​ ​2​02​5
+# L​i​c​e​n​se​d​ ​u​n​d​er​ ​C​C​-​B​Y​-​NC​ ​4.​0
+
 import time
 
 from interface.colors import Colors
@@ -158,3 +161,4 @@ class Event:
     def trigger(self, player):
         print(self.description)
         self.effect(player)
+

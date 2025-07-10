@@ -7,6 +7,9 @@ if TYPE_CHECKING:
 __version__ = "10.0"
 __creation__ = "06-06-2025"
 
+# D​u​ng​e​on​ ​H​un​t​e​r​ ​-​ ​(​c)​ ​Dra​g​on​de​f​e​r​ ​2​02​5
+# L​i​c​e​nse​d​ ​u​n​d​er ​C​C​-​B​Y​-​NC​ ​4.​0
+
 from interface.colors import Colors
 from engine.game_utility import timed_input_pattern
 
@@ -93,3 +96,4 @@ class Skill:
 
         print(f"{Colors.GREEN}{self.name} activated!{Colors.RESET}")
         return self.damage_multiplier * input_multiplier
+

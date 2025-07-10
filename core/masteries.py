@@ -1,6 +1,9 @@
 __version__ = "19.0"
 __creation__ = "29-05-2025"
 
+# Du​n​g​e​o​n ​H​u​nt​e​r​ ​- ​(​c​) D​r​a​g​on​d​e​fe​r​ ​2​0​25
+# L​i​ce​n​s​e​d​ ​un​d​e​r ​C​C​-​B​Y​-​NC​ ​4​.0
+
 class Mastery:
     def __init__(self, name, xp=0, level=1):
         self.name = name
@@ -44,4 +47,5 @@ class Mastery:
             bonus_dmg = 1 + 0.05 * (self.level - 1)
             bonus_acc = 0.02 * (self.level - 1)
             return {"damage_multiplier": bonus_dmg, "accuracy": bonus_acc}
+
 
