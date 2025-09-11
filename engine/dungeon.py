@@ -1,4 +1,4 @@
-__version__ = "1870.0"
+__version__ = "1884.0"
 __creation__ = "09-03-2025"
 
 # D​u​n​ge​o​n​ ​H​un​t​e​r​ ​-​ ​(​c​)​ ​D​r​ag​o​n​de​fer​ 2​0​2​5
@@ -12,7 +12,11 @@ if config.DEV_AGENT_MODE:
     try:
         from ai.reward_engine import try_reward
         from ai.agent_wrapper import get_agent, _qtable_path, _memory_path
-    except ImportError: pass
+    except ImportError:
+        try_reward = lambda *args, **kwargs: None
+        get_agent = lambda *args, **kwargs: None
+        _qtable_path = None
+        _memory_path = None
 
 
 from engine.game_utility import (clear_screen, typewriter_effect,
@@ -110,7 +114,7 @@ class Room:
     def __repr__(self): # str brut / techinique pour debug
         return f"\nRoom(type={self.room_type}, description={self.description}, enemies={self.enemies}, items={self.items}, trap={self.trap})"
 
-    def enter(self, player):
+    def enter(self, player: Player):
         global debug
         if debug >= 1:
             print(f"{Colors.YELLOW}DEBUG: Entering room of type '{self.room_type}' with description: {self.description}{Colors.RESET}")
@@ -170,7 +174,7 @@ class Room:
         
         self.trap["triggered"] = True
         
-    def handle_room(self, player):
+    def handle_room(self, player: Player):
         global debug
 
         if debug >= 1:
@@ -530,148 +534,27 @@ class Room:
         player.combat_encounters += 1
         import math
 
-        def display_combat_status():
-            clear_screen()
-            # Display player status box similar to player.display_status with fixed box template and colored bars
-            box_len = 48
-            def create_bar(current, maximum, length=30, color=Colors.WHITE):
-                ratio = current / maximum if maximum > 0 else 0
-                filled = int(length * ratio)
-                bar = color + "█" * filled + Colors.RESET + "░" * (length - filled)
-                return bar
-
-            # Print fixed box template with yellow outlines
-            print(f"\n{Colors.YELLOW}╔═════════════════ {Colors.BOLD}COMBAT STATUS{Colors.RESET}{Colors.YELLOW} ═════════════════╗{Colors.RESET}")
-            print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # Player Name Placeholder
-            print(f"{Colors.YELLOW}╠{'═' * (box_len + 1)}╣{Colors.RESET}")
-            print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # HP Text Placeholder
-            print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # HP Bar Placeholder
-            print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # Stamina Text Placeholder
-            print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # Stamina Bar Placeholder
-            print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # Mana Text Placeholder
-            print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # Mana Bar Placeholder
-            print(f"{Colors.YELLOW}╠{'═' * (box_len + 1)}╣{Colors.RESET}")
-            print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # Enemy Name Placeholder
-            print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # Enemy HP Text Placeholder
-            print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # Enemy HP Bar Placeholder
-            print(f"{Colors.YELLOW}╚{'═' * (box_len + 1)}╝{Colors.RESET}")
-
-
-            # Move cursor back up to fill in the details (number of lines + 1)
-            print("\033[14A")
-
-            # Player Name
-            name_line = f"{player.name} the {player.class_name}"
-            print(f"\r{Colors.YELLOW}║ {Colors.BRIGHT_WHITE}{name_line.ljust(box_len)}{Colors.RESET}")
-
-            # Skip separator line
-            print("\033[1B", end="")
-
-            # HP
-            hp_text = f"HP: {player.stats.hp}/{player.stats.max_hp}"
-            hp_bar = create_bar(player.stats.hp, player.stats.max_hp, length=45, color=Colors.RED)
-            print(f"\r{Colors.YELLOW}║ {Colors.RED}{hp_text.ljust(box_len)}{Colors.RESET}")
-            print(f"\r{Colors.YELLOW}║ {hp_bar.ljust(box_len)}{Colors.RESET}")
-
-            # Stamina
-            stamina_text = f"Stamina: {player.stats.stamina}/{player.stats.max_stamina}"
-            stamina_bar = create_bar(player.stats.stamina, player.stats.max_stamina, length=45, color=Colors.YELLOW)
-            print(f"\r{Colors.YELLOW}║ {Colors.YELLOW}{stamina_text.ljust(box_len)}{Colors.RESET}")
-            print(f"\r{Colors.YELLOW}║ {stamina_bar.ljust(box_len)}{Colors.RESET}")
-
-            # Mana
-            mana_text = f"Mana: {player.stats.mana}/{player.stats.max_mana}"
-            mana_bar = create_bar(player.stats.mana, player.stats.max_mana, length=45, color=Colors.BRIGHT_BLUE)
-            print(f"\r{Colors.YELLOW}║ {Colors.BRIGHT_BLUE}{mana_text.ljust(box_len)}{Colors.RESET}")
-            print(f"\r{Colors.YELLOW}║ {mana_bar.ljust(box_len)}{Colors.RESET}")
-
-            logger.info(f"Player: {player.stats.hp}/{player.stats.max_hp} hp, {player.stats.stamina}/{player.stats.max_stamina} stm, {player.stats.mana}/{player.stats.max_mana} mana")
-
-            # Skip separator line
-            print("\033[1B", end="")
-
-            # Enemy Name
-            enemy_name_line = f"Enemy: {enemy.name}"
-            print(f"\r{Colors.YELLOW}║ {Colors.BRIGHT_WHITE}{enemy_name_line.ljust(box_len)}{Colors.RESET}")
-
-            # Enemy HP
-            enemy_hp_text = f"HP: {enemy.stats.hp}/{enemy.stats.max_hp}"
-            enemy_hp_bar = create_bar(enemy.stats.hp, enemy.stats.max_hp, length=45, color=Colors.RED)
-            print(f"\r{Colors.YELLOW}║ {Colors.RED}{enemy_hp_text.ljust(box_len)}{Colors.RESET}")
-            print(f"\r{Colors.YELLOW}║ {enemy_hp_bar.ljust(box_len)}{Colors.RESET}")
-
-            logger.info(f"{enemy.name}: {enemy.stats.hp}/{enemy.stats.max_hp} hp")
-
-            # Bottom border
-            print(f"{Colors.YELLOW}╚{'═' * (box_len + 1)}╝{Colors.RESET}")
-
-        if tutorial is True and not self.enemies:
-            if is_boss_room is False:
-                if debug>=1: print("tutorial enemy generating")
-                self.enemies.append(generate_enemy(player.dungeon_level, False, player))
-                self.enemies[0].name = "Tutorial Goblin"
-                self.enemies[0].stats.max_hp *= 2
-                self.enemies[0].stats.hp *= 2
-                self.enemies[0].stats.update_total_stats()
-                if debug>=1: print("enemy generated:", self.enemies)
-            
-            elif is_boss_room is True:
-                if debug>=1: print("tutorial boss generating")
-                self.enemies.append(generate_enemy(player.dungeon_level, True, player))
-                if debug>=1: print("boss generated:", self.enemies)
-
-        elif not self.enemies and tutorial is False:
+        player.mode._prepare_tutorial_enemy(player, self, is_boss_room, tutorial)
+        if not self.enemies and tutorial is False:
             print(f"{Colors.GREEN}The room is empty.{Colors.RESET}")
             return True
-        
-        if tutorial is True:
-            if is_boss_room is False:
-                typewriter_effect(f"\n[Assistant]: {Colors.GREEN}In this tutorial, you will learn the basics of combat{Colors.RESET}", 0.03 * config.game_speed_multiplier)
-                sleep(0.5)
-                typewriter_effect(f"[Assistant]: {Colors.GREEN}During combat, you have to manage your Health, Stamuina and Mana.{Colors.RESET}", 0.04 * config.game_speed_multiplier)
-                sleep(0.5)
-            else:
-                typewriter_effect(f"\n[Assistant]: {Colors.GREEN}This is your first combat against a boss.{Colors.RESET}", 0.05 * config.game_speed_multiplier)
-                sleep(0.5)
-                typewriter_effect(f"[Assistant]: {Colors.GREEN}Don't worry, i will help you if needed.{Colors.RESET}", 0.05 * config.game_speed_multiplier)
-                sleep(0.5)
+
+        player.mode._show_tutorial_intro(is_boss_room)
 
         enemy = self.enemies[0]
         get_input(f'\n{Colors.BOLD}{Colors.RED}Press enter to begin the combat{Colors.RESET}')
         sleep(0.3)
         clear_screen()
 
-        if is_boss_room:
-            logger.info(f"Boss Enconter: {enemy.name}")
-            print(f"\n{Colors.RED}{Colors.BOLD}╔══════════════════════════════════════════╗")
-            print(f"║              BOSS ENCOUNTER              ║")
-            print(f"╚══════════════════════════════════════════╝{Colors.RESET}")
-            typewriter_effect(f"\n{Colors.RED}{Colors.BOLD}The {enemy.name} emerges from the shadows!{Colors.RESET}", 0.03 * config.game_speed_multiplier)
-            sleep(1)
-        else:
-            logger.info(f"Enemy enconter: {enemy.name}")
-            print(f"\n{Colors.RED}A {enemy.name} appears!{Colors.RESET}")
-            sleep(0.5)
+        player.mode._intro_message(enemy, is_boss_room)
         
         one_time_message = True
 
         while enemy.is_alive() and player.is_alive():
-            display_combat_status()
+            player.mode._display_combat_status(player, enemy)
 
             if tutorial is True and one_time_message is True:
-                if is_boss_room is False:
-                    typewriter_effect(f"\n[Assistant]: {Colors.GREEN}You can attack, use skills, or items during your turn.{Colors.RESET}", 0.03 * config.game_speed_multiplier)
-                    sleep(0.5)
-                    typewriter_effect(f"[Assistant]: {Colors.GREEN}You can also try to run away from the fight.{Colors.RESET}", 0.03 * config.game_speed_multiplier)
-                else:
-                    typewriter_effect(f"\n[Assistant]: {Colors.GREEN}The boss is strong, be careful.{Colors.RESET}", 0.03 * config.game_speed_multiplier)
-                    sleep(0.5)
-                    """
-                    typewriter_effect(f"[Assistant]: {Colors.GREEN}You arn't alone..{Colors.RESET}", 0.03, "")
-                    sleep(0.5)
-                    typewriter_effect(f"{Colors.GREEN}for now.{Colors.RESET}", 0.03)
-                    sleep(0.5)
-                    """
+                player.mode._show_action_tutorial(is_boss_room)
                 one_time_message = False
                 sleep(1)
 
@@ -686,25 +569,7 @@ class Room:
                 print(f"{Colors.BRIGHT_YELLOW}4. Try to Run{Colors.RESET}")
 
             if tutorial is True:
-                if player.stats.hp < player.stats.max_hp / 2:
-                    typewriter_effect(f"\n[Assistant]: {Colors.RED}You are low on health, be carful.{Colors.RESET}", 0.03 * config.game_speed_multiplier)
-                    typewriter_effect(f"[Assistant]: {Colors.BLUE}Requesting permission..{Colors.RESET}", 0.05 * config.game_speed_multiplier)
-                    loading(2)
-                    typewriter_effect(f"[Assistant]: {Colors.GREEN}Permission allowed, executing command...{Colors.RESET}\n", 0.03 * config.game_speed_multiplier)
-                    sleep(1)
-                    execute_command("player.heal(999)", allowed=True, prnt=True, context={"player": player})
-                    sleep(0.5)
-                    typewriter_effect(f"\n[Assistant]: {Colors.GREEN}Player healed successfully..{Colors.RESET}", 0.03 * config.game_speed_multiplier)
-                if player.stats.stamina < player.stats.max_stamina / 2:
-                    typewriter_effect(f"\n[Assistant]: {Colors.RED}You seem exausted.{Colors.RESET}", 0.03 * config.game_speed_multiplier)
-                    typewriter_effect(f"[Assistant]: {Colors.BLUE}Requesting permission..{Colors.RESET}", 0.05 * config.game_speed_multiplier)
-                    loading(2)
-                    typewriter_effect(f"[Assistant]: {Colors.GREEN}Permission allowed, executing command...{Colors.RESET}\n", 0.03 * config.game_speed_multiplier)
-                    sleep(1)
-                    execute_command("player.rest_stamina(999)", allowed=True, prnt=True, context={"player": player})
-                    sleep(0.5)
-                    typewriter_effect(f"\n[Assistant]: {Colors.GREEN}Player rested successfully...{Colors.RESET}", 0.03 * config.game_speed_multiplier)
-                    
+                player.mode._auto_heal_rest(player) # Heal/Rest the player if his hp/stamina is under 50% 
 
             options = ["1", "3", "4"]
             if player.skills:
@@ -861,6 +726,8 @@ class Room:
                     print(f"\n{Colors.RED}A {enemy.name} appears !{Colors.RESET}")
                     sleep(0.5)
                 else:
+                    if not player.is_alive():
+                        player.increment_deaths_in_room(player.mode.name, player.current_room_number)
                     return True
 
             # Enemy turn
@@ -872,6 +739,8 @@ class Room:
                 else:
                     enemy.attack_player(player)
                 sleep(1.5)
+        if not player.is_alive():
+            player.increment_deaths_in_room(player.mode.name, player.current_room_number)
         return player.is_alive()
 
     
@@ -1348,8 +1217,8 @@ class Room:
         if config.DEV_AGENT_MODE:
             agent = get_agent()
             if agent:
-                agent.save_q_table(_qtable_path)
-                agent.save_memory_data(_memory_path)
+                agent.save_q_table(_qtable_path if _qtable_path else "")
+                agent.save_memory_data(_memory_path if _memory_path else "")
 
         clear_screen()
         sleep(1)
@@ -1544,7 +1413,7 @@ def generate_dungeon(player:Player) -> list[Room]:
     debug = 0
     dungeon_level = player.dungeon_level
     difficulty = player.mode
-    rooms = []
+    rooms: list[Room] = []
     if debug >= 1:
         print(f"{Colors.YELLOW}DEBUG: Generating dungeon level {dungeon_level} with difficulty {difficulty}{Colors.RESET}")
     logger.info(f"Starting dungeon generation for level {dungeon_level} with difficulty {difficulty}")
