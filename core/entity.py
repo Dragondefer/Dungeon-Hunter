@@ -1,4 +1,9 @@
-__version__ = "2460.0"
+from __future__ import annotations
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from core.progression import Quest
+
+__version__ = "2492.0"
 __creation__ = "09-03-2025"
 
 # Dungeon Hunter - (c) Dragondefer 2025
@@ -15,7 +20,7 @@ import random
 import time
 import json
 import os
-import shutil
+from shutil import get_terminal_size
 import uuid
 from typing import Type
 
@@ -24,7 +29,9 @@ if config.DEV_AGENT_MODE:
     try:
         from ai.reward_engine import try_reward
         from ai.agent_wrapper import agent_is_enabled
-    except ImportError: pass
+    except ImportError:
+        try_reward = lambda value: None
+        agent_is_enabled = lambda: None
 
 from interface.colors import Colors
 from engine.game_utility import (clear_screen, handle_error, typewriter_effect,
@@ -100,7 +107,6 @@ class Stats:
         # Initialisation des stats visibles
         self.update_total_stats()
 
-
     def __repr__(self):
         """Affiche les stats avec permanent, temporaire et équipement."""
         # Affichage structuré
@@ -109,7 +115,6 @@ class Stats:
             f"Temporary: {self.temporary_stats}\n"
             f"Equipment: {self.equipment_stats}\n"
         )
-
     
     def __getattr__(self, key):
         """Permet d'accéder directement à la valeur combinée des stats permanentes et temporaires."""
@@ -532,7 +537,7 @@ class Player(Entity):
 
         self.class_name = "Novice"
         self.profession = None
-        self.quests = []
+        self.quests: list[Quest] = []
         self.completed_quests = []
         from data import achievements
         self.achievements = achievements
@@ -1395,7 +1400,7 @@ class Player(Entity):
             return True
         return False
     
-    def use_skill(self, target):
+    def use_skill(self, target:Entity):
         if not self.skills:
             print(f"{Colors.RED}You don't have any skills yet!{Colors.RESET}")
             return 0
@@ -1503,7 +1508,7 @@ class Player(Entity):
             f"{Colors.BRIGHT_BLUE}{Colors.BOLD}╚═════════════════════════════╝{Colors.RESET}"
         ]
 
-        columns = shutil.get_terminal_size().columns
+        columns = get_terminal_size().columns
         line_count = len(lines)
 
         # Revenir en haut du bloc si déjà imprimé
