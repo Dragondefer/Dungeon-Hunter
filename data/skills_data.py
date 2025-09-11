@@ -1,4 +1,7 @@
-skills_dict = {
+# Dungeon Hunter - (c) Dragondefer 2025
+# Licensed under CC BY-NC 4.0
+
+skills_dict_raw = {
     "Berserk Rage": {
         "name": "Berserk Rage",
         "description": "Unleash a furious attack.",
@@ -42,3 +45,4 @@ skills_dict = {
         "cost": {"stamina": 5}
     },
 }
+

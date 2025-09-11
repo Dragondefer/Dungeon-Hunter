@@ -1,3 +1,6 @@
+# Dungeon Hunter - (c) Dragondefer 2025
+# Licensed under CC BY-NC 4.0
+
 import random
 
 # Rooms
@@ -46,6 +49,9 @@ room_descriptions = {
         "a sacred chamber corrupted by dark forces",
         "an ancient battlefield where a powerful entity awaits",
         "a sealed vault, obviously containing something dangerous"
+    ],
+    "Training": [
+        "In this chamber lies an ancient training dummy, used by past adventurers.",
     ]
 }
 
@@ -76,3 +82,4 @@ puzzle_choices = [
         }
     }
 ]
+
