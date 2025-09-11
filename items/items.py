@@ -4,8 +4,11 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from core.entity import Player
 
-__version__ = "747.0"
+__version__ = "765.0"
 __creation__ = "09-03-2025"
+
+# Dungeon Hunter - (c) DragonDeFer 2025
+# Licensed under CC BY-NC 4.0
 
 import random
 
@@ -218,48 +221,99 @@ class Equipment:
         return {slot: item for slot, item in self.slots.items() if item}
 
 
+class WeaponAttack:
+    def __init__(self, name, power:float, cost:dict[str, int]={}, description="", status_effects=None):
+        self.name = name              # nom de l'attaque
+        self.power = power            # puissance relative (ex: x1.2)
+        # cost can be a dict like {"stamina": 10, "hp": 5} or any other resource
+        self.cost = cost
+        self.description = description
+        self.status_effects = status_effects or []  # list of status effects applied by this attack
+
+    def __str__(self):
+        cost_str = ", ".join(f"{k}: {v}" for k, v in self.cost.items()) if self.cost else "No cost"
+        status_str = ", ".join(self.status_effects) if self.status_effects else "No status effects"
+        return f"{self.name} (x{self.power}, cost: {cost_str}, status effects: {status_str})"
+
+
 #̶̼͝ B̵̕͜ë̵͕́ẅ̷̙́ä̷̪́r̷͍̈́ë̵͕́:̴̨͝ W̸͕̆ë̵͕́ä̷̪́p̵̦̆o̶͙͝n̸̻̈́s̸̱̅ m̴̛̠ä̷̪́ÿ̸̡́ ẗ̴̗́h̵̤͒i̴̊͜r̷͍̈́s̸̱̅ẗ̴̗́ f̷̠͑o̶͙͝r̷͍̈́ b̸̼̅l̷̫̈́o̶͙͝o̶͙͝ď̶̙ b̸̼̅ë̵͕́ÿ̸̡́o̶͙͝n̸̻̈́ď̶̙ ẗ̴̗́h̵̤͒ë̵͕́ ẅ̷̙́i̴̊͜ë̵͕́l̷̫̈́ď̶̙ë̵͕́r̷͍̈́'̸̱̅s̸̱̅ c̴̱͝o̶͙͝n̸̻̈́ẗ̴̗́r̷͍̈́o̶͙͝l̷̫̈́.̵͇̆
 class Weapon(Gear):
     """
     Représente une arme équipable qui augmente les dégâts d'attaque.
     Hérite de Gear pour être compatible avec le système d'équipement.
     """
-    def __init__(self, name, description, value, damage, attacks=None):
+    def __init__(self, name, description, value, damage, attacks=None, upgrade_level=0):
         super().__init__(name, description, value, {"attack": damage})
-        self.damage = damage
-        self.attacks = attacks or []  # List of tuples (attack name, attack function)
-        logger.debug(f"Weapon created: {self.name} with damage {self.damage} and special attacks {self.attacks}")
+        self.damage: int = damage
+        # attacks is now a list of WeaponAttack instances
+        self.attacks: list[WeaponAttack] = attacks or []  # List[WeaponAttack]
+        self.upgrade_level: int = upgrade_level
+        logger.debug(f"Weapon created: {self.name} with damage {self.damage} and special attacks {[str(a) for a in self.attacks]} at upgrade level {self.upgrade_level}")
     
     def __str__(self):
-        attacks_str = ", ".join([name for name, _ in self.attacks]) if self.attacks else "None"
-        return f"{self.name} - {self.description} (Damage: +{self.damage}, Special Attacks: {attacks_str}, Value: {self.value} gold)"
+        attacks_str = ", ".join([attack.name for attack in self.attacks]) if self.attacks else "None"
+        upgrade_str = f" +{self.upgrade_level}" if self.upgrade_level > 0 else ""
+        return f"{self.name}{upgrade_str} - {self.description} (Damage: +{self.damage}, Special Attacks: {attacks_str}, Value: {self.value} gold)"
     
     def to_dict(self):
         """Convertit l'arme en dictionnaire pour la sauvegarde."""
         data = super().to_dict()
         data["extra"]["damage"] = self.damage
-        # Save only the names of special attacks for serialization
-        data["special"] = [name for name, _ in self.attacks]
+        data["extra"]["upgrade_level"] = self.upgrade_level
+        # Save the attacks as list of dicts
+        data["extra"]["attacks"] = [
+            {
+                "name": attack.name,
+                "power": attack.power,
+                "cost": attack.cost,
+                "description": attack.description,
+                "status_effects": attack.status_effects
+            }
+            for attack in self.attacks
+        ]
         return data
     
     @classmethod
     def from_dict(cls, data):
         """Crée une arme à partir d'un dictionnaire sans modifier le format général."""
         extras = data.get("extra", {})
-        special_attack_names = data.get("special_attacks", [])
-        # Import special_attacks_dict from data module to map names to functions
-        from data import special_attacks_dict
-        attacks = [(name, special_attacks_dict.get(name)) for name in special_attack_names if name in special_attacks_dict]
+        attacks_data = extras.get("attacks", [])
+        attacks = []
+        for ad in attacks_data:
+            attack = WeaponAttack(
+                name=ad.get("name", ""),
+                power=ad.get("power", 1),
+                cost=ad.get("cost", {}),
+                description=ad.get("description", ""),
+                status_effects=ad.get("status_effects", [])
+            )
+            attacks.append(attack)
         return Weapon(
             data["name"],
             data["description"],
             data["value"],
             extras.get("damage", 0),
-            attacks=attacks
+            attacks=attacks,
+            upgrade_level=extras.get("upgrade_level", 0)
         )
     
     def get_mastery_key(self):
         return f"weapon::{self.__class__.__name__}"
+
+    def upgrade(self, upgrade_data):
+        """
+        Upgrade the weapon based on upgrade_data dict containing:
+        - 'damage_increase': int
+        - 'new_name_suffix': str (e.g., '+1')
+        """
+        self.damage += upgrade_data.get("damage_increase", 0)
+        self.upgrade_level += 1
+        suffix = upgrade_data.get("new_name_suffix", f"+{self.upgrade_level}")
+        if suffix not in self.name:
+            self.name = f"{self.name} {suffix}"
+
+    def get_upgrade_level(self):
+        return self.upgrade_level
 
 # New weapon subclasses with class bonuses
 class Sword(Weapon):
@@ -482,6 +536,10 @@ potion_list = (
     Potion("Small Health Potion", "A tiny vial of red liquid", 10, "heal", 20)
 )    
 
+# D​un​g​e​o​n​ ​Hu​n​te​r​ ​-​ ​(c​)​ ​D​r​ag​on​de​fe​r​ ​2​02​5
+# L​i​ce​n​s​e​d​ u​n​d​er​ ​C​C​-B​Y​-​N​C ​4​.​0
+
+
 def random_combat_description():
     return random.choice([
     "a dimly lit chamber with strange markings on the walls",
@@ -611,6 +669,34 @@ def get_enemy_set_info(enemy_type):
         }
     return {"armor": "", "weapon": ""}
 
+# Add a dictionary mapping weapon types to default WeaponAttack instances
+default_weapon_attacks = {
+    "Sword": [
+        WeaponAttack(name="Slash", power=1.2, cost={"stamina": 10}, description="A quick slash attack."),
+        WeaponAttack(name="Heavy Strike", power=1.5, cost={"stamina": 20}, description="A powerful heavy strike.", status_effects=["stun"])
+    ],
+    "Axe": [
+        WeaponAttack(name="Chop", power=1.3, cost={"stamina": 15}, description="A strong chopping attack."),
+        WeaponAttack(name="Cleave", power=1.6, cost={"stamina": 25}, description="A wide cleave attack hitting multiple enemies.")
+    ],
+    "Dagger": [
+        WeaponAttack(name="Stab", power=1.1, cost={"stamina": 8}, description="A quick stabbing attack."),
+        WeaponAttack(name="Poisoned Blade", power=1.2, cost={"stamina": 12}, description="A stab with poison effect.", status_effects=["poison"])
+    ],
+    "Mace": [
+        WeaponAttack(name="Smash", power=1.4, cost={"stamina": 18}, description="A heavy smashing attack."),
+        WeaponAttack(name="Crush", power=1.7, cost={"stamina": 30}, description="A crushing blow that can stun.", status_effects=["stun"])
+    ],
+    "Staff": [
+        WeaponAttack(name="Magic Bolt", power=1.3, cost={"mana": 15}, description="A bolt of magical energy."),
+        WeaponAttack(name="Arcane Blast", power=1.8, cost={"mana": 30}, description="A powerful arcane explosion.", status_effects=["mana_boost"])
+    ],
+    "Bow": [
+        WeaponAttack(name="Arrow Shot", power=1.2, cost={"stamina": 10}, description="A precise arrow shot."),
+        WeaponAttack(name="Power Shot", power=1.6, cost={"stamina": 20}, description="A powerful shot that pierces armor.")
+    ]
+}
+
 def create_weapon(level, rarity, prefix, weapon_type, value_base, rarity_data, special_attacks=None):
     """Create a weapon item."""
     multipliers = rarity_data["multipliers"]
@@ -627,7 +713,17 @@ def create_weapon(level, rarity, prefix, weapon_type, value_base, rarity_data, s
     colored_name = colors[rarity_key](name) if callable(colors[rarity_key]) else f"{colors[rarity_key]}{name}{Colors.RESET}"
     
     desc = f"A level {level} {prefix} weapon"
-    return Weapon(colored_name, desc, value_base, damage, attacks=special_attacks)
+    
+    # Use default attacks for weapon_type if special_attacks not provided
+    attacks = []
+    if special_attacks:
+        for attack_name, attack_func in special_attacks:
+            # Create WeaponAttack with default cost and description
+            attacks.append(WeaponAttack(name=attack_name, power=1.0, cost={}, description="Special attack", status_effects=[]))
+    else:
+        attacks = default_weapon_attacks.get(weapon_type, [])
+    
+    return Weapon(colored_name, desc, value_base, damage, attacks=attacks)
 
 def create_armor(level, rarity, prefix, armor_type, value_base, rarity_data, armor_set_type=""):
     """Create an armor item."""
@@ -672,6 +768,9 @@ def create_accessory(level, rarity, prefix, item_type, value_base, rarity_data):
         desc = "A sturdy belt that enhances movement speed"
         colored_name = colors[rarity](name) if callable(colors[rarity]) else f"{colors[rarity]}{name}{Colors.RESET}"
         return Belt(colored_name, desc, value_base, effect)
+
+# D‌u​n‍g​e​o​n​ ‌H​u​n‌t‍e​r​ ‌-​ ‌(c)‌ ‌D​rag‍o​n​d‌e‍f​e‍r ​2‍02​5
+# L‍i‍c​en​s​e‍d​ ‌u‌n‍d‍e‌r‌ ‌C​C-​BY-​N​C ​4​.0
 
 def create_potion(level, rarity, prefix, item_name, value_base, rarity_data):
     """Create a potion item."""
@@ -719,17 +818,19 @@ def generate_random_item(player:Player, enemy=None, item_type=None, rarity=None,
     # Get difficulty-specific rarity boost if not provided
     if rarity_boost is None:
         rarity_boost = difficulty.get_rarity_boost()
-    
+
+    # D​un​g​e​o​n​ ​Hu​n​t​e​r​ ​-​ ​(​c​)​ ​D​r​ag​o​nd​ef​e​r​ ​2​0​2​5
     # Determine available rarities based on player and difficulty
     if available_rarities is None:
         available_rarities = get_available_rarities(player, difficulty, level, rarity)
-    
+
     # Calculate item rarity
     rarity = calculate_rarity(available_rarities, rarity_boost, rarity)
     
     # Get rarity-related data (multipliers, colors, prefixes)
     rarity_data = get_rarity_data()
     
+    # L​i​ce​n​s​e​d​ u​n​de​r​ ​C​C-​B​Y​-N​C​ ​4​.​0
     # Get a random prefix based on rarity
     prefix = random.choice(rarity_data["prefixes"].get(rarity, [""]))
     
@@ -913,3 +1014,4 @@ def display_inventory(player):
                 logger.warning(f"Invalid number input: {e}")
                 print(f"{Colors.RED}Please enter a valid number.{Colors.RESET}")
                 input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
+
