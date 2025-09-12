@@ -312,7 +312,12 @@ class Room:
 
     def handle_riddle(self, player):
         """Managing a riddle."""
-        from ai.agent_wrapper import USE_AGENT
+        if config.DEV_AGENT_MODE:
+            try:
+                from ai.agent_wrapper import USE_AGENT
+            except ImportError:
+                USE_AGENT = False
+
         riddles = [
             {"question": "I speak without a mouth and hear without ears. I have no one, but I live with the wind. Who am I?", "answer": "echo"},
             {"question": "The more you take, the more you leave behind. What am I?", "answer": "footprint"},
@@ -346,7 +351,11 @@ class Room:
     
     
     def handle_dice_puzzle(self, player):
-        from ai.agent_wrapper import USE_AGENT
+        if config.DEV_AGENT_MODE:
+            try:
+                from ai.agent_wrapper import USE_AGENT
+            except ImportError:
+                USE_AGENT = False
         print(f"\n{Colors.CYAN}You find a strange dice game set up on a table.{Colors.RESET}")
         print(f"{Colors.YELLOW}The rules state:{Colors.RESET}")
         print(f"{Colors.YELLOW}Roll three dice. If their sum is greater than 10, you win a prize.{Colors.RESET}")
@@ -531,6 +540,12 @@ class Room:
 
     def handle_combat(self, player:Player, is_boss_room=False, tutorial=False):
         """Gère un combat, normal ou contre un boss, de manière optimisée avec timing-based mechanic et UI améliorée."""
+        if config.DEV_AGENT_MODE:
+            try:
+                from ai.agent_wrapper import USE_AGENT
+            except ImportError:
+                USE_AGENT = False
+        
         player.combat_encounters += 1
         import math
 
@@ -574,7 +589,8 @@ class Room:
             options = ["1", "3", "4"]
             if player.skills:
                 options.insert(1, "2")
-            from ai.agent_wrapper import USE_AGENT
+
+
             choice = get_input(f"\n{Colors.CYAN}What will you do? {Colors.RESET}", options=options, player=player)
 
             if choice == "1":  # Normal attack without timing mechanic (simpler)
