@@ -664,7 +664,7 @@ class Player(Entity):
         return None  # Invalid move
 
     def dodge_chance(self, last_attack: WeaponAttack | None = None):
-        base = player.stats.agility * 0.01
+        base = self.stats.agility * 0.01
         if last_attack:
             base -= last_attack.inertia * 0.05  # pénalité selon l'inertie
         return max(0.01, min(0.9, base))  # borne entre 1% et 90%
