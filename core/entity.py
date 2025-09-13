@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from core.progression import Quest
 
-__version__ = "2492.0"
+__version__ = "2496.0"
 __creation__ = "09-03-2025"
 
 # Dungeon Hunter - (c) Dragondefer 2025
@@ -39,7 +39,7 @@ from engine.game_utility import (clear_screen, handle_error, typewriter_effect,
                           glitch_burst, timed_input_pattern, strip_ansi,
                           get_input)
 from items.items import (Item, Equipment, Gear, Weapon, Armor,
-                   Ring, Amulet, Belt, Potion)
+                   Ring, Amulet, Belt, Potion, WeaponAttack)
 # Removed top-level import of data to fix circular import
 # from data import armor_sets, enemy_types, boss_types, achievements, skills_dict, can_send_analytics
 from items.inventory import Inventory
@@ -663,6 +663,12 @@ class Player(Entity):
                 return dungeon_grid[new_pos]
         return None  # Invalid move
 
+    def dodge_chance(self, last_attack: WeaponAttack | None = None):
+        base = player.stats.agility * 0.01
+        if last_attack:
+            base -= last_attack.inertia * 0.05  # pénalité selon l'inertie
+        return max(0.01, min(0.9, base))  # borne entre 1% et 90%
+
 
     def get_mastery(self, key: str) -> Mastery:
         if key not in self.masteries:
@@ -715,6 +721,20 @@ class Player(Entity):
         else:
             print(f"{Colors.RED}You don't have the scroll '{scroll.name}' in your inventory.{Colors.RESET}")
             return False
+
+    def is_feature_unlocked(self, feature: str) -> bool:
+        unlock_requirements = {
+            "weapon_attacks": 2,   # press 1 to attack -> choose attack
+            "classes": 5,          # classes affinity (e.g: kignt with sowrd)
+            "dodging": 8,           # 
+        }
+
+        if isinstance(self.mode, RealisticMode):
+            return True  # tout débloqué
+        else:
+            required_lvl = unlock_requirements.get(feature, 0)
+            return self.level >= required_lvl
+
 
     def save_difficulty_data(self):
         """Save current difficulty's inventory, gold, level, stats, and other relevant data."""
@@ -1041,6 +1061,7 @@ class Player(Entity):
                 slot = armor_slot_map.get(item.armor_type) if isinstance(item.armor_type, str) else None  # Pour les armures classiques
                 if debug > 1:
                     print(f"Slot for {item.armor_type}: {slot}")
+            else: slot = None
 
 
             if slot:
