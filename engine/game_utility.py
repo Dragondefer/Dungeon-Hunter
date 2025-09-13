@@ -1,25 +1,25 @@
-from __future__ import annotations
+from __future__ import annotations # Futuristik
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from core.entity import Player
+    from core.entity import Player # For type hint only, else it would do an import error :/
 
-__version__ = "555.0"
+__version__ = "569.0"
 __creation__ = "09-03-2025"
 
 # D​u​n​ge​o​n​ ​H​u​n​t​e​r​ ​-​ ​(​c​)​ ​D​r​a​go​n​de​f​er​ ​2​02​5
 # L​ic​e​n​s​e​d​ ​u​nd​e​r​ ​C​C​-​BY​-​N​C​ ​4​.​0
 
 
-import os
-import sys
+from sys import path, stdout, getwindowsversion # Not importing the whole liv sys as it's not needed
+import os # need the whole os lib for msvcrt in the func: `timed_input_pattern`. For security, simlply press ctrl + f and os. to see where is it used and how.
 import time
 import random
 import datetime
 import traceback
 
 # Define the root file of the game so it can import from other moduls such as the folder interface to get Colors
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from interface.colors import Colors
 from engine.logger import logger
@@ -38,8 +38,8 @@ def set_windows_terminal_size(cols=120, lines=40):
     # Plein écran (Alt+Entrée simulation non fiable)
 
 def set_unix_terminal_size(cols=120, rows=40):
-    sys.stdout.write(f"\x1b[8;{rows};{cols}t")
-    sys.stdout.flush()
+    stdout.write(f"\x1b[8;{rows};{cols}t")
+    stdout.flush()
 
 import platform
 
@@ -47,8 +47,8 @@ def normalize_terminal(cols=210, lines=52):
     if platform.system() == "Windows":
         os.system(f"mode con: cols={cols} lines={lines}")
     else:
-        sys.stdout.write("\x1b[8;40;120t")
-        sys.stdout.flush()
+        stdout.write("\x1b[8;40;120t")
+        stdout.flush()
 
 import os
 import uuid
@@ -81,15 +81,22 @@ def move_cursor(row, col):
 def clear_line():
     print("\x1b[2K", end='')
 
-import ctypes
+from ctypes import windll # Use C to call windows API throught dll (used only to get and maximize the window terminal in the func `maximize_terminal()`)
 
 def maximize_terminal():
-    if platform.system() == "Windows":
+    """Only work for windows 10
+    - linux idk:
+      - ig it's not the same cmds since it doesn't have .dll (windll) but .sh files i think. I use Arch btw.
+    - windows 11:
+      - is so nice it crash the terminal graphics:
+        - cant select, cant move the terminal, cursor disapear, shortcut don't work (exept for alt+f4) and so on...
+        - to fix it you have to minimize every windows (display desktop or 3 finger donw with a laptop  pad) and maximise them back to refresh everyting (reboot graphics driver don't work (ctrl+maj+win+b))"""
+    if platform.system() == "Windows" and getwindowsversion().build >= 230000: # Check if it's windows 10
         # Get console window handle
-        hwnd = ctypes.windll.kernel32.GetConsoleWindow()
+        hwnd = windll.kernel32.GetConsoleWindow()
         if hwnd != 0:
             # SW_MAXIMIZE = 3
-            ctypes.windll.user32.ShowWindow(hwnd, 3)
+            windll.user32.ShowWindow(hwnd, 3)
 
 from shutil import get_terminal_size
 cols, rows = get_terminal_size()
@@ -106,7 +113,11 @@ except ImportError:
     USE_AGENT = False
 
 
-def get_input(prompt: str = "", options: list[str] | None = None, player: Player | None = None, use_agent: bool | None = None) -> str:
+def get_input(prompt: str = "",
+              options: list[str] | None = None,
+              player: Player | None = None,
+              use_agent: bool | None = None) -> str:
+    
     debug=0
     options = options or []
     agent_instance = get_agent()
@@ -144,7 +155,7 @@ def get_input(prompt: str = "", options: list[str] | None = None, player: Player
         return input(prompt)
 
 
-def game_speed_settings(speed_multipliers: dict[str, float]):
+def game_speed_settings():
     while True:
         clear_screen()
         print(f"\n{Colors.YELLOW}{Colors.UNDERLINE}Change Game Speed{Colors.RESET}")
@@ -271,8 +282,8 @@ def timed_input_pattern(difficulty=1.0, return_type='bool', peak_int_min=0, peak
     # Animation loop
     for idx, pattern in enumerate(patterns):
         # Clear line and print pattern
-        sys.stdout.write('\r' + pattern + ' ' * 10)
-        sys.stdout.flush()
+        stdout.write('\r' + pattern + ' ' * 10)
+        stdout.flush()
 
         # Wait for a short time and check for Enter key press
         # Total animation duration can be adjusted by difficulty
@@ -329,13 +340,13 @@ def timed_input(prompt, timeout, default=None):
             remaining = max(0, int(timeout - elapsed))
             if not prompt_displayed:
                 # Display prompt once
-                sys.stdout.write(prompt)
-                sys.stdout.flush()
+                stdout.write(prompt)
+                stdout.flush()
                 prompt_displayed = True
             # Clear the line and display timer and input string on the same line
-            sys.stdout.write('\r\033[K')  # Clear line
-            sys.stdout.write(f'{prompt} {Colors.RED}[{remaining}s]{Colors.RESET} ' + input_str + ' ')
-            sys.stdout.flush()
+            stdout.write('\r\033[K')  # Clear line
+            stdout.write(f'{prompt} {Colors.RED}[{remaining}s]{Colors.RESET} ' + input_str + ' ')
+            stdout.flush()
 
             if msvcrt.kbhit():
                 char = msvcrt.getwch()
@@ -345,8 +356,8 @@ def timed_input(prompt, timeout, default=None):
                 elif char == '\b':  # Backspace
                     if len(input_str) > 0:
                         input_str = input_str[:-1]
-                        sys.stdout.write('\b \b')
-                        sys.stdout.flush()
+                        stdout.write('\b \b')
+                        stdout.flush()
                 else:
                     input_str += char
             if elapsed > timeout:
@@ -369,13 +380,13 @@ def timed_input(prompt, timeout, default=None):
                 remaining = max(0, int(timeout - elapsed))
                 if not prompt_displayed:
                     # Display prompt once
-                    sys.stdout.write(prompt)
-                    sys.stdout.flush()
+                    stdout.write(prompt)
+                    stdout.flush()
                     prompt_displayed = True
                 # Clear the line and display timer and input string on the same line
-                sys.stdout.write('\r\033[K')  # Clear line
-                sys.stdout.write(f'{prompt} [{remaining}s] ' + input_str + ' ')
-                sys.stdout.flush()
+                stdout.write('\r\033[K')  # Clear line
+                stdout.write(f'{prompt} [{remaining}s] ' + input_str + ' ')
+                stdout.flush()
 
                 rlist, _, _ = select.select([sys.stdin], [], [], max(0, timeout - elapsed))
                 if rlist:
@@ -386,8 +397,8 @@ def timed_input(prompt, timeout, default=None):
                     elif char == '\x7f':  # Backspace
                         if len(input_str) > 0:
                             input_str = input_str[:-1]
-                            sys.stdout.write('\b \b')
-                            sys.stdout.flush()
+                            stdout.write('\b \b')
+                            stdout.flush()
                     else:
                         input_str += char
                 else:
@@ -418,12 +429,12 @@ def sleep(duration):
 def typewriter_effect(text, delay=0.02, end="\n"):
     """Affiche du texte avec un effet de machine à écrire sans retour à la ligne forcé.""" 
     for char in text:
-        sys.stdout.write(char)
-        sys.stdout.flush()
+        stdout.write(char)
+        stdout.flush()
         _original_sleep(delay * config.game_speed_multiplier)
     if end:
-        sys.stdout.write(end)
-    sys.stdout.flush()
+        stdout.write(end)
+    stdout.flush()
 
 # Table de correspondance des caractères corrompus
 corruption_map = {
@@ -500,15 +511,16 @@ def random_glitch_text(text: str) -> str:
 def glitch_burst(text, duration=1):
     end_time = time.time() + duration
     while time.time() < end_time:
-        sys.stdout.write('\033[2K\r')  # efface ligne
-        sys.stdout.write(random_glitch_text(text))
-        sys.stdout.flush()
+        stdout.write('\033[2K\r')  # efface ligne
+        stdout.write(random_glitch_text(text))
+        stdout.flush()
         time.sleep(0.05)
-    sys.stdout.write('\033[2K\r' + text + '\n')
+    stdout.write('\033[2K\r' + text + '\n')
 
 
 def dice_animation(sides=6, rolls=10, delay=0.1):
-    for i in range(rolls):
+    value = 0
+    for _ in range(rolls):
         clear_screen()
         value = random.randint(1, sides)
         if sides == 6:
@@ -574,12 +586,15 @@ def loading(duration=4):
     Animates a spinner with dots for the given duration in seconds.
     Adds a box around the loading text.
     """
-    import sys
+    from sys import stdout
     import time
     from shutil import get_terminal_size
 
     spinner = ['|', '/', '-', '\\']
     start_time = time.time()
+    box_width = 0
+    x = 0
+    y = 0
 
     while True:
         elapsed = time.time() - start_time
@@ -603,27 +618,27 @@ def loading(duration=4):
         y = rows - 2  # box is 3 lines tall
 
         # Move cursor to position and print box
-        sys.stdout.write(f"\033[s")  # Save cursor position
+        stdout.write(f"\033[s")  # Save cursor position
 
         # Print top border
-        sys.stdout.write(f"\033[{y};{x}H{box_top}")
+        stdout.write(f"\033[{y};{x}H{box_top}")
         # Print middle with text
-        sys.stdout.write(f"\033[{y+1};{x}H{box_middle}")
+        stdout.write(f"\033[{y+1};{x}H{box_middle}")
         # Print bottom border
-        sys.stdout.write(f"\033[{y+2};{x}H{box_bottom}")
+        stdout.write(f"\033[{y+2};{x}H{box_bottom}")
 
-        sys.stdout.write(f"\033[u")  # Restore cursor position
-        sys.stdout.flush()
+        stdout.write(f"\033[u")  # Restore cursor position
+        stdout.flush()
 
         time.sleep(0.1)
 
     # Clear the box after done
     clear_str = ' ' * (box_width + 2)
-    sys.stdout.write(f"\033[s")
+    stdout.write(f"\033[s")
     for i in range(3):
-        sys.stdout.write(f"\033[{y + i};{x}H{clear_str}")
-    sys.stdout.write(f"\033[u")
-    sys.stdout.flush()
+        stdout.write(f"\033[{y + i};{x}H{clear_str}")
+    stdout.write(f"\033[u")
+    stdout.flush()
 
 
 def choose_difficulty(player):
@@ -801,8 +816,8 @@ def interactive_bar(min_value=0, max_value=100, default_value=50, allow_beyond=F
         empty_length = length - filled_length
         bar_str = color + ('█' * filled_length) + Colors.RESET + ('░' * empty_length)
         # Display bar with current value
-        sys.stdout.write(f"\r[{bar_str}] {current_value}   ")
-        sys.stdout.flush()
+        stdout.write(f"\r[{bar_str}] {current_value}   ")
+        stdout.flush()
 
         key = get_key()
         if key is None:

@@ -1,4 +1,4 @@
-__version__ = "1884.0"
+__version__ = "1885.0"
 __creation__ = "09-03-2025"
 
 # D​u​n​ge​o​n​ ​H​un​t​e​r​ ​-​ ​(​c​)​ ​D​r​ag​o​n​de​fer​ 2​0​2​5
@@ -6,6 +6,8 @@ __creation__ = "09-03-2025"
 
 
 import random
+
+from sympy import false
 
 import config
 if config.DEV_AGENT_MODE:
@@ -312,11 +314,11 @@ class Room:
 
     def handle_riddle(self, player):
         """Managing a riddle."""
+        USE_AGENT = False
         if config.DEV_AGENT_MODE:
             try:
                 from ai.agent_wrapper import USE_AGENT
-            except ImportError:
-                USE_AGENT = False
+            except ImportError: pass
 
         riddles = [
             {"question": "I speak without a mouth and hear without ears. I have no one, but I live with the wind. Who am I?", "answer": "echo"},
@@ -351,11 +353,11 @@ class Room:
     
     
     def handle_dice_puzzle(self, player):
+        USE_AGENT = False
         if config.DEV_AGENT_MODE:
             try:
                 from ai.agent_wrapper import USE_AGENT
-            except ImportError:
-                USE_AGENT = False
+            except ImportError: pass
         print(f"\n{Colors.CYAN}You find a strange dice game set up on a table.{Colors.RESET}")
         print(f"{Colors.YELLOW}The rules state:{Colors.RESET}")
         print(f"{Colors.YELLOW}Roll three dice. If their sum is greater than 10, you win a prize.{Colors.RESET}")
@@ -540,11 +542,11 @@ class Room:
 
     def handle_combat(self, player:Player, is_boss_room=False, tutorial=False):
         """Gère un combat, normal ou contre un boss, de manière optimisée avec timing-based mechanic et UI améliorée."""
+        USE_AGENT = False
         if config.DEV_AGENT_MODE:
             try:
                 from ai.agent_wrapper import USE_AGENT
-            except ImportError:
-                USE_AGENT = False
+            except ImportError: pass
         
         player.combat_encounters += 1
         import math
@@ -750,7 +752,7 @@ class Room:
             if enemy.is_alive():
                 print(f"\n{Colors.RED}{enemy.name} attacks !{Colors.RESET}")
                 sleep(1.5)
-                if random.random() < (player.stats.luck * 0.01 + player.stats.agility * 0.02):
+                if random.random() < player.dodge_chance():
                     print(f"{Colors.GREEN}You dodged the attack !{Colors.RESET}")
                 else:
                     enemy.attack_player(player)
@@ -766,7 +768,7 @@ class Room:
 
         if tutorial is True:
             self.items.append(generate_random_item(player))
-            typewriter_effect(f"\n[Assistant]: {Colors.GREEN}In treasure room, you can up to 2 random items.{Colors.RESET}", 0.03 * config.game_speed_multiplier)
+            typewriter_effect(f"\n[Assistant]: {Colors.GREEN}In treasure room, you can get up to 2 random items.{Colors.RESET}", 0.03 * config.game_speed_multiplier)
             sleep(0.3)
             typewriter_effect(f"[Assistant]: {Colors.BRIGHT_BLACK}I heard you can find ancient scrolls{Colors.RESET}", 0.03 * config.game_speed_multiplier)
             sleep(0.2)
@@ -1101,7 +1103,7 @@ class Room:
             print(f"{Colors.YELLOW}{i}. {option}{Colors.RESET}")
         
         choice = get_input(f"\n{Colors.CYAN}What would you like to do? {Colors.RESET}", options=options, player=player)
-
+        """
         # Si l'utilisateur est humain, convertir "1" → option[0], etc.
         if choice in map(str, range(1, len(options) + 1)):
             choice = options[int(choice) - 1]
@@ -1112,6 +1114,7 @@ class Room:
             choice = get_input(f"{Colors.YELLOW}Your choice: {Colors.RESET}", options=options, player=player)
             if choice in map(str, range(1, len(options) + 1)):
                 choice = options[int(choice) - 1]
+        """
         
         if choice == "1":
             # Rest and recover 30-50% of max HP
@@ -1188,7 +1191,7 @@ class Room:
         else:
             print(f"{Colors.RED}Your choice:{Colors.RESET}", choice)
             print(f"{Colors.BLUE}You decided to keep going.{Colors.RESET}")
-        
+        print(choice)
         return True
     
     def random_rest_event(self, player:Player):
