@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from core.entity import Player # For type hint only, else it would do an import error :/
 
-__version__ = "569.0"
+__version__ = "575.0"
 __creation__ = "09-03-2025"
 
 # D​u​n​ge​o​n​ ​H​u​n​t​e​r​ ​-​ ​(​c​)​ ​D​r​a​go​n​de​f​er​ ​2​02​5
@@ -351,7 +351,7 @@ def timed_input(prompt, timeout, default=None):
             if msvcrt.kbhit():
                 char = msvcrt.getwch()
                 if char == '\r':  # Enter key
-                    #print()
+                    stdout.write('\n')
                     return input_str
                 elif char == '\b':  # Backspace
                     if len(input_str) > 0:
@@ -361,7 +361,7 @@ def timed_input(prompt, timeout, default=None):
                 else:
                     input_str += char
             if elapsed > timeout:
-                print()
+                stdout.write('\n')
                 return default
             time.sleep(0.05)
     else:
@@ -392,7 +392,7 @@ def timed_input(prompt, timeout, default=None):
                 if rlist:
                     char = sys.stdin.read(1)
                     if char == '\n':
-                        print()
+                        stdout.write('\n')
                         return input_str
                     elif char == '\x7f':  # Backspace
                         if len(input_str) > 0:
@@ -403,7 +403,7 @@ def timed_input(prompt, timeout, default=None):
                         input_str += char
                 else:
                     # Timeout expired
-                    print()
+                    stdout.write('\n')
                     return default
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
