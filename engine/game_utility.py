@@ -81,7 +81,6 @@ def move_cursor(row, col):
 def clear_line():
     print("\x1b[2K", end='')
 
-from ctypes import windll # Use C to call windows API throught dll (used only to get and maximize the window terminal in the func `maximize_terminal()`)
 
 def maximize_terminal():
     """Only work for windows 10
@@ -92,6 +91,7 @@ def maximize_terminal():
         - cant select, cant move the terminal, cursor disapear, shortcut don't work (exept for alt+f4) and so on...
         - to fix it you have to minimize every windows (display desktop or 3 finger donw with a laptop  pad) and maximise them back to refresh everyting (reboot graphics driver don't work (ctrl+maj+win+b))"""
     if platform.system() == "Windows" and getwindowsversion().build >= 230000: # Check if it's windows 10
+        from ctypes import windll # Use C to call windows API throught dll (used only to get and maximize the window terminal in the func `maximize_terminal()`)
         # Get console window handle
         hwnd = windll.kernel32.GetConsoleWindow()
         if hwnd != 0:
