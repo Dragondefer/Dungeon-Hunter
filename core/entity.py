@@ -25,13 +25,13 @@ import uuid
 from typing import Type
 
 import config
+try_reward = lambda value: None
+agent_is_enabled = lambda: None
 if config.DEV_AGENT_MODE:
     try:
         from ai.reward_engine import try_reward
         from ai.agent_wrapper import agent_is_enabled
-    except ImportError:
-        try_reward = lambda value: None
-        agent_is_enabled = lambda: None
+    except ImportError: pass
 
 from interface.colors import Colors
 from engine.game_utility import (clear_screen, handle_error, typewriter_effect,
@@ -1228,11 +1228,11 @@ class Player(Entity):
                             print(f"{Colors.GREEN}DEBUG: Adding effect {stat}: {value}{Colors.RESET}")
 
         # --- 2. Calcul des bonus de set ---
+        from data.enemies_data import armor_sets
         equipped_sets = {}
         for slot in ["helmet", "chest", "gauntlets", "leggings", "boots"]:
             item = self.equipment.slots.get(slot)
             if item:
-                from data.enemies_data import armor_sets
                 # prefix = item.name.split()[1] # here, we assume the prefix is the second word in the name so it can be wrong as if it's in pos 1
                 prefix = next((prefix for prefix in armor_sets if prefix in item.name), None)
                 if debug >= 1:
