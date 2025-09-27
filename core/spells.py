@@ -7,6 +7,7 @@ __creation__ = "24-05-2025"
 from interface.colors import Colors
 from engine.logger import logger
 from engine.game_utility import ancient_text, glitch_text
+
 class Spell:
     """
     Represents a spell that can be cast by the player.
@@ -38,27 +39,25 @@ class Spell:
             'name': self.name,
             'description': self.description,
             'mana_cost': self.mana_cost,
-            'effect': self.effect.__name__  # Store the function name for reference
+            'effect': self.effect.__name__ if callable(self.effect) else self.effect  # Store the function name for reference
         }
-    
+
     @classmethod
     def from_dict(cls, data: dict) -> "Spell":
-        """
-        Create a Spell instance from a dictionary.
+        name: str = data.get("name", "")
+        description: str = data.get("description", "")
+        mana_cost: int = data.get("mana_cost", 0)
 
-        Args:
-            data (dict): A dictionary containing spell attributes.
+        effect_name = data.get("effect")
+        effect = None
+        if isinstance(effect_name, str):
+            effect = globals().get(effect_name, None)
+        # fallback : garde la valeur brute si jamais pas une str
+        if effect is None:
+            effect = effect_name  
 
-        Returns:
-            Spell: An instance of Spell created from the dictionary.
-        """
-        name = data.get('name')
-        description = data.get('description')
-        mana_cost = data.get('mana_cost')
-        effect = data.get('effect')
-        # effect might be a dict or function name, handle accordingly if needed
-        # For now, assign effect directly
         return cls(name, description, mana_cost, effect)
+
 
     def get_mastery_key(self):
         return f"weapon::{self.__class__.__name__}"
@@ -78,82 +77,6 @@ class Spell:
         print(f"{Colors.MAGENTA}{caster.name} casts {self.name}!{Colors.RESET}")
         self.effect(caster, target)
         return True
-
-
-
-
-class Scroll:
-    """
-    Represents a consumable scroll that casts a spell when used.
-
-    Attributes:
-        name (str): The name of the scroll.
-        description (str): Description of the scroll.
-        value (int): The value of the scroll.
-        spell (Spell): The spell contained in the scroll.
-    """
-    def __init__(self, name, description, value, spell):
-        self.name = name
-        self.description = description
-        self.value = value
-        self.spell = spell
-
-    def __str__(self):
-        return f"{self.name} (Scroll) - {self.description}"
-    
-    def to_dict(self):
-        """
-        Convert the scroll to a dictionary representation.
-
-        Returns:
-            dict: A dictionary containing the scroll's attributes.
-        """
-        return {
-            'name': self.name,
-            'description': self.description,
-            'value': self.value,
-            'spell': {
-                'name': self.spell.name,
-                'description': self.spell.description,
-                'mana_cost': self.spell.mana_cost
-            }
-        }
-    
-    def from_dict(self, data):
-        """
-        Load scroll attributes from a dictionary.
-
-        Args:
-            data (dict): A dictionary containing scroll attributes.
-        """
-        self.name = data.get('name', self.name)
-        self.description = data.get('description', self.description)
-        self.value = data.get('value', self.value)
-        spell_data = data.get('spell', {})
-        self.spell = Spell(
-            name=spell_data.get('name', self.spell.name),
-            description=spell_data.get('description', self.spell.description),
-            mana_cost=spell_data.get('mana_cost', self.spell.mana_cost),
-            effect=self.spell.effect  # Assuming effect is already set
-        )
-
-
-    def use(self, caster, target):
-        """
-        Use the scroll to cast its spell and consume the scroll.
-
-        Args:
-            caster (Player): The entity using the scroll.
-            target (Entity): The target of the spell.
-        """
-        success = self.spell.cast(caster, target)
-        if success:
-            try:
-                caster.inventory.remove(self)
-                print(f"{Colors.YELLOW}The scroll of {self.spell.name} crumbles to dust after use.{Colors.RESET}")
-            except ValueError:
-                logger.warning(f"Scroll {self.name} not found in inventory during use.")
-        return success
 
 
 
@@ -181,6 +104,7 @@ def get_random_scroll(name=None):
     """
     import random
     from data import spells_dict
+    from items.items import Scroll
     if name:
         spell = spells_dict.get(name)
         if spell is None:
