@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from core.entity import Player
 
-__version__ = "765.0"
+__version__ = "785.0"
 __creation__ = "09-03-2025"
 
 # Dungeon Hunter - (c) DragonDeFer 2025
@@ -15,6 +15,8 @@ import random
 from interface.colors import Colors
 from engine.game_utility import clear_screen
 from engine.logger import logger
+from core.spells import Spell
+
 debug = 0
 
 #̶̼͝ B̵̕͜ë̵͕́ẅ̷̙́ä̷̪́r̷͍̈́ë̵͕́:̴̨͝ I̴̡̛ẗ̴̗́ë̵͕́m̴̛̠s̸̱̅ m̴̛̠ä̷̪́ÿ̸̡́ h̵̤͒o̶͙͝l̷̫̈́ď̶̙ h̵̤͒i̴̊͜ď̶̙ď̶̙ë̵͕́n̸̻̈́ c̴̱͝ŭ̵͇r̷͍̈́s̸̱̅ë̵͕́s̸̱̅ ẗ̴̗́h̵̤͒ä̷̪́ẗ̴̗́ ď̶̙r̷͍̈́ä̷̪́i̴̊͜n̸̻̈́ ÿ̸̡́o̶͙͝ŭ̵͇r̷͍̈́ s̸̱̅o̶͙͝ŭ̵͇l̷̫̈́ s̸̱̅l̷̫̈́o̶͙͝ẅ̷̙́l̷̫̈́ÿ̸̡́.̵͇̆
@@ -31,10 +33,11 @@ class Item:
         __str__() -> str:
             Returns a formatted string representation of the item.
     """
-    def __init__(self, name:str, description:str, value:int):
+    def __init__(self, name:str, description:str, value:int, rarity:str|None=None):
         self.name = name
         self.description = description
         self.value = value if value else 0
+        self.rarity = rarity # Need to be adedd when generating items
     
     def __str__(self):
         return f"{self.name} - {self.description} (Value: {self.value} gold)"
@@ -79,6 +82,11 @@ class Item:
             bonuses = extras.get("effects", extras.get("bonuses", {}))
             return item_type(data["name"], data["description"], data["value"], bonuses)
 
+        elif item_type == Scroll:
+            spell_data = extras.get("spell", {})
+            spell = Spell.from_dict(spell_data)
+            return Scroll(data["name"], data["description"], data["value"], spell)
+    
         # Pour les autres types d'items (ex : consommables spéciaux)
         return item_type(data["name"], data["description"], data["value"], **extras)
 
@@ -222,13 +230,14 @@ class Equipment:
 
 
 class WeaponAttack:
-    def __init__(self, name, power:float, cost:dict[str, int]={}, description="", status_effects=None):
+    def __init__(self, name, power:float, cost:dict[str, int]={}, description="", status_effects=None, inertia=1.0):
         self.name = name              # nom de l'attaque
         self.power = power            # puissance relative (ex: x1.2)
         # cost can be a dict like {"stamina": 10, "hp": 5} or any other resource
         self.cost = cost
         self.description = description
         self.status_effects = status_effects or []  # list of status effects applied by this attack
+        self.inertia = inertia # Affect the dodging chance (high inertia mean lower dodging chances)
 
     def __str__(self):
         cost_str = ", ".join(f"{k}: {v}" for k, v in self.cost.items()) if self.cost else "No cost"
@@ -399,8 +408,6 @@ class Amulet(Gear):
     """Represents an equippable amulet with magical bonuses."""
     def __init__(self, name, description, value, effects):
         super().__init__(name, description, value, effects)
-        logger.debug(f"Belt created: {self.name} with effects {effects}")
-        logger.debug(f"Ring created: {self.name} with effects {effects}")
         logger.debug(f"Amulet created: {self.name} with effects {effects}")
 
 #̶̼͝ B̵̕͜ë̵͕́ẅ̷̙́ä̷̪́r̷͍̈́ë̵͕́:̴̨͝ R̷̞͝i̴̊͜n̸̻̈́g̸̻̿s̸̱̅ m̴̛̠ä̷̪́ÿ̸̡́ c̴̱͝ä̷̪́r̷͍̈́r̷͍̈́ÿ̸̡́ c̴̱͝ŭ̵͇r̷͍̈́s̸̱̅ë̵͕́s̸̱̅ ẗ̴̗́h̵̤͒ä̷̪́ẗ̴̗́ ẗ̴̗́ẅ̷̙́i̴̊͜s̸̱̅ẗ̴̗́ f̷̠͑ä̷̪́ẗ̴̗́ë̵͕́.̵͇̆
@@ -408,12 +415,14 @@ class Ring(Gear):
     """Represents an equippable ring that grants magical or stat bonuses."""
     def __init__(self, name, description, value, effects):
         super().__init__(name, description, value, effects)
+        logger.debug(f"Ring created: {self.name} with effects {effects}")
 
 #̶̼͝ B̵̕͜ë̵͕́ẅ̷̙́ä̷̪́r̷͍̈́ë̵͕́:̴̨͝ B̵̕͜ë̵͕́l̷̫̈́ẗ̴̗́s̸̱̅ m̴̛̠ä̷̪́ÿ̸̡́ ẗ̴̗́i̴̊͜g̸̻̿h̵̤͒ẗ̴̗́ë̵͕́n̸̻̈́ ẅ̷̙́i̴̊͜ẗ̴̗́h̵̤͒ ä̷̪́ ẅ̷̙́i̴̊͜l̷̫̈́l̷̫̈́ o̶͙͝f̷̠͑ ẗ̴̗́h̵̤͒ë̵͕́i̴̊͜r̷͍̈́ o̶͙͝ẅ̷̙́n̸̻̈́.̵͇̆
 class Belt(Gear):
     """Represents an equippable belt that boosts stamina or defense."""
     def __init__(self, name, description, value, effects):
         super().__init__(name, description, value, effects)
+        logger.debug(f"Belt created: {self.name} with effects {effects}")
 
 
 
@@ -535,6 +544,71 @@ class Potion(Item):
 potion_list = (
     Potion("Small Health Potion", "A tiny vial of red liquid", 10, "heal", 20)
 )    
+
+# ̶̼͝ B̵̕͜ë̵͕́ẅ̷̙́ä̷̪́r̷͍̈́ë̵͕́:̴̨͝ S̷̛͠c̷͍̈́r̶̛̠o̴̊͜l̷̫̈́l̵͇̆s̸̱̅ m̴̛̠ä̷̪́ÿ̸̡́ c̴̱͝o̶͙͝n̷͍̈́ẗ̷͍́ả̸̭i̴̊͜n̸̻̈́ s̸̱̅p̵̆ͦě̶́ľ̶́ḽ̷̈́ŝ̸̭ o̴̊͜f̵͇̆ f̷̠͑o̶͙͝r̷͍̈́ĝ̸̭o̶͙͝ṱ̴̈́ť̴́ě̵́ṋ̸̉ p̴̊͜ǒ̶́w̶̌́ḙ̸̉r̵͇̆.̵͇̆
+class Scroll(Item):
+    """
+    Represents a consumable scroll that casts a spell when used.
+
+    Attributes:
+        name (str): The name of the scroll.
+        description (str): Description of the scroll.
+        value (int): The value of the scroll.
+        spell (Spell): The spell contained in the scroll.
+    """
+    def __init__(self, name, description, value, spell, rarity=None):
+        super().__init__(name, description, value, rarity)
+        self.spell = spell
+
+    def __str__(self):
+        return f"{self.name} (Scroll) - {self.description}"
+    
+    def to_dict(self):
+        """Convertit le scroll en dictionnaire compatible avec Item."""
+        data = {
+            "name": self.name,
+            "description": self.description,
+            "value": self.value,
+            "type": self.__class__.__name__,
+            "extra": {
+                "spell": self.spell.to_dict()
+            }
+        }
+        return data
+    
+
+    @classmethod
+    def from_dict(cls, data):
+        extras = data.get("extra", {})
+        spell_data = extras.get("spell", {})
+        spell = Spell.from_dict(spell_data)
+
+        return cls(
+            data["name"],
+            data["description"],
+            data["value"],
+            spell,
+            rarity=extras.get("rarity", None)
+        )
+
+
+    def use(self, caster, target):
+        """
+        Use the scroll to cast its spell and consume the scroll.
+
+        Args:
+            caster (Player): The entity using the scroll.
+            target (Entity): The target of the spell.
+        """
+        success = self.spell.cast(caster, target)
+        if success:
+            try:
+                caster.inventory.remove(self)
+                print(f"{Colors.YELLOW}The scroll of {self.spell.name} crumbles to dust after use.{Colors.RESET}")
+            except ValueError:
+                logger.warning(f"Scroll {self.name} not found in inventory during use.")
+        return success
+
 
 # D​un​g​e​o​n​ ​Hu​n​te​r​ ​-​ ​(c​)​ ​D​r​ag​on​de​fe​r​ ​2​02​5
 # L​i​ce​n​s​e​d​ u​n​d​er​ ​C​C​-B​Y​-​N​C ​4​.​0

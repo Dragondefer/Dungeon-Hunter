@@ -8,6 +8,6 @@ path.append(abspath(join(dirname(__file__), '..')))
 
 
 from .inventory import Inventory
-from .items import Item, Gear, Weapon, Armor, Shield, Gauntlets, Amulet, Ring, Belt, Potion, Equipment
-from core.spells import Spell, Scroll
+from .items import Item, Gear, Weapon, Armor, Shield, Gauntlets, Amulet, Ring, Belt, Potion, Equipment, Scroll
+from core.spells import Spell
 
