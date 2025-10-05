@@ -3,7 +3,7 @@ D​un​ge​o​n ​H​u​nt​e​r​ ​-​ ​(​c​)​ ​D​r​
 L​i​c​e​ns​e​d​ ​u​n​de​r ​C​C​ ​BY​-N​C​ 4​.​0
 -->
 
-__version__ = "1016.0"
+__version__ = "1028.0"
 __creation__ = "23-04-2025"
 
 # Changelog
@@ -29,6 +29,19 @@ Order of each version: ['colors.py', 'data.py', 'difficulty.py', 'dungeon.py', '
 
 ## [Unreleased]
 ### Upcomming features
+- **Lore**
+  - Story is building up..
+  - Fusing philosofical ideas as psychological experiments
+  - Gathering mind breaking knowelge
+
+- **Interface**
+  - Adding ASCII art for lore
+  - New functions to handle better ui manipulation
+  - Books where you can turn the pages
+
+- **Deeper Mechanics**
+  - Gradual progression: simple attacks → varied attacks → classes → armor → advanced skills...
+
 - **Dungeon environment**
   - Add the room number variable to calculus so the difficulty isn't a staircase that increment with each levels, but more like a ramp.
 
@@ -71,7 +84,7 @@ Order of each version: ['colors.py', 'data.py', 'difficulty.py', 'dungeon.py', '
 - 100+ hour New Game+ mode with scaling challenges
 
 #### Ascension Patch
-- Neural network-driven dynamic storytelling
+- Neural network-driven dynamic storytelling ?
 
 ---
 
@@ -691,4 +704,10 @@ Need to be fixed in the future:
 ### Changed
 - **Core game**:
   - Replaced the default `input()` function with mine `get_input()` to handle both human input and AI one
+  - Changed the combat function do make it modular with the current difficulty (Normal/Realist...)
+  - Restricted some import such as sys to imporve the security.
+  - Fixed maximize_terminal() (in game_utility.py) function to use it only on windows 10 and not 11 (on windows 11 it crash the terminal graphics: can't move the terminal, can't select, mouse cursor disapear, shortcut don't work, to fix it you have to minimize every windows and maximise them back to refresh everyting (alt+f4 work and reboot graphics driver don't work (ctrl+maj+win+b)))
+
+- **Player**:
+  - Changed the dodge mecanic. Before: random.random() < (player.stats.luck * 0.01 + player.stats.agility * 0.02). After: max(0.01, min(0.9, player.stats.agility * 0.01 - last_attack.inertia * 0.05))
 
