@@ -35,10 +35,17 @@ spells_dict = build_spells(spells_dict_raw)
 from data.crafting_data import weapon_upgrade_recipes_dict_raw, recipes_dict_raw
 from items.crafting import Recipe
 
-
 def build_recipes(raw_data: dict[str, dict]) -> dict[str, Recipe]:
     return {key: Recipe.from_dict(data) for key, data in raw_data.items()}
 
 recipes_dict = build_recipes(recipes_dict_raw)
 weapon_upgrade_recipes_dict = build_recipes(weapon_upgrade_recipes_dict_raw)
 
+
+from items.resources import Resource
+from .resources_data import resources_data_raw
+
+def build_resources(raw_data: dict[str, dict[str, str|int]]) -> dict[str, Resource]:
+    return {key: Resource.from_dict(data) for key, data in raw_data.items()}
+
+resources_data = build_resources(resources_data_raw)
