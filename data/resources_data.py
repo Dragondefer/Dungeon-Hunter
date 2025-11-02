@@ -1,7 +1,7 @@
 # Dungeon Hunter - (c) Dragondefer 2025
 # Licensed under CC BY-NC 4.0
 
-resources_data = {
+resources_data_raw = {
     "iron_ore": {
         "name": "Iron Ore",
         "rarity": "common",
