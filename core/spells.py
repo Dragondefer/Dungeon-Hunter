@@ -1,4 +1,4 @@
-__version__ = "20.0"
+__version__ = "40.0"
 __creation__ = "24-05-2025"
 
 # D​un​g​e​on​ ​H​u​n​te​r​ ​-​ ​(​c)​ ​D​ra​g​onde​f​er​ ​2​02​5
