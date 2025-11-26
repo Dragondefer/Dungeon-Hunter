@@ -2,8 +2,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from core.progression import Quest
+    from items.crafting import Recipe
 
-__version__ = "2496.0"
+__version__ = "2518.0"
 __creation__ = "09-03-2025"
 
 # Dungeon Hunter - (c) Dragondefer 2025
@@ -43,12 +44,12 @@ from items.items import (Item, Equipment, Gear, Weapon, Armor,
 # Removed top-level import of data to fix circular import
 # from data import armor_sets, enemy_types, boss_types, achievements, skills_dict, can_send_analytics
 from items.inventory import Inventory
-from core.spells import Spell, Scroll
+from core.spells import Spell
 from core.masteries import Mastery
 from core.skills import Skill
 from core.player_class import PlayerClass
 from core.status_effects import StatusEffect
-from items.items import Equipment
+from items.items import Equipment, Scroll
 
 debug = 0
 
@@ -324,7 +325,7 @@ class Entity:
             }
 
     
-    def is_alive(self):
+    def is_alive(self) -> bool:
         return self.stats.hp > 0
     
     def heal(self, amount: int):
@@ -604,6 +605,10 @@ class Player(Entity):
         self.inventory = Inventory(self)
         self.inventory.append(Potion("Minor Health Potion", "Restores some health", 100, "heal", 50))
 
+        # Crafting system: resources inventory and recipes
+        self.resources: dict[str, int] = {}  # {"iron_ore": 5, "magic_essence": 2}
+        self.known_recipes: dict[str, 'Recipe'] = {}  # recipe_id -> Recipe object
+
         self.known_spells: list[Spell] = []
         self.masteries: dict[str, Mastery] = {}  # exemple : {"sword": Mastery("sword"), "fire_magic": Mastery("fire_magic")}
 
@@ -721,6 +726,103 @@ class Player(Entity):
         else:
             print(f"{Colors.RED}You don't have the scroll '{scroll.name}' in your inventory.{Colors.RESET}")
             return False
+
+    # ===== CRAFTING SYSTEM METHODS =====
+    
+    def add_resource(self, resource_id: str, quantity: int = 1) -> bool:
+        """Add resources to the player's inventory."""
+        if quantity < 0:
+            print(f"{Colors.RED}Cannot add negative quantity of resources.{Colors.RESET}")
+            return False
+        
+        if resource_id not in self.resources:
+            self.resources[resource_id] = 0
+        self.resources[resource_id] += quantity
+        return True
+    
+    def remove_resource(self, resource_id: str, quantity: int = 1) -> bool:
+        """Remove resources from the player's inventory."""
+        if resource_id not in self.resources or self.resources[resource_id] < quantity:
+            print(f"{Colors.RED}Not enough {resource_id}. You have: {self.resources.get(resource_id, 0)}{Colors.RESET}")
+            return False
+        
+        self.resources[resource_id] -= quantity
+        if self.resources[resource_id] <= 0:
+            del self.resources[resource_id]
+        return True
+    
+    def get_resource_count(self, resource_id: str) -> int:
+        """Get the quantity of a specific resource."""
+        return self.resources.get(resource_id, 0)
+    
+    def learn_recipe(self, recipe: 'Recipe') -> bool:
+        """Learn a new recipe."""
+        recipe_id = recipe.name.lower().replace(" ", "_")
+        if recipe_id not in self.known_recipes:
+            self.known_recipes[recipe_id] = recipe
+            print(f"{Colors.GREEN}Learned recipe: {recipe.name}{Colors.RESET}")
+            return True
+        else:
+            print(f"{Colors.YELLOW}Already know recipe: {recipe.name}{Colors.RESET}")
+            return False
+    
+    def craft_item(self, recipe: 'Recipe') -> bool:
+        """
+        Attempt to craft an item using a recipe.
+        Uses the Recipe.can_craft() and Recipe.craft() methods.
+        Returns True if successful, False otherwise.
+        """
+        # Check if player knows the recipe
+        if recipe not in self.known_recipes.values():
+            print(f"{Colors.RED}You don't know how to craft {recipe.output}{Colors.RESET}")
+            return False
+        
+        # Use Recipe's built-in can_craft method
+        if not recipe.can_craft(self.resources):
+            print(f"{Colors.RED}You don't have enough resources to craft {recipe.output}{Colors.RESET}")
+            # List missing resources
+            for resource_id, required_qty in recipe.inputs.items():
+                have = self.get_resource_count(resource_id)
+                if have < required_qty:
+                    print(f"  - Need {resource_id}: {required_qty} (have {have})")
+            return False
+        
+        # Use Recipe's built-in craft method to consume resources
+        if recipe.craft(self.resources):
+            print(f"{Colors.GREEN}Successfully crafted: {recipe.output}!{Colors.RESET}")
+            return True
+        else:
+            print(f"{Colors.RED}Failed to craft {recipe.output}.{Colors.RESET}")
+            return False
+    
+    def display_resources(self):
+        """Display all collected resources."""
+        if not self.resources:
+            print(f"{Colors.YELLOW}No resources collected yet.{Colors.RESET}")
+            return
+        
+        print(f"\n{Colors.BRIGHT_CYAN}Resources Inventory:{Colors.RESET}")
+        for resource_id, quantity in sorted(self.resources.items()):
+            print(f"  • {resource_id.replace('_', ' ').title()}: {quantity}")
+    
+    def display_recipes(self):
+        """Display all known recipes with craft status and requirements."""
+        if not self.known_recipes:
+            print(f"{Colors.YELLOW}No recipes learned yet.{Colors.RESET}")
+            return
+        
+        print(f"\n{Colors.BRIGHT_CYAN}Known Recipes:{Colors.RESET}")
+        for recipe_id, recipe in sorted(self.known_recipes.items()):
+            # Use Recipe's built-in can_craft method
+            can_craft = recipe.can_craft(self.resources)
+            status = f"{Colors.GREEN}[CRAFTABLE]{Colors.RESET}" if can_craft else f"{Colors.RED}[LOCKED]{Colors.RESET}"
+            print(f"\n  {recipe.name} {status}")
+            print(f"    Output: {recipe.output}")
+            print(f"    Requires:")
+            for resource_id, qty in recipe.inputs.items():
+                have = self.get_resource_count(resource_id)
+                color = Colors.GREEN if have >= qty else Colors.RED
+                print(f"      - {resource_id.replace('_', ' ').title()}: {color}{have}/{qty}{Colors.RESET}")
 
     def is_feature_unlocked(self, feature: str) -> bool:
         unlock_requirements = {
@@ -844,6 +946,10 @@ class Player(Entity):
         data["total_deaths"] = self.total_deaths
         data["total_play_sessions"] = self.total_play_sessions
 
+        # Crafting system: save resources and recipes
+        data["resources"] = self.resources
+        data["known_recipes"] = {recipe_id: recipe.to_dict() for recipe_id, recipe in self.known_recipes.items()}
+
         # Add analytics variables needed for analytics.html
         data["player_name"] = self.name
         data["level"] = self.level
@@ -871,7 +977,7 @@ class Player(Entity):
 
         # Remplissage générique
         for key, value in data.items():
-            if key in ("equipment", "inventory", "skills", "quests", "completed_quests", "achievements", "stats", "mode", "seen_events", "displayed_set_bonuses", "playtime_seconds", "player_id", "deaths_per_room", "levels_completed", "total_deaths", "total_play_sessions", "player_class"):
+            if key in ("equipment", "inventory", "skills", "quests", "completed_quests", "achievements", "stats", "mode", "seen_events", "displayed_set_bonuses", "playtime_seconds", "player_id", "deaths_per_room", "levels_completed", "total_deaths", "total_play_sessions", "player_class", "resources", "known_recipes"):
                 continue  # On gère ceux-là à part
             setattr(player, key, value)
 
@@ -911,6 +1017,11 @@ class Player(Entity):
         player.levels_completed = data.get("levels_completed", 0)
         player.total_deaths = data.get("total_deaths", 0)
         player.total_play_sessions = data.get("total_play_sessions", 1)
+
+        # Restore crafting system data
+        from items.crafting import Recipe
+        player.resources = data.get("resources", {})
+        player.known_recipes = {recipe_id: Recipe.from_dict(recipe_data) for recipe_id, recipe_data in data.get("known_recipes", {}).items()}
 
         # Restore player_class from dict if present
         player_class_data = data.get("player_class")
