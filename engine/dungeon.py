@@ -1,4 +1,4 @@
-__version__ = "1885.0"
+__version__ = "1937.0"
 __creation__ = "09-03-2025"
 
 # D​u​n​ge​o​n​ ​H​un​t​e​r​ ​-​ ​(​c​)​ ​D​r​ag​o​n​de​fer​ 2​0​2​5
@@ -6,8 +6,7 @@ __creation__ = "09-03-2025"
 
 
 import random
-
-from sympy import false
+from math import ceil
 
 import config
 if config.DEV_AGENT_MODE:
@@ -33,18 +32,22 @@ from engine.game_utility import (clear_screen, typewriter_effect,
                           )
 from interface.colors import Colors
 from core.entity import Player, Enemy, generate_enemy
-from items.items import Item, Armor, Weapon, Potion, generate_random_item
+from items.items import Item, Armor, Weapon, Potion, generate_random_item, generate_random_resource_item
 from core.spells import get_random_scroll, get_random_spell
 from data import room_descriptions, puzzle_choices, rest_events
 from engine.logger import logger
+from engine.difficulty import RealisticMode
 
 
-debug = 0
+debug = 1
 
 # Beware: Rooms may hide secrets that trap your soul forever.
 class Room:
     """
     Represents a room within the dungeon, encapsulating various gameplay elements and interactions.
+
+    Return True -> player survived and can continue exploring
+    Return False -> player died or quit the game
 
     Attributes:
         room_type (str): Specifies the category of the room, such as "combat", "treasure", "shop", "rest", "puzzle", or "boss".
@@ -549,14 +552,13 @@ class Room:
             except ImportError: pass
         
         player.combat_encounters += 1
-        import math
 
         player.mode._prepare_tutorial_enemy(player, self, is_boss_room, tutorial)
         if not self.enemies and tutorial is False:
             print(f"{Colors.GREEN}The room is empty.{Colors.RESET}")
             return True
 
-        player.mode._show_tutorial_intro(is_boss_room)
+        if tutorial is True: player.mode._show_tutorial_intro(is_boss_room)
 
         enemy = self.enemies[0]
         get_input(f'\n{Colors.BOLD}{Colors.RED}Press enter to begin the combat{Colors.RESET}')
@@ -628,7 +630,7 @@ class Room:
                 player.damage_dealt += actual_damage
                 if config.DEV_AGENT_MODE: try_reward(actual_damage // 10)
                 logger.info(f"Player attack: {'critical hit' if critical else ''} {actual_damage} dmg, {stamina_cost} stm")
-                print(f"You deal {Colors.RED}{math.ceil(actual_damage)}{Colors.RESET} damage to {enemy.name}!")
+                print(f"You deal {Colors.RED}{ceil(actual_damage)}{Colors.RESET} damage to {enemy.name}!")
 
             elif choice == "2" and player.skills:  # Use skill with timing mechanic
                 player.use_skill(enemy)
@@ -1135,8 +1137,11 @@ class Room:
             player.regen_mana(recovery_amount_mana)
 
             print(f"\n{Colors.GREEN}You rest peacefully and recover {player.stats.hp - old_hp} HP.{Colors.RESET}")
+            sleep(0.1)
             print(f"{Colors.BRIGHT_YELLOW}You also recover {player.stats.stamina - old_stamina} Stamina.{Colors.RESET}")
+            sleep(0.1)
             print(f"{Colors.BRIGHT_CYAN}And {player.stats.mana - old_mana} Mana.{Colors.RESET}")
+            sleep(0.1)
             
             # Small chance of random event during rest
             if random.random() < 0.2:
@@ -1191,7 +1196,7 @@ class Room:
         else:
             print(f"{Colors.RED}Your choice:{Colors.RESET}", choice)
             print(f"{Colors.BLUE}You decided to keep going.{Colors.RESET}")
-        print(choice)
+
         return True
     
     def random_rest_event(self, player:Player):
@@ -1221,31 +1226,6 @@ class Room:
                 print(f"{Colors.YELLOW}You gained {rest_event['value']} gold!{Colors.RESET}")
 
 
-    def handle_inter_level(self, player:Player):
-        """Handles the inter-level room, which is a special room between levels."""
-        global debug
-        if debug >= 1:
-            print(f"\n{Colors.YELLOW}DEBUG: Entering handle_inter_level() for \"{self.room_type}\"{Colors.RESET}")
-        logger.debug(f"handle_inter_level() called for room type \"{self.room_type}\"")
-
-        # Saving stats
-        player.save_difficulty_data()
-        filename = f"autosave-{strip_ansi(player.name)}(lv{player.level})-{player.player_id}.json"
-        player.save_player(filename)
-
-        if config.DEV_AGENT_MODE:
-            agent = get_agent()
-            if agent:
-                agent.save_q_table(_qtable_path if _qtable_path else "")
-                agent.save_memory_data(_memory_path if _memory_path else "")
-
-        clear_screen()
-        sleep(1)
-        typewriter_effect(f"{Colors.GREEN}...\n{Colors.RESET}", 0.3 * config.game_speed_multiplier)
-        sleep(1)
-        typewriter_effect(f"{Colors.BRIGHT_BLACK}It feel empty for now..\nSeems that this room is currently under construction.{Colors.RESET}", 0.1 * config.game_speed_multiplier)
-        sleep(1)
-        return True
 
     @staticmethod
     def get_with_tutorial(player, room_type):
@@ -1323,6 +1303,179 @@ class Room:
         return True  # Continue exploration si rien ne se passe
 
 
+
+    def handle_workshop(self, player):
+        typewriter_effect(f"\n{Colors.YELLOW}You push open a heavy wooden door...{Colors.RESET}", 0.03)
+        sleep(1)
+        typewriter_effect(f"{Colors.BRIGHT_BLACK}Inside, a faint glow reveals an abandoned workshop.{Colors.RESET}", 0.03)
+        sleep(1)
+        typewriter_effect(f"{Colors.GREEN}Tools, anvils and strange mechanisms are scattered around...{Colors.RESET}", 0.03)
+        sleep(1.5)
+        typewriter_effect(f"{Colors.CYAN}A whisper echoes: 'Forge, repair... or create anew.'{Colors.RESET}", 0.04)
+
+        # Ici tu ajoutes ton système d’upgrade / craft
+        return True
+
+
+    def handle_special_shop(self, player):
+        typewriter_effect(f"\n{Colors.BRIGHT_MAGENTA}As you step forward, a veil of smoke swirls around you...{Colors.RESET}", 0.03)
+        sleep(1)
+        typewriter_effect(f"{Colors.MAGENTA}A cloaked merchant appears from the shadows.{Colors.RESET}", 0.03)
+        sleep(1)
+        typewriter_effect(f"'{Colors.YELLOW}Traveler... I offer what no dungeon dares to keep...{Colors.RESET}'", 0.05)
+        sleep(1.5)
+        typewriter_effect(f"{Colors.GREEN}Rare scrolls, glowing potions, cursed relics... All for a price.{Colors.RESET}", 0.03)
+
+        # shop spécial
+        return True
+
+
+    def handle_fountain(self, player):
+        typewriter_effect(f"\n{Colors.BLUE}The air grows damp, and you hear water trickling nearby...{Colors.RESET}", 0.03)
+        sleep(1)
+        typewriter_effect(f"{Colors.CYAN}You stumble upon a radiant fountain, shimmering with pure light.{Colors.RESET}", 0.03)
+        sleep(1.5)
+        typewriter_effect(f"{Colors.GREEN}The water pulses warmly, inviting you to drink...{Colors.RESET}", 0.04)
+        sleep(1)
+
+        # Ici tu mets player.stats.hp = player.stats.max_hp
+        return True
+
+
+    def handle_blessing(self, player):
+        typewriter_effect(f"\n{Colors.BRIGHT_WHITE}A sudden silence fills the room...{Colors.RESET}", 0.03)
+        sleep(1)
+        typewriter_effect(f"{Colors.YELLOW}Golden rays descend from nowhere, bathing you in warmth.{Colors.RESET}", 0.03)
+        sleep(1.5)
+        typewriter_effect(f"{Colors.MAGENTA}A divine presence whispers:{Colors.RESET} '{Colors.CYAN}May your path be brighter...{Colors.RESET}'", 0.05)
+        sleep(1)
+
+        # Ici tu mets bonus de stats (luck, force, etc.)
+        return True
+
+
+    def forsaken_chapel_room(self, player: Player):
+        """
+        A cursed chapel deep inside the dungeon.
+        Atmosphere: cold, rotten incense smell, broken statues, faint candlelight.
+        """
+        clear_screen()
+        sleep(1)
+        typewriter_effect(f"\n{Colors.BRIGHT_BLACK}You push open the rotten wooden doors...{Colors.RESET}", 0.05)
+        sleep(1.2)
+        typewriter_effect(f"{Colors.BRIGHT_BLACK}Inside lies a ruined chapel. Cracked stained glass depicts angels—wings broken, halos shattered..{Colors.RESET}", 0.04)
+        typewriter_effect(f"{Colors.BRIGHT_BLACK}At their place at the altar, the black chalice radiates a soft, ethereal glow, akin to an angelic presence.{Colors.RESET}", 0.04)
+
+        # --- CHOICE SYSTEM ---
+        typewriter_effect(f"\n{Colors.RED}What will you do?{Colors.RESET}", 0.02)
+        typewriter_effect(f"{Colors.YELLOW}1) Drink from the chalice{Colors.RESET}", 0.02)
+        typewriter_effect(f"{Colors.YELLOW}2) Pray silently at the altar{Colors.RESET}", 0.02)
+        typewriter_effect(f"{Colors.YELLOW}3) Ignore it and leave{Colors.RESET}", 0.02)
+
+        choice = input("> ")
+
+        if choice == "1":
+            typewriter_effect("\nYou lift the chalice to your lips. The liquid is thick like blood and ashes...", 0.02)
+            sleep(1.0)
+            typewriter_effect("A searing pain courses through your veins, your blood pressure is high as the liquid slowly takes over your body...", 0.02)
+            # 🩸 Mechanic: Player heals fully, but pays a price
+            player.heal(player.stats.max_hp)
+            # Maybe add a curse flag like player.add_status("Cursed")
+            typewriter_effect("You feel whole again... yet you sense chains tightening around your soul.", 0.02)
+
+        elif choice == "2":
+            typewriter_effect("\nYou kneel before the altar. Your whisper echoes strangely...", 0.02)
+            sleep(1.0)
+            typewriter_effect("The statues’ broken eyes seem to follow you. A hidden blessing answers your devotion.", 0.02)
+            # 🙏 Mechanic: Random buff (ex: weapon upgrade, mana boost, or remove a curse)
+            # player.weapon.upgrade() OR player.mana += 10
+            typewriter_effect("A subtle warmth fills your chest, as if unseen hands guided your path.", 0.02)
+
+        elif choice == "3":
+            typewriter_effect("\nYou step back, refusing the temptation. The shadows seem to sigh in disappointment.", 0.02)
+            # 🚪 Mechanic: Nothing happens, but leaving keeps the player safe
+            # Next room transition
+
+        else:
+            typewriter_effect("\nConfused, you hesitate. The glow of the chalice fades, opportunity lost.", 0.02)
+            # ⏳ Mechanic: wrong choice = event wasted
+        
+        return True
+
+
+    def whispering_library_room(self, player):
+        """
+        Whispering Library - Ancient knowledge, cursed tomes.
+        """
+        typewriter_effect("\nDust fills the air as you push the heavy oak doors.", 0.02)
+        typewriter_effect("You step into a vast library. Books line the shelves, their leather cracked, pages whispering by themselves...", 0.02)
+        typewriter_effect("An inscription above the archway reads: 'He sought wisdom, and found madness.'", 0.02)
+
+        typewriter_effect("\nWhat will you do?", 0.02)
+        typewriter_effect("1) Open a grimoire (gain forbidden knowledge)", 0.02)
+        typewriter_effect("2) Search the shelves carefully (seek safe lore)", 0.02)
+        typewriter_effect("3) Leave quietly", 0.02)
+
+        choice = input("> ")
+        if choice == "1":
+            # ⚔️ Gain +stat / spell, but add curse: -xp, random debuff, or forget skill
+            typewriter_effect("\nThe grimoire's ink shifts before your eyes.", 0.02)
+            typewriter_effect("You feel wisdom searing your mind... and something is taken from you in return.", 0.02)
+            typewriter_effect("A page crumbles to ash, whispering: 'He tried the same... and forgot his name.'", 0.02)
+
+        elif choice == "2":
+            # 📖 Gain lore fragment + small safe reward
+            typewriter_effect("\nYou find a torn page tucked inside a hollow spine.", 0.02)
+            typewriter_effect("It is written in a trembling hand: 'The enemy cannot be slain by steel alone...'", 0.02)
+            typewriter_effect("The note ends abruptly, soaked in faded blood.", 0.02)
+            # add lore fragment to player's log
+            # player.lore_fragments.append("Steel alone cannot defeat the enemy.")
+
+        else:
+            typewriter_effect("\nYou step away, the whispers following you until the door closes.", 0.02)
+
+        return True
+
+
+    def handle_inter_level(self, player:Player):
+        """Handles the inter-level room, which is a special room between levels."""
+        global debug
+        if debug >= 1:
+            print(f"\n{Colors.YELLOW}DEBUG: Entering handle_inter_level() for \"{self.room_type}\"{Colors.RESET}")
+        logger.debug(f"handle_inter_level() called for room type \"{self.room_type}\"")
+
+        # Saving stats
+        player.save_difficulty_data()
+        filename = f"autosave-{strip_ansi(player.name)}(lv{player.level})-{player.player_id}.json"
+        player.save_player(filename)
+
+        if config.DEV_AGENT_MODE:
+            agent = get_agent()
+            if agent:
+                agent.save_q_table(_qtable_path if _qtable_path else "")
+                agent.save_memory_data(_memory_path if _memory_path else "")
+
+
+        special_rooms = ["workshop", "shop", "fountain", "blessing", "forsaken_chapel"]
+        room_type = random.choice(special_rooms)
+
+        logger.info(f"Player encountered inter-level room of type: {room_type}")
+        print(f"\n{Colors.CYAN}You enter a special room...{Colors.RESET}")
+
+        if room_type == "workshop":
+            return self.handle_workshop(player)
+        elif room_type == "shop":
+            return self.handle_special_shop(player)
+        elif room_type == "fountain":
+            return self.handle_fountain(player)
+        elif room_type == "blessing":
+            return self.handle_blessing(player)
+        elif room_type == "forsaken_chapel":
+            return self.forsaken_chapel_room(player)
+
+        return True
+
+
 class Dungeon(list):
     """
     A class representing a dungeon, which is a collection of rooms.
@@ -1398,6 +1551,18 @@ def generate_random_room(player: Player, room_type: str|None = None, is_boss_roo
         for _ in range(num_items):
             items.append(generate_random_item(player=player))
         
+        # In realistic mode, also generate resources
+        if isinstance(player.mode, RealisticMode):
+            num_resources = random.randint(1, 3)
+            for _ in range(num_resources):
+                items.append(generate_random_resource_item())
+    
+    # In realistic mode, add resources to combat rooms as well
+    if room_type == "combat" and isinstance(player.mode, RealisticMode):
+        num_resources = random.randint(1, 2)
+        for _ in range(num_resources):
+            items.append(generate_random_resource_item())
+        
     if debug >= 1:
         print(f"{Colors.YELLOW}DEBUG: Items generated: {items}{Colors.RESET}")
     logger.debug(f"Generated item: {items}")
@@ -1429,7 +1594,6 @@ from engine.dungeon_generator import DungeonGenerator
 def generate_dungeon(player:Player) -> list[Room]:
     """Generates a dungeon with rooms based on the level and difficulty."""
     global debug
-    debug = 0
     dungeon_level = player.dungeon_level
     difficulty = player.mode
     rooms: list[Room] = []
@@ -1518,6 +1682,7 @@ def generate_dungeon(player:Player) -> list[Room]:
     if debug >= 1:
         print(f"{Colors.YELLOW}DEBUG: Dungeon generation complete:{Colors.RESET}")
         print(f"{Colors.YELLOW}DEBUG: Rooms: {rooms}{Colors.RESET}")
+        input(f"{Colors.YELLOW}DEBUG: Press Enter to continue...{Colors.RESET}")
 
     return rooms
 
