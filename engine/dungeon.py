@@ -1,4 +1,4 @@
-__version__ = "1937.0"
+__version__ = "1942.0"
 __creation__ = "09-03-2025"
 
 # D​u​n​ge​o​n​ ​H​un​t​e​r​ ​-​ ​(​c​)​ ​D​r​ag​o​n​de​fer​ 2​0​2​5
@@ -39,7 +39,7 @@ from engine.logger import logger
 from engine.difficulty import RealisticMode
 
 
-debug = 1
+debug = 0
 
 # Beware: Rooms may hide secrets that trap your soul forever.
 class Room:
@@ -237,6 +237,7 @@ class Room:
         if debug >= 1:
             print(f"{Colors.YELLOW}DEBUG: Room type not triggering any event.{Colors.RESET}")
         logger.debug("Room type not triggering any event.")
+
         return True  # Continue exploration si rien ne se passe
 
 
@@ -903,7 +904,6 @@ class Room:
                         purchased = False
                         if tutorial and tutorial_items_bought == 0:
                             tutorial_items_bought += 1
-                            item_index = 0
                             print(f"\n{Colors.GREEN}You bought {shop_inventory[item_index].name} for free!{Colors.RESET}")
                             purchased = True
                         elif player.gold >= item.value:
