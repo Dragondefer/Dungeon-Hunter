@@ -4,7 +4,7 @@ if TYPE_CHECKING:
     from core.progression import Quest
     from items.crafting import Recipe
 
-__version__ = "2518.0"
+__version__ = "2520.0"
 __creation__ = "09-03-2025"
 
 # Dungeon Hunter - (c) Dragondefer 2025
@@ -426,40 +426,256 @@ from engine.difficulty import GameMode, NormalMode, RealisticMode
 
 class Player(Entity):
     """
-    Represents the player-controlled character.
+    Represents the player-controlled character in the Dungeon Hunter game.
+    
+    Inherits from Entity and manages character progression, inventory, equipment, 
+    quests, skills, spells, and gameplay statistics.
 
     Inherits from:
-        Entity (Base class for all characters)
+        Entity: Base class providing core stats (hp, max_hp, attack, defense) and 
+                damage mechanics.
 
     Attributes:
-        level (int): The player's current level.
-        xp (int): The player's experience points.
-        gold (int): The player's gold currency.
-        inventory (list): A list of items owned by the player.
-        luck (int): Affects critical hits, rare item finds, and trap evasion.
-        skills (list): A list of acquired skills.
-        class_name (str): The player's chosen class specialization.
-        max_xp (int): The required XP to level up.
-        dungeon_level (int): The current depth level in the dungeon.
-        profession (str | None): The player's profession (if applicable).
-        quests (list): Active quests assigned to the player.
-        completed_quests (list): Quests that have been finished.
+        # Progression & Experience
+        level (int): Current character level (starts at 1).
+        xp (int): Current accumulated experience points.
+        max_xp (int): XP threshold required to level up (increases with each level).
+        gold (int): Amount of gold currency (starts at 50).
+        souls (int): Soul currency (used for special purchases).
+        sin (int): Sin points (affects certain game mechanics).
+        
+        # Identity
+        name (str): Character name.
+        class_name (str): Current class specialization (e.g., "Novice", "Warrior").
+        profession (str | None): Optional profession/trade specialization.
+        user_id (str): Anonymous user identifier for analytics.
+        player_id (str): Unique UUID for the player instance.
+        
+        # Equipment & Inventory
+        equipment (Equipment): Equipped items across all slots (main_hand, off_hand, 
+                               helmet, chest, gauntlets, leggings, boots, shield, 
+                               ring, amulet, belt).
+        inventory (Inventory): Container for carrying items, resources, and crafting materials.
+        set_bonuses (dict): Active set bonuses from equipped armor sets.
+        
+        # Combat & Stats
+        stats (Stats): Container for permanent, temporary, and equipment-based stats 
+                       including hp, max_hp, attack, defense, magic_damage, 
+                       magic_defense, agility, luck, mana, max_mana, stamina, 
+                       max_stamina, critical_chance.
+        kills (int): Number of enemies defeated.
+        critical_count (int): Total critical hits landed.
+        attack_count (int): Total attacks performed.
+        
+        # Skills & Abilities
+        skills (list[Skill]): Learned combat skills.
+        spells (list[Spell]): Learned spells (requires mana to cast).
+        masteries (dict[str, Mastery]): Weapon/spell mastery levels and XP tracking.
+        
+        # Dungeon Progression
+        dungeon_level (int): Current dungeon depth/level.
+        levels_completed (int): Number of dungeon levels fully completed.
+        deaths_per_room (dict): Tracks deaths per room across difficulties.
+        
+        # Gameplay Tracking
+        total_deaths (int): Total number of character deaths.
+        total_play_sessions (int): Number of play sessions started.
+        playtime_seconds (int): Total accumulated playtime in seconds.
+        _playtime_start (float): Timestamp when current session started.
+        
+        # Quests & Achievements
+        quests (list[Quest]): Currently active quests.
+        completed_quests (list): Finished quests.
+        achievements (dict): Unlocked achievements and their progress.
+        seen_events (set): Event IDs that have been triggered (for one-time events).
+        
+        # Game Mode
+        mode (GameMode): Difficulty mode (Normal, Realistic, Souls Enjoyer).
+        difficulty_data (dict): Difficulty-specific game state.
+        
+        # Tutorial & Features
+        tutorial_completed (bool): Whether main tutorial has been completed.
+        tutorial_rooms_shown (dict): Which tutorial messages have been shown.
 
     Methods:
+        # Progression
         level_up() -> None:
-            Increases stats and levels up the player.
+            Increases stats, maxes out health/mana, and shows level-up message.
         
-        choose_class() -> None:
-            Allows the player to pick a specialized class at level 5.
+        gain_xp(amount: int) -> None:
+            Adds experience points and triggers level_up() if threshold reached.
         
-        gain_xp(amount: int) -> bool:
-            Increases XP and checks if the player should level up.
+        choose_class(level: int, classes: list[PlayerClass]) -> None:
+            Allows player to choose a class specialization at milestone levels.
         
+        # Equipment Management
+        equip_item(item: Item) -> bool:
+            Equips an item to appropriate slot, applies stat bonuses.
+        
+        unequip_item(slot: str) -> bool:
+            Removes item from specified slot, reverts stat bonuses.
+        
+        unequip_item_menu() -> None:
+            Interactive menu for unequipping items.
+        
+        get_equipment_stats() -> dict:
+            Returns combined stat bonuses from all equipped items.
+        
+        get_set_bonus_stats() -> dict:
+            Returns bonus stats from completed armor sets.
+        
+        apply_all_equipment_effects(show_text: bool = False) -> None:
+            Updates total stats with all equipment and set bonuses.
+        
+        # Inventory & Crafting
+        manage_inventory() -> None:
+            Interactive menu for sorting, dropping, and organizing items.
+        
+        add_resource(resource_id: str, quantity: int = 1) -> bool:
+            Adds crafting materials to inventory.
+        
+        remove_resource(resource_id: str, quantity: int = 1) -> bool:
+            Removes crafting materials from inventory.
+        
+        get_resource_count(resource_id: str) -> int:
+            Returns quantity of a specific resource.
+        
+        learn_recipe(recipe: Recipe) -> bool:
+            Unlocks a crafting recipe.
+        
+        craft_item(recipe: Recipe) -> bool:
+            Crafts an item if resources are available.
+        
+        display_resources() -> None:
+            Shows all collected crafting materials.
+        
+        display_recipes() -> None:
+            Shows all learned recipes.
+        
+        # Combat & Abilities
         use_skill(target: Entity) -> int:
-            Uses a learned skill on an enemy target.
+            Executes a learned skill against a target, returns damage dealt.
         
+        learn_spell(spell: Spell) -> None:
+            Adds spell to learned spells list.
+        
+        cast_spell(spell_name: str, target: Entity) -> None:
+            Casts a learned spell on target (consumes mana).
+        
+        use_scroll(scroll: Scroll, target: Entity) -> None:
+            Uses a scroll item for its effect.
+        
+        use_stamina(amount: int) -> bool:
+            Reduces stamina for stamina-based actions.
+        
+        rest_stamina(amount: int) -> None:
+            Restores stamina up to max_stamina.
+        
+        use_mana(amount: int) -> bool:
+            Reduces mana for spell casting.
+        
+        regen_mana(amount: int) -> None:
+            Restores mana up to max_mana.
+        
+        total_domage(base_damage: bool = True) -> int:
+            Calculates total damage output including equipment and bonuses.
+        
+        dodge_chance(last_attack: WeaponAttack | None = None) -> float:
+            Calculates probability of dodging incoming attack.
+        
+        get_mastery(key: str) -> Mastery:
+            Retrieves mastery object for a weapon/spell type.
+        
+        gain_mastery_xp(key: str, amount: int) -> None:
+            Increases mastery XP for skill specialization.
+        
+        # Display & UI
         display_status() -> None:
-            Prints the player's current stats and equipped items.
+            Shows formatted player stats, equipment, and status effects.
+        
+        corrupted_display_status() -> None:
+            Displays stats with glitch effect (corrupted/spoiler content).
+        
+        display_stats_summary() -> None:
+            Shows concise stat summary in box format.
+        
+        display_dungeon_level(room_number: int = 0, limit: int = 60) -> None:
+            Shows current dungeon level and room number.
+        
+        display_skill_mastery() -> None:
+            Shows all weapon/spell masteries and their levels.
+        
+        display_logbook() -> None:
+            Shows kill count and combat statistics.
+        
+        # Quests & Achievements
+        view_quests() -> None:
+            Interactive menu to view and track quest progress.
+        
+        display_quests() -> None:
+            Lists all active and completed quests.
+        
+        update_quests(objective_type: str, amount: int = 1) -> None:
+            Advances quest progress for specified objective.
+        
+        complete_quest(player: 'Player', quest: Quest) -> None:
+            Marks quest as complete and awards rewards.
+        
+        check_achievements() -> None:
+            Checks if any achievement conditions are met.
+        
+        display_achievements() -> None:
+            Shows all achievements and completion status.
+        
+        trigger_event_once(event_id: str, action: callable) -> None:
+            Triggers an event only if not previously seen.
+        
+        # Game State Management
+        increment_deaths_in_room(difficulty_name: str, room_id: int) -> None:
+            Tracks death count for specific room on specific difficulty.
+        
+        increment_levels_completed() -> None:
+            Increments dungeon level completion counter.
+        
+        increment_play_sessions() -> None:
+            Increments play session counter.
+        
+        move_player(direction: str, dungeon_grid: list) -> bool:
+            Moves player in dungeon grid based on direction.
+        
+        save_player(filename: str = "player_save.json") -> None:
+            Serializes player state to JSON file in saves/ directory.
+        
+        reset_player() -> None:
+            Resets character to initial state, losing all progression.
+        
+        to_dict() -> dict:
+            Converts player state to dictionary for serialization.
+        
+        from_dict(cls, data: dict) -> 'Player':
+            Class method to reconstruct player from dictionary.
+        
+        is_feature_unlocked(feature: str) -> bool:
+            Checks if gameplay feature is unlocked by progression.
+        
+        save_difficulty_data() -> None:
+            Saves difficulty-specific state.
+        
+        load_difficulty_data(difficulty_name: str) -> None:
+            Loads difficulty-specific state.
+        
+        get_playtime() -> int:
+            Returns total playtime in seconds.
+        
+        get_formatted_playtime() -> str:
+            Returns formatted playtime string (e.g., "2h 30m 15s").
+        
+        # Magic Methods
+        __str__() -> str:
+            Returns simple player representation.
+        
+        __repr__() -> str:
+            Returns detailed player representation for debugging.
     """
 
     def __init__(self, name="Adventurer", difficulty=GameMode()):
