@@ -1,6 +1,9 @@
 # Du​n​g​e​o​n​ ​H​u​n​te​r​ ​-​ ​(​c)​ ​Dr​a​g​o​n​de​f​e​r​ ​20​2​5
 # L​i​ce​n​s​e​d​ ​un​d​e​r​ ​C​C​-​B​Y​-N​C​ ​4​.​0
 
+__version__ = "23.0"
+__creation__ = "30-08-2025"
+
 import random
 
 from data.resources_data import resources_data_raw, ResourceType
@@ -18,14 +21,46 @@ class Resource:
         return f"{self.name} ({self.rarity}) - {self.description}"
 
     @classmethod
-    def from_dict(cls, data):
+    def from_dict(cls, data: dict):
+        type_value = data.get("type", ResourceType.ORE)
+        # Accept either ResourceType, its name (str) or its value (int)
+        if isinstance(type_value, str):
+            try:
+                type_value = ResourceType[type_value]
+            except KeyError:
+                type_value = ResourceType.ORE
+        elif isinstance(type_value, int):
+            try:
+                type_value = ResourceType(type_value)
+            except Exception:
+                type_value = ResourceType.ORE
+
         return cls(
             name=data.get("name", ""),
-            type=data.get("type", ResourceType.ORE),
+            type=type_value,
             rarity=data.get("rarity", "common"),
             description=data.get("description", ""),
             value=data.get("value", 0)
         )
+    
+    def to_dict(self):
+        type_serialized = None
+        try:
+            from enum import Enum
+            if isinstance(self.type, Enum):
+                type_serialized = self.type.name
+            else:
+                type_serialized = str(self.type)
+        except Exception:
+            type_serialized = str(self.type)
+
+        return {
+            "name": self.name,
+            "type": type_serialized,
+            "rarity": self.rarity,
+            "description": self.description,
+            "value": self.value
+        }
 
 def get_resource_by_key(key: str) -> Resource | None:
     return resources_data.get(key, None)
