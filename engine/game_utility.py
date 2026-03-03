@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from core.entity import Player # For type hint only, else it would do an import error :/
 
-__version__ = "575.0"
+__version__ = "592.0"
 __creation__ = "09-03-2025"
 
 # D​u​n​ge​o​n​ ​H​u​n​t​e​r​ ​-​ ​(​c​)​ ​D​r​a​go​n​de​f​er​ ​2​02​5
@@ -23,6 +23,17 @@ path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from interface.colors import Colors
 from engine.logger import logger
+
+try:
+    dev_mode = False
+    if os.path.exists("./dev_mod.py"):
+        from engine.dev_mod import debug_menu
+        dev_mode = True
+except Exception as e:
+    logger.warning(f"Error when trying to import dev_mod.py: {e}")
+    dev_mode = False
+    debug_menu = lambda *args, **kwargs: None
+
 
 # For Windows non-blocking key detection
 if os.name == 'nt':
@@ -136,7 +147,10 @@ def get_input(prompt: str = "",
             print(prompt, "")
             return ""  # Agent passe (lecture automatique)
         else:
-            return input(prompt)
+            user_input = input(prompt)
+            if user_input.lower() == "debug" and dev_mode and player:
+                debug_menu(player=player)
+            return user_input
 
     if debug>=1:
         print("debug: agent_instance:", agent_instance)
@@ -201,6 +215,7 @@ def strip_ansi(text):
     return re.sub(r'\x1b\[[0-9;]*m', '', text)
 
 def execute_command(cmd, allowed=False, prnt=True, rtn=False, context=None):
+    """Use eval command to execute python command, not bash commands"""
     if context is None:
         context = {}
     try:
@@ -641,7 +656,7 @@ def loading(duration=4):
     stdout.flush()
 
 
-def choose_difficulty(player):
+def choose_difficulty(player: Player):
     """
     Allows the player to select a difficulty mode with suspense effect.
     """
@@ -679,10 +694,13 @@ def choose_difficulty(player):
 
     if choice == "1":
         player.mode = NormalMode()
+        player.load_difficulty_data(player.mode.name)
     elif choice == "2" and player.unlocked_difficulties["soul_enjoyer"]:
         player.mode = SoulsEnjoyerMode()
+        player.load_difficulty_data(player.mode.name)
     elif choice == "3" and player.unlocked_difficulties["realistic"]:
         player.mode = RealisticMode()
+        player.load_difficulty_data(player.mode.name)
     else:
         print(f"{Colors.RED}Mode locked or invalid choice! Defaulting to Normal.{Colors.RESET}")
         player.mode = NormalMode()
@@ -854,6 +872,153 @@ def interactive_bar(min_value=0, max_value=100, default_value=50, allow_beyond=F
                 print()
                 return current_value
 
+
+def interactive_menu(choices, title="", selected_color=Colors.BRIGHT_MAGENTA, normal_color=Colors.CYAN, 
+                     box_chars=('┌', '┐', '└', '┘', '─', '│'), padding=2):
+    """
+    Display an interactive menu with arrow key navigation in a centered box.
+
+    Parameters:
+    - choices (list[str]): List of choice strings to display.
+    - title (str): Optional title to display above choices.
+    - selected_color (str): Color code for the selected choice (default: RED).
+    - normal_color (str): Color code for unselected choices (default: CYAN).
+    - box_chars (tuple): Characters for box drawing (top_left, top_right, bottom_left, bottom_right, horizontal, vertical).
+    - padding (int): Padding inside the box (default: 2).
+
+    Returns:
+    - int: The index (0-based) of the selected choice.
+    """
+    if not choices:
+        raise ValueError("choices list cannot be empty")
+    
+    current_selection = 0
+
+    def get_key():
+        """Get arrow key or Enter input, cross-platform compatible"""
+        if os.name == 'nt':
+            if msvcrt.kbhit():
+                key = msvcrt.getch()
+                if key == b'\xe0':  # Special keys (arrows, f keys, etc.)
+                    key = msvcrt.getch()
+                    return key
+                else:
+                    return key
+            return None
+        else:
+            fd = sys.stdin.fileno()
+            old_settings = termios.tcgetattr(fd)
+            try:
+                tty.setraw(fd)
+                rlist, _, _ = select.select([sys.stdin], [], [], 0.1)
+                if rlist:
+                    key = sys.stdin.read(3)
+                    return key
+                return None
+            finally:
+                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
+
+    def draw_menu():
+        """Render the menu box with proper alignment"""
+        cols, rows = get_terminal_size()
+        
+        # Build menu content
+        menu_lines = []
+        if title:
+            menu_lines.append(f"{Colors.BOLD}{title}{Colors.RESET}")
+            menu_lines.append("")
+        
+        for idx, choice in enumerate(choices):
+            if idx == current_selection:
+                # Selected choice - highlighted with cursor
+                line = f"▶ {selected_color}{choice}{Colors.RESET}"
+            else:
+                # Unselected choice
+                line = f"  {normal_color}{choice}{Colors.RESET}"
+            menu_lines.append(line)
+        
+        # Calculate max width (accounting for ANSI codes in strip_ansi)
+        max_width = 0
+        for line in menu_lines:
+            clean_line = strip_ansi(line)
+            max_width = max(max_width, len(clean_line))
+        
+        # Content width without padding (internal space)
+        content_width = max_width
+        
+        # Box dimensions
+        box_width = content_width + (padding * 2)
+        box_height = len(menu_lines) + 2  # +2 for top and bottom borders
+        
+        # Calculate centered position
+        start_row = max(1, (rows - box_height) // 2)
+        start_col = max(1, (cols - box_width - 2) // 2)
+        
+        # Clear screen for clean display
+        clear_screen()
+        
+        # Step 1: Draw complete box structure first
+        # Draw top border
+        top_border = f"{box_chars[0]}{box_chars[4] * box_width}{box_chars[1]}"
+        stdout.write(f"\033[{start_row};{start_col}H{top_border}")
+        stdout.flush()
+        
+        # Draw middle lines (content area with vertical bars)
+        for idx in range(len(menu_lines)):
+            row = start_row + idx + 1
+            # Draw left border and padding
+            line_content = f"{box_chars[5]}{' ' * padding}"
+            # Fill with spaces to full width
+            line_content += ' ' * content_width
+            # Add right padding and border
+            line_content += f"{' ' * padding}{box_chars[5]}"
+            stdout.write(f"\033[{row};{start_col}H{line_content}")
+        stdout.flush()
+        
+        # Draw bottom border
+        bottom_row = start_row + len(menu_lines) + 1
+        bottom_border = f"{box_chars[2]}{box_chars[4] * box_width}{box_chars[3]}"
+        stdout.write(f"\033[{bottom_row};{start_col}H{bottom_border}")
+        stdout.flush()
+        
+        # Step 2: Move cursor back up and write text inside the box
+        text_start_col = start_col + padding + 1
+        for idx, line in enumerate(menu_lines):
+            row = start_row + idx + 1
+            # Position cursor at text location
+            stdout.write(f"\033[{row};{text_start_col}H{line}")
+        
+        stdout.flush()
+        time.sleep(0.05)  # Small delay to prevent blinking
+
+    # Main loop
+    while True:
+        draw_menu()
+        
+        key = get_key()
+        if key is None:
+            time.sleep(0.05)
+            continue
+        
+        # Windows arrow key handling
+        if os.name == 'nt':
+            if key == b'H':  # Up arrow
+                current_selection = (current_selection - 1) % len(choices)
+            elif key == b'P':  # Down arrow
+                current_selection = (current_selection + 1) % len(choices)
+            elif key == b'\r':  # Enter key
+                clear_screen()
+                return current_selection
+        else:
+            # Unix arrow key handling
+            if key == '\x1b[A':  # Up arrow
+                current_selection = (current_selection - 1) % len(choices)
+            elif key == '\x1b[B':  # Down arrow
+                current_selection = (current_selection + 1) % len(choices)
+            elif key == '\r' or key == '\n':  # Enter key
+                clear_screen()
+                return current_selection
 
 
 if __name__ == '__main__':
