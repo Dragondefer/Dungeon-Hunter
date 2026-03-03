@@ -1,4 +1,4 @@
-__version__ = "1942.0"
+__version__ = "1960.0"
 __creation__ = "09-03-2025"
 
 # D​u​n​ge​o​n​ ​H​un​t​e​r​ ​-​ ​(​c​)​ ​D​r​ag​o​n​de​fer​ 2​0​2​5
@@ -287,7 +287,7 @@ class Room:
         
         for attempt in range(attempts):
             try:
-                guess_str = get_input(f"\n{Colors.YELLOW}Your guess (attempt {attempt+1}/{attempts}): {Colors.RESET}", options=None)
+                guess_str = get_input(f"\n{Colors.YELLOW}Your guess (attempt {attempt+1}/{attempts}): {Colors.RESET}", options=None, player=player)
                 guess = int(guess_str)
                 logger.debug(f"Player guessed {guess} on attempt {attempt+1}")
                 if guess == target:
@@ -347,7 +347,7 @@ class Room:
             else:
                 print(f"{Colors.RED}Wrong answer! You're left with {2 - attempt} attempts.{Colors.RESET}")
 
-        # Échec → Le joueur prend des dégâts
+        # Échec -> Le joueur prend des dégâts
         print(f"\n{Colors.RED}You fail to solve the riddle. A trap is triggered !{Colors.RESET}")
         damage = random.randint(5, 15) * player.dungeon_level
         player.stats.hp = max(1, player.stats.hp - damage)  
@@ -356,7 +356,7 @@ class Room:
         return True
     
     
-    def handle_dice_puzzle(self, player):
+    def handle_dice_puzzle(self, player: Player):
         USE_AGENT = False
         if config.DEV_AGENT_MODE:
             try:
@@ -411,7 +411,7 @@ class Room:
                 else:
                     print(f"\n{Colors.RED}Sorry, you lose.{Colors.RESET}")
                 
-                play_again = get_input(f"\n{Colors.CYAN}Play again? [y/n]: {Colors.RESET}", options=["y","n"]).lower()
+                play_again = get_input(f"\n{Colors.CYAN}Play again? [y/n]: {Colors.RESET}", options=["y","n"], player=player).lower()
                 if play_again != 'y':
                     break
             else:
@@ -420,7 +420,7 @@ class Room:
         return True
  
     
-    def handle_choice_puzzle(self, player):
+    def handle_choice_puzzle(self, player: Player):
         """Management of an enigma where the player must choose between several options."""
 
         puzzle = random.choice(puzzle_choices)
@@ -431,7 +431,7 @@ class Room:
         for key, option in puzzle["options"].items():
             print(f"{Colors.YELLOW}{key}. {option['name']}{Colors.RESET}")
 
-        choice = get_input(f"\n{Colors.CYAN}Your choice : {Colors.RESET}", options=list(puzzle["options"].keys()))
+        choice = get_input(f"\n{Colors.CYAN}Your choice : {Colors.RESET}", options=list(puzzle["options"].keys()), player=player)
 
         if choice in puzzle["options"]:
             option = puzzle["options"][choice]
@@ -464,7 +464,7 @@ class Room:
         print(f"\n{Colors.RED}Invalid choice. The puzzle remains sealed.{Colors.RESET}")
         return True
     
-    def handle_sequence_puzzle(self, player:Player):
+    def handle_sequence_puzzle(self, player: Player):
         """Managing a mathematical sequence puzzle."""
         sequence_type = random.choice(["arithmetic", "geometric"])
 
@@ -544,7 +544,7 @@ class Room:
 
         return True
 
-    def handle_combat(self, player:Player, is_boss_room=False, tutorial=False):
+    def handle_combat(self, player: Player, is_boss_room = False, tutorial = False):
         """Gère un combat, normal ou contre un boss, de manière optimisée avec timing-based mechanic et UI améliorée."""
         USE_AGENT = False
         if config.DEV_AGENT_MODE:
@@ -562,7 +562,7 @@ class Room:
         if tutorial is True: player.mode._show_tutorial_intro(is_boss_room)
 
         enemy = self.enemies[0]
-        get_input(f'\n{Colors.BOLD}{Colors.RED}Press enter to begin the combat{Colors.RESET}')
+        get_input(f'\n{Colors.BOLD}{Colors.RED}Press enter to begin the combat{Colors.RESET}', player=player)
         sleep(0.3)
         clear_screen()
 
@@ -744,7 +744,7 @@ class Room:
 
                 if self.enemies:
                     enemy = self.enemies[0]
-                    print(f"\n{Colors.RED}A {enemy.name} appears !{Colors.RESET}")
+                    print(f"\n{Colors.RED}A {enemy.name}{Colors.RED} appears !{Colors.RESET}")
                     sleep(0.5)
                 else:
                     if not player.is_alive():
@@ -775,7 +775,7 @@ class Room:
             sleep(0.3)
             typewriter_effect(f"[Assistant]: {Colors.BRIGHT_BLACK}I heard you can find ancient scrolls{Colors.RESET}", 0.03 * config.game_speed_multiplier)
             sleep(0.2)
-            typewriter_effect(f"[Assistant]: {Colors.GREEN}For now, everything is unlocked..{Colors.RESET}", 0.075 * config.game_speed_multiplier)
+            typewriter_effect(f"[Assistant]: {Colors.BRIGHT_BLACK}For now, everything is unlocked..{Colors.RESET}", 0.075 * config.game_speed_multiplier)
         
         if not self.items:
             print(f"\n{Colors.YELLOW}You've already collected all treasure from this room.{Colors.RESET}")
@@ -800,7 +800,7 @@ class Room:
         
         return True
     
-    def handle_shop(self, player:Player, box=False, tutorial=False):
+    def handle_shop(self, player: Player, box = False, tutorial = False):
         player.shops_visited += 1
         def print_box(title, lines, color_title=Colors.BRIGHT_CYAN, color_border=Colors.BRIGHT_CYAN, color_text=Colors.RESET):
             width = max(len(line) for line in lines + [title]) + 2
@@ -941,7 +941,7 @@ class Room:
         print(f"{Colors.RED}0. Cancel{Colors.RESET}")
         
         try:
-            choice = get_input(f"\n{Colors.CYAN}Choose an option (0 to cancel): {Colors.RESET}", options=["0","1","2"])
+            choice = get_input(f"\n{Colors.CYAN}Choose an option (0 to cancel): {Colors.RESET}", options=["0","1","2"], player=player)
             
             if choice == "0":
                 return
@@ -951,7 +951,7 @@ class Room:
                     print(f"{Colors.YELLOW}{i}. {item} - Sell for {Colors.BRIGHT_YELLOW}{sell_value} gold{Colors.RESET}")
                 
                 try:
-                    item_choice_str = get_input(f"\n{Colors.CYAN}Choose an item to sell (0 to cancel): {Colors.RESET}", options=None)
+                    item_choice_str = get_input(f"\n{Colors.CYAN}Choose an item to sell (0 to cancel): {Colors.RESET}", options=None, player=player)
                     item_choice = int(item_choice_str)
                     
                     if item_choice == 0:
@@ -979,7 +979,7 @@ class Room:
                 print(f"{Colors.RED}0. Cancel{Colors.RESET}")
                 
                 try:
-                    group_choice_str = get_input(f"\n{Colors.CYAN}Choose a group option (0 to cancel): {Colors.RESET}", options=["0","1","2"])
+                    group_choice_str = get_input(f"\n{Colors.CYAN}Choose a group option (0 to cancel): {Colors.RESET}", options=["0","1","2"], player=player)
                     group_choice = int(group_choice_str)
                     
                     if group_choice == 0:
@@ -994,7 +994,7 @@ class Room:
                         for i, rarity in enumerate(rarity_list, 1):
                             print(f"{Colors.YELLOW}{i}. {rarity}{Colors.RESET}")
                         try:
-                            rarity_choice_str = get_input(f"\n{Colors.CYAN}Choose rarity to sell (0 to cancel): {Colors.RESET}", options=[str(i) for i in range(len(rarity_list)+1)])
+                            rarity_choice_str = get_input(f"\n{Colors.CYAN}Choose rarity to sell (0 to cancel): {Colors.RESET}", options=[str(i) for i in range(len(rarity_list)+1)], player=player)
                             rarity_choice = int(rarity_choice_str)
                             if rarity_choice == 0:
                                 return
@@ -1005,7 +1005,7 @@ class Room:
                                     print(f"\n{Colors.RED}No items found with rarity {chosen_rarity}.{Colors.RESET}")
                                     return
                                 print(f"\n{Colors.CYAN}You have {len(filtered_items)} items with rarity {chosen_rarity}.{Colors.RESET}")
-                                limit = get_input(f"Enter the maximum number of items to sell (or press Enter to sell all): ", options=None)
+                                limit = get_input(f"Enter the maximum number of items to sell (or press Enter to sell all): ", options=None, player=player)
                                 try:
                                     limit = int(limit) if limit.strip() != "" else len(filtered_items)
                                 except ValueError:
@@ -1036,7 +1036,7 @@ class Room:
                         for i, effect_type in enumerate(effect_types, 1):
                             print(f"{Colors.YELLOW}{i}. {effect_type}{Colors.RESET}")
                         try:
-                            effect_choice_str = get_input(f"\n{Colors.CYAN}Choose effect type to sell (0 to cancel): {Colors.RESET}", options=[str(i) for i in range(len(effect_types)+1)])
+                            effect_choice_str = get_input(f"\n{Colors.CYAN}Choose effect type to sell (0 to cancel): {Colors.RESET}", options=[str(i) for i in range(len(effect_types)+1)], player=player)
                             effect_choice = int(effect_choice_str)
                             if effect_choice == 0:
                                 return
@@ -1050,7 +1050,7 @@ class Room:
                                     print(f"\n{Colors.RED}No items found with effect type {chosen_effect}.{Colors.RESET}")
                                     return
                                 print(f"\n{Colors.CYAN}You have {len(filtered_items)} items with effect type {chosen_effect}.{Colors.RESET}")
-                                limit = get_input(f"Enter the maximum number of items to sell (or press Enter to sell all): ", options=None)
+                                limit = get_input(f"Enter the maximum number of items to sell (or press Enter to sell all): ", options=None, player=player)
                                 try:
                                     limit = int(limit) if limit.strip() != "" else len(filtered_items)
                                 except ValueError:
@@ -1091,7 +1091,7 @@ class Room:
             sleep(0.5)
             typewriter_effect(f"[Assistant]: {Colors.GREEN}You can also meditate to improve your stats.{Colors.RESET}", 0.03 * config.game_speed_multiplier)
             sleep(0.5)
-            typewriter_effect(f"[Assistant]: {Colors.GREEN}There is rumors who said that wierd things can happend in your sleep...{Colors.RESET}\n", 0.05 * config.game_speed_multiplier)
+            typewriter_effect(f"[Assistant]: {Colors.BRIGHT_BLACK}There is rumors who said that wierd things can happend in your sleep...{Colors.RESET}\n", 0.05 * config.game_speed_multiplier)
             sleep(1)
         
         options = [
@@ -1106,7 +1106,7 @@ class Room:
         
         choice = get_input(f"\n{Colors.CYAN}What would you like to do? {Colors.RESET}", options=options, player=player)
         """
-        # Si l'utilisateur est humain, convertir "1" → option[0], etc.
+        # Si l'utilisateur est humain, convertir "1" -> option[0], etc.
         if choice in map(str, range(1, len(options) + 1)):
             choice = options[int(choice) - 1]
         
@@ -1476,6 +1476,74 @@ class Room:
         return True
 
 
+    def search_for_trap(self, player: Player):
+        """Allow the player to search for traps in the room."""
+        detection_chance = player.stats.luck * 2 + player.stats.agility
+        roll = random.randint(1, 100)
+        if roll <= detection_chance:
+            print(f"\n{Colors.GREEN}You successfully detected a trap!{Colors.RESET}")
+            return True
+        else:
+            print(f"\n{Colors.RED}You failed to detect any traps.{Colors.RESET}")
+            return False
+        
+    
+    def search_for_secret_door(self, player: Player):
+        """Allow the player to search for secret doors in the room."""
+        detection_chance = player.stats.luck + player.stats.intelligence
+        roll = random.randint(1, 100)
+        if roll <= detection_chance:
+            print(f"\n{Colors.GREEN}You successfully found a secret door!{Colors.RESET}")
+            return True
+        else:
+            print(f"\n{Colors.RED}You failed to find any secret doors.{Colors.RESET}")
+            return False
+
+    def search_for_ressource(self, player: Player):
+        """Allow the player to search for hidden resources in the room."""
+        detection_chance = player.stats.luck + player.stats.perception
+        roll = random.randint(1, 100)
+        if roll <= detection_chance:
+            resource = generate_random_resource_item()
+            player.inventory.append(resource)
+            print(f"\n{Colors.GREEN}You found a hidden resource: {resource.name}!{Colors.RESET}")
+            return True
+        else:
+            print(f"\n{Colors.RED}You failed to find any hidden resources.{Colors.RESET}")
+            return False
+    
+    def search_in_room(self, player: Player):
+        """Allow the player to search the room for traps, secret doors, or resources."""
+        print(f"\n{Colors.CYAN}You decide to search the room...{Colors.RESET}")
+        found_something = False
+
+        print(f"\n{Colors.CYAN}What are you searching for ?{Colors.RESET}")
+        print(f"{Colors.CYAN}1. Traps{Colors.RESET}")
+        print(f"{Colors.CYAN}2. Secret Doors{Colors.RESET}")
+        print(f"{Colors.CYAN}3. Resources{Colors.RESET}")
+
+        choice = get_input("Enter your choice (1-3): ", options=["1", "2", "3"], player=player)
+
+        if choice == "1":
+            if self.search_for_trap(player):
+                found_something = True
+                self.trap = None  # Disarm the trap
+
+        if choice == "2":
+            if self.search_for_secret_door(player):
+                found_something = True
+                # Here you could add logic to reveal the secret door
+
+        if choice == "3":
+            if self.search_for_ressource(player):
+                found_something = True
+
+        if not found_something:
+            print(f"\n{Colors.YELLOW}You didn't find anything of interest.{Colors.RESET}")
+
+        return found_something
+
+
 class Dungeon(list):
     """
     A class representing a dungeon, which is a collection of rooms.
@@ -1543,19 +1611,28 @@ def generate_random_room(player: Player, room_type: str|None = None, is_boss_roo
     if debug >= 1:
         print(f"{Colors.YELLOW}DEBUG: Enemies generated: {enemies}{Colors.RESET}")
         logger.debug(f"Generated {len(enemies)} enemies for room")
+
     # Generate items for treasure rooms
     if room_type == "treasure":
-        num_items = random.randint(1, 2)
-        if num_items == 1 and random.random() < 0.5:
-            items.append(get_random_scroll())
+        possible_items = ["scroll", "ressource", "equipment"]
+        num_items = player.mode.get_treasure_item_num()
+
         for _ in range(num_items):
-            items.append(generate_random_item(player=player))
-        
-        # In realistic mode, also generate resources
-        if isinstance(player.mode, RealisticMode):
-            num_resources = random.randint(1, 3)
-            for _ in range(num_resources):
-                items.append(generate_random_resource_item())
+            item_type = random.choices(
+                possible_items,
+                weights=[0.3, 0.4 if isinstance(player.mode, RealisticMode) else 0.1, 0.3]
+            )[0]
+            if item_type == "scroll":
+                items.append(get_random_scroll())
+            elif item_type == "ressource":
+                if isinstance(player.mode, RealisticMode):
+                    items.append(generate_random_resource_item())
+            elif item_type == "equipment":
+                    items.append(generate_random_item(player=player))
+                    
+            else: # Fallback to equipment
+                items.append(generate_random_item(player=player))
+
     
     # In realistic mode, add resources to combat rooms as well
     if room_type == "combat" and isinstance(player.mode, RealisticMode):
