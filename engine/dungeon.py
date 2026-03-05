@@ -1,4 +1,4 @@
-__version__ = "1960.0"
+__version__ = "1963.0"
 __creation__ = "09-03-2025"
 
 # D​u​n​ge​o​n​ ​H​un​t​e​r​ ​-​ ​(​c​)​ ​D​r​ag​o​n​de​fer​ 2​0​2​5
@@ -36,7 +36,7 @@ from items.items import Item, Armor, Weapon, Potion, generate_random_item, gener
 from core.spells import get_random_scroll, get_random_spell
 from data import room_descriptions, puzzle_choices, rest_events
 from engine.logger import logger
-from engine.difficulty import RealisticMode
+from engine.difficulty import RealisticDifficulty
 
 
 debug = 0
@@ -773,9 +773,9 @@ class Room:
             self.items.append(generate_random_item(player))
             typewriter_effect(f"\n[Assistant]: {Colors.GREEN}In treasure room, you can get up to 2 random items.{Colors.RESET}", 0.03 * config.game_speed_multiplier)
             sleep(0.3)
-            typewriter_effect(f"[Assistant]: {Colors.BRIGHT_BLACK}I heard you can find ancient scrolls{Colors.RESET}", 0.03 * config.game_speed_multiplier)
+            typewriter_effect(f"[Assistant]: {Colors.BRIGHT_BLACK}I heard you can find ancient scrolls{Colors.RESET}", 0.05 * config.game_speed_multiplier)
             sleep(0.2)
-            typewriter_effect(f"[Assistant]: {Colors.BRIGHT_BLACK}For now, everything is unlocked..{Colors.RESET}", 0.075 * config.game_speed_multiplier)
+            typewriter_effect(f"[Assistant]: {Colors.BRIGHT_BLACK}For now, everything is unlocked..{Colors.RESET}", 0.05 * config.game_speed_multiplier)
         
         if not self.items:
             print(f"\n{Colors.YELLOW}You've already collected all treasure from this room.{Colors.RESET}")
@@ -1620,12 +1620,12 @@ def generate_random_room(player: Player, room_type: str|None = None, is_boss_roo
         for _ in range(num_items):
             item_type = random.choices(
                 possible_items,
-                weights=[0.3, 0.4 if isinstance(player.mode, RealisticMode) else 0.1, 0.3]
+                weights=[0.3, 0.4 if isinstance(player.mode, RealisticDifficulty) else 0.1, 0.3]
             )[0]
             if item_type == "scroll":
                 items.append(get_random_scroll())
             elif item_type == "ressource":
-                if isinstance(player.mode, RealisticMode):
+                if isinstance(player.mode, RealisticDifficulty):
                     items.append(generate_random_resource_item())
             elif item_type == "equipment":
                     items.append(generate_random_item(player=player))
@@ -1635,7 +1635,7 @@ def generate_random_room(player: Player, room_type: str|None = None, is_boss_roo
 
     
     # In realistic mode, add resources to combat rooms as well
-    if room_type == "combat" and isinstance(player.mode, RealisticMode):
+    if room_type == "combat" and isinstance(player.mode, RealisticDifficulty):
         num_resources = random.randint(1, 2)
         for _ in range(num_resources):
             items.append(generate_random_resource_item())

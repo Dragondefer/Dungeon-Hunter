@@ -4,7 +4,7 @@ if TYPE_CHECKING:
     from core.entity import Player
     from engine.dungeon import Room
 
-__version__ = "92.0"
+__version__ = "107.0"
 __creation__ = "08-05-2025"
 
 # D​u​ng​eo​n​ ​H​un​te​r​ ​-​ ​(​c​)​ ​Dr​ago​nd​e​f​e​r​ ​20​2​5
@@ -22,7 +22,7 @@ import config
 
 debug = 0
 
-class GameMode:
+class Difficulty:
     def __init__(self, name="normal"):
         self.name = name
     
@@ -33,26 +33,26 @@ class GameMode:
         return self.name.capitalize()  # Now we can call `self.difficulty.capitalize()` and not get an AttributeError
 
     def to_dict(self):
-        """Serialize the GameMode to a dictionary."""
+        """Serialize the Difficulty to a dictionary."""
         return {"name": self.name}
 
     @classmethod
     def from_dict(cls, data):
-        """Deserialize a GameMode from a dictionary."""
+        """Deserialize a Difficulty from a dictionary."""
         name = data.get("name", "normal")
         if name == "normal":
-            return NormalMode()
+            return NormalDifficulty()
         elif name == "soul_enjoyer":
-            return SoulsEnjoyerMode()
+            return SoulsDifficulty()
         elif name == "realistic":
-            return RealisticMode()
+            return RealisticDifficulty()
         elif name == "hardcore":
-            return HardcoreMode()
+            return HardcoreDifficulty()
         elif name == "puzzle":
-            return PuzzleMode()
+            return PuzzleDifficulty()
         else:
             # Default fallback
-            return NormalMode()
+            return NormalDifficulty()
 
 
     # ----- Combat -----
@@ -147,16 +147,17 @@ class GameMode:
         # Bottom border
         print(f"{Colors.YELLOW}╚{'═' * (box_len + 1)}╝{Colors.RESET}")
 
-    def _prepare_tutorial_enemy(self, player: Player, room: Room, is_boss_room, tutorial):
+    def _prepare_tutorial_enemy(self, player: Player, room: Room, is_boss_room: bool, tutorial: bool):
         global debug
         from core.entity import generate_enemy
         if tutorial is True and not room.enemies:
             if is_boss_room is False:
                 if debug>=1: print("tutorial enemy generating")
                 room.enemies.append(generate_enemy(player.dungeon_level, False, player))
-                room.enemies[0].name = "Tutorial Goblin"
-                room.enemies[0].stats.max_hp *= 2
-                room.enemies[0].stats.hp *= 2
+                room.enemies[0].name = f"{Colors.BRIGHT_BLACK}Tutorial Goblin{Colors.RESET}"
+                #room.enemies[0].stats.max_hp *= 2
+                #room.enemies[0].stats.hp *= 2
+                room.enemies[0].stats.attack *= 0.5
                 room.enemies[0].stats.update_total_stats()
                 if debug>=1: print("enemy generated:", room.enemies)
 
@@ -219,7 +220,7 @@ class GameMode:
             sleep(0.5)
 
     def _auto_heal_rest(self, player: Player):
-        if player.stats.hp < player.stats.max_hp / 2:
+        if player.stats.hp < player.stats.max_hp / 4:
             typewriter_effect(f"\n[Assistant]: {Colors.RED}You are low on health, be carful.{Colors.RESET}", 0.03 * config.game_speed_multiplier)
             typewriter_effect(f"[Assistant]: {Colors.BLUE}Requesting permission..{Colors.RESET}", 0.05 * config.game_speed_multiplier)
             loading(2)
@@ -228,7 +229,7 @@ class GameMode:
             execute_command("player.heal(999)", allowed=True, prnt=True, context={"player": player})
             sleep(0.5)
             typewriter_effect(f"\n[Assistant]: {Colors.GREEN}Player healed successfully..{Colors.RESET}", 0.03 * config.game_speed_multiplier)
-        if player.stats.stamina < player.stats.max_stamina / 2:
+        if player.stats.stamina < player.stats.max_stamina / 4:
             typewriter_effect(f"\n[Assistant]: {Colors.RED}You seem exausted.{Colors.RESET}", 0.03 * config.game_speed_multiplier)
             typewriter_effect(f"[Assistant]: {Colors.BLUE}Requesting permission..{Colors.RESET}", 0.05 * config.game_speed_multiplier)
             loading(2)
@@ -247,7 +248,7 @@ class GameMode:
         pass
 
     def has_inventory_limit(self) -> bool:
-        """Return True if this mode limits inventory size."""
+        """Return True if this difficulty limits inventory size."""
         return False
 
     def get_inventory_limit(self) -> int | None:
@@ -271,7 +272,7 @@ class GameMode:
             "agility": 1
         }
     
-    def get_ng_plus(self, player) -> int:
+    def get_ng_plus(self, player: Player) -> int:
         return player.ng_plus[self.name]
     
 
@@ -295,34 +296,40 @@ class GameMode:
     def get_rarity_boost(self):
         return 1.0
     
-    def get_shop_item_num(self):
+    def get_shop_item_num(self) -> int:
         return random.randint(5, 7)
+    
+    def get_treasure_item_num(self):
+        return random.randint(1, 2)
+    
+    def allows_resources(self) -> bool:
+        return True
 
 
-class HardcoreMode(GameMode):
+class HardcoreDifficulty(Difficulty):
     def __init__(self):
         super().__init__("hardcore")
 
     def take_damage(self, player, damage):
-        # Hardcore mode increases damage taken by 50%
+        # Hardcore difficulty increases damage taken by 50%
         true_damage = int(damage * 1.5)
         player.stats.permanent_stats["hp"] = max(0, player.stats.permanent_stats["hp"] - true_damage)
         player.stats.hp = player.stats.permanent_stats["hp"]
         return true_damage
 
     def modify_damage_dealt(self, player, damage):
-        # Hardcore mode reduces damage dealt by 20%
+        # Hardcore difficulty reduces damage dealt by 20%
         return int(damage * 0.8)
 
     def modify_damage_taken(self, player, damage):
-        # Hardcore mode increases damage taken by 50%
+        # Hardcore difficulty increases damage taken by 50%
         return int(damage * 1.5)
 
     def has_inventory_limit(self) -> bool:
         return True
 
     def get_inventory_limit(self) -> int | None:
-        return 20  # Smaller inventory limit for hardcore mode
+        return 20  # Smaller inventory limit for hardcore difficulty
 
     def level_up_bonus(self):
         return {
@@ -337,6 +344,9 @@ class HardcoreMode(GameMode):
     def get_shop_item_num(self):
         return random.randint(1, 3)
 
+    def get_treasure_item_num(self):
+        return random.randint(0, 2)
+
     def get_room_count(self):
         return random.randint(10, 15)
 
@@ -347,7 +357,7 @@ class HardcoreMode(GameMode):
         return 0.8
 
 
-class NormalMode(GameMode):
+class NormalDifficulty(Difficulty):
     def __init__(self):
         super().__init__("normal")
 
@@ -374,24 +384,29 @@ class NormalMode(GameMode):
     def get_shop_item_num(self):
         return random.randint(5, 7)
 
+    def get_treasure_item_num(self):
+        return random.randint(1, 2)
 
-class SoulsEnjoyerMode(GameMode):
+    def allows_resources(self) -> bool:
+        return False
+
+class SoulsDifficulty(Difficulty):
     def __init__(self):
         super().__init__("soul_enjoyer")
 
     def take_damage(self, player, damage):
-        # In Souls Enjoyer mode, damage is halved but player has less health
+        # In Souls Enjoyer difficulty, damage is halved but player has less health
         true_damage = max(1, damage / 2)
         player.stats.permanent_stats["hp"] = max(0, player.stats.permanent_stats["hp"] - true_damage)
         player.stats.hp = player.stats.permanent_stats["hp"]
         return true_damage
 
     def modify_damage_dealt(self, player, damage):
-        # Souls Enjoyer mode might increase player's damage output
+        # Souls Enjoyer difficulty might increase player's damage output
         return int(damage * 1.2)
 
     def modify_damage_taken(self, player, damage):
-        # Souls Enjoyer mode might reduce damage taken
+        # Souls Enjoyer difficulty might reduce damage taken
         return int(damage * 0.8)
 
     def level_up_bonus(self):
@@ -410,11 +425,14 @@ class SoulsEnjoyerMode(GameMode):
     def get_room_count(self):
         return random.randint(6, 10)
 
-class RealisticMode(GameMode):
+    def get_treasure_item_num(self):
+        return random.randint(0, 1)
+
+class RealisticDifficulty(Difficulty):
     def __init__(self):
         super().__init__("realistic")
 
-    def take_damage(self, player, damage):
+    def take_damage(self, player: Player, damage):
         true_damage = max(1, damage / max(1, player.stats.defense))
         player.stats.permanent_stats["hp"] = max(0, player.stats.permanent_stats["hp"] - true_damage)
         player.stats.hp = player.stats.permanent_stats["hp"]
@@ -427,11 +445,11 @@ class RealisticMode(GameMode):
         return 30  # Example
 
     def modify_damage_dealt(self, player, damage):
-        # Realistic mode might reduce player's damage output due to realism
+        # Realistic difficulty might reduce player's damage output due to realism
         return int(damage * 0.9)
 
     def modify_damage_taken(self, player, damage):
-        # Realistic mode might increase damage taken due to harsher conditions
+        # Realistic difficulty might increase damage taken due to harsher conditions
         return int(damage * 1.2)
 
     def level_up_bonus(self):
@@ -456,23 +474,27 @@ class RealisticMode(GameMode):
     def get_shop_item_num(self):
         return random.randint(2, 5)
 
-class PuzzleMode(GameMode):
+    def get_treasure_item_num(self):
+        return random.randint(1, 2)
+
+
+class PuzzleDifficulty(Difficulty):
     def __init__(self):
         super().__init__("puzzle")
 
     def take_damage(self, player, damage):
-        # Puzzle mode reduces damage taken by 30%
+        # Puzzle difficulty reduces damage taken by 30%
         true_damage = int(damage * 0.7)
         player.stats.permanent_stats["hp"] = max(0, player.stats.permanent_stats["hp"] - true_damage)
         player.stats.hp = player.stats.permanent_stats["hp"]
         return true_damage
 
     def modify_damage_dealt(self, player, damage):
-        # Puzzle mode increases damage dealt by 10%
+        # Puzzle difficulty increases damage dealt by 10%
         return int(damage * 1.1)
 
     def modify_damage_taken(self, player, damage):
-        # Puzzle mode reduces damage taken by 30%
+        # Puzzle difficulty reduces damage taken by 30%
         return int(damage * 0.7)
 
     def level_up_bonus(self):

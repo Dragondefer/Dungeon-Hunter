@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from core.entity import Player # For type hint only, else it would do an import error :/
 
-__version__ = "592.0"
+__version__ = "631.0"
 __creation__ = "09-03-2025"
 
 # D​u​n​ge​o​n​ ​H​u​n​t​e​r​ ​-​ ​(​c​)​ ​D​r​a​go​n​de​f​er​ ​2​02​5
@@ -26,7 +26,7 @@ from engine.logger import logger
 
 try:
     dev_mode = False
-    if os.path.exists("./dev_mod.py"):
+    if os.path.exists("./engine/dev_mod.py"):
         from engine.dev_mod import debug_menu
         dev_mode = True
 except Exception as e:
@@ -128,10 +128,22 @@ def get_input(prompt: str = "",
               options: list[str] | None = None,
               player: Player | None = None,
               use_agent: bool | None = None) -> str:
-    
-    debug=0
+    """Wrapper around input/agent choice with optional debug and dev menu."""
+
+    global dev_mode
+    debug = 0
     options = options or []
     agent_instance = get_agent()
+
+    def get_user_input():
+        user_input = input(prompt)
+        if user_input.lower() == "dev" and dev_mode and player:
+            debug_menu(player=player)
+            input("debug menu closed, press enter to continue...")
+        if debug >= 1:
+            print("User input:", user_input, "\ndev_mode:", dev_mode, "\nplayer:", player is not None)
+        return user_input
+
 
     # If use_agent is None, get current value from global USE_AGENT
     if use_agent is None:
@@ -147,15 +159,13 @@ def get_input(prompt: str = "",
             print(prompt, "")
             return ""  # Agent passe (lecture automatique)
         else:
-            user_input = input(prompt)
-            if user_input.lower() == "debug" and dev_mode and player:
-                debug_menu(player=player)
-            return user_input
+            return get_user_input()
 
     if debug>=1:
         print("debug: agent_instance:", agent_instance)
         print("debug: use_agent:", use_agent)
         print("debug: options:", options)
+        
     if use_agent and agent_instance and player:
         data = agent_instance.get_data(prompt, player, options)
         # Simplify state to tuple of values only for consistency
@@ -166,7 +176,7 @@ def get_input(prompt: str = "",
         print(prompt, choice)
         return choice
     else:
-        return input(prompt)
+        return get_user_input()
 
 
 def game_speed_settings():
@@ -658,10 +668,10 @@ def loading(duration=4):
 
 def choose_difficulty(player: Player):
     """
-    Allows the player to select a difficulty mode with suspense effect.
+    Allows the player to select a difficulty difficulty with suspense effect.
     """
-    logger.debug("Choosing difficulty mode...")
-    from engine.difficulty import NormalMode, SoulsEnjoyerMode, RealisticMode
+    logger.debug("Choosing difficulty difficulty...")
+    from engine.difficulty import NormalDifficulty, SoulsDifficulty, RealisticDifficulty
     try:
         player.save_difficulty_data()
     except AttributeError as AE:
@@ -685,25 +695,25 @@ def choose_difficulty(player: Player):
         else:  # Sinon, on affiche une ligne vide pour le suspense
             print("")
 
-    choice = get_input(f"{Colors.CYAN}Select your mode: {Colors.RESET}", options=list(difficulties.keys()), player=player)
+    choice = get_input(f"{Colors.CYAN}Select your difficulty: {Colors.RESET}", options=list(difficulties.keys()), player=player)
     while True:
         if choice in difficulties:
             break
-        print(f"{Colors.RED}Mode locked or invalid choice! Defaulting to Normal.{Colors.RESET}")
+        print(f"{Colors.RED}Difficulty locked or invalid choice! Defaulting to Normal.{Colors.RESET}")
         choice = get_input("Please retry: ", options=list(difficulties.keys()), player=player)
 
     if choice == "1":
-        player.mode = NormalMode()
+        player.mode = NormalDifficulty()
         player.load_difficulty_data(player.mode.name)
     elif choice == "2" and player.unlocked_difficulties["soul_enjoyer"]:
-        player.mode = SoulsEnjoyerMode()
+        player.mode = SoulsDifficulty()
         player.load_difficulty_data(player.mode.name)
     elif choice == "3" and player.unlocked_difficulties["realistic"]:
-        player.mode = RealisticMode()
+        player.mode = RealisticDifficulty()
         player.load_difficulty_data(player.mode.name)
     else:
-        print(f"{Colors.RED}Mode locked or invalid choice! Defaulting to Normal.{Colors.RESET}")
-        player.mode = NormalMode()
+        print(f"{Colors.RED}Difficulty locked or invalid choice! Defaulting to Normal.{Colors.RESET}")
+        player.mode = NormalDifficulty()
         print(Colors.BLUE, 'Press enter to continue...', Colors.RESET, end="")
         get_input()
 
