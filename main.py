@@ -12,7 +12,7 @@ project_root = abspath(dirname(__file__))
 if project_root not in sys_path:
     sys_path.insert(0, project_root)
 
-__version__ = "815.0"
+__version__ = "816.0"
 __creation__ = "09-03-2025"
 
 import random
@@ -29,19 +29,22 @@ from core.entity import Player, continue_game
 from core.story import display_title
 from data import get_random_names, quests_dict
 
-from ai.agent_wrapper import get_agent
 
 # Note: You need to be at least beta tester to get the dev tools (as it can easley break everything and also spoil)
 # Look at the game's discord for more info: https://discord.gg/3V7xGCvxEP
+from config import set_dev_mode, is_dev_mode
 try:
-    dev_mode = False
     if os.path.exists("./engine/dev_mod.py"):
         from engine.dev_mod import debug_menu
-        dev_mode = True
+        set_dev_mode(True)
+        if is_dev_mode():
+            logger.info("Developer mode enabled.")
 except Exception as e:
     logger.warning(f"Error when trying to import dev_mod.py: {e}")
     dev_mode = False
     debug_menu = lambda *args, **kwargs: None
+
+dev_mode = is_dev_mode()
 
 maximize_terminal()
 
@@ -56,9 +59,11 @@ try:
         try:
             from ai.agent_wrapper import agent_is_enabled
             import ai.agent_wrapper as aw
+            from ai.agent_wrapper import get_agent
         except ImportError:
             print("Cannot import agent_wrapper")
             agent_is_enabled = lambda *args, **kwargs: None
+            get_agent = lambda *args, **kwargs: None
             aw = None
         print("AI agent detected. Would you like to enable AI agent to play? (y/N): ", end="")
         choice = input().lower()

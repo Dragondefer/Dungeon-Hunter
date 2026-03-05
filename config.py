@@ -2,7 +2,7 @@ import os
 
 # Global game speed setting and multipliers
 game_speed = "normal"
-speed_multipliers = {
+speed_multipliers: dict[str, float] = {
     "slow": 2.0,
     "normal": 1.0,
     "fast": 0.5,
@@ -28,3 +28,16 @@ try:
 except Exception as e:
     agent_instance = None
     DEV_AGENT_MODE = False
+
+
+# Developer mode flag
+
+dev_mode = False
+
+def set_dev_mode(enabled: bool):
+    global dev_mode
+    dev_mode = enabled
+
+def is_dev_mode() -> bool:
+    return dev_mode
+
