@@ -1,10 +1,10 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from core.progression import Quest
-    from items.crafting import Recipe
 
-__version__ = "2520.0"
+__version__ = "2545.0"
 __creation__ = "09-03-2025"
 
 # Dungeon Hunter - (c) Dragondefer 2025
@@ -40,7 +40,11 @@ from engine.game_utility import (clear_screen, handle_error, typewriter_effect,
                           glitch_burst, timed_input_pattern, strip_ansi,
                           get_input)
 from items.items import (Item, Equipment, Gear, Weapon, Armor,
-                   Ring, Amulet, Belt, Potion, WeaponAttack)
+                   Ring, Amulet, Belt, Potion, WeaponAttack,
+                   Scroll,)
+from items.crafting import Recipe
+from items.loot import Loot
+from data import (resources_data, recipes_dict,)
 # Removed top-level import of data to fix circular import
 # from data import armor_sets, enemy_types, boss_types, achievements, skills_dict, can_send_analytics
 from items.inventory import Inventory
@@ -49,7 +53,7 @@ from core.masteries import Mastery
 from core.skills import Skill
 from core.player_class import PlayerClass
 from core.status_effects import StatusEffect
-from items.items import Equipment, Scroll
+from items.resources import get_resource_by_key
 
 debug = 0
 
@@ -77,7 +81,7 @@ class Stats:
             "agility": 5, "luck": 5,
             "mana": 20, "max_mana": 20,
             "stamina": 50, "max_stamina": 50,
-            "critical_chance": 5
+            "critical_chance": 5, "intelligence": 1
         }
 
 
@@ -422,7 +426,7 @@ class Entity:
 
 #̶̼͝ T̸̻̈́h̵̤͒ë̵͕́ p̵̦̆l̷̫̈́ä̷̪́ÿ̸̡́ë̵͕́r̷͍̈́’s̸̱̅ f̷̠͑ä̷̪́ẗ̴̗́ë̵͕́ i̴̊͜s̸̱̅ ẅ̷̙́r̷͍̈́i̴̊͜ẗ̴̗́ẗ̴̗́ë̵͕́n̸̻̈́ i̴̊͜n̸̻̈́ b̸̼̅l̷̫̈́o̶͙͝o̶͙͝ď̶̙ ä̷̪́n̸̻̈́ď̶̙ c̴̱͝o̶͙͝ď̶̙ë̵͕́.̵͇̆
 
-from engine.difficulty import GameMode, NormalMode, RealisticMode
+from engine.difficulty import Difficulty, NormalDifficulty, RealisticDifficulty
 
 class Player(Entity):
     """
@@ -489,8 +493,8 @@ class Player(Entity):
         achievements (dict): Unlocked achievements and their progress.
         seen_events (set): Event IDs that have been triggered (for one-time events).
         
-        # Game Mode
-        mode (GameMode): Difficulty mode (Normal, Realistic, Souls Enjoyer).
+        # Game Difficulty
+        difficulty (Difficulty): Difficulty difficulty (Normal, Realistic, Souls Enjoyer).
         difficulty_data (dict): Difficulty-specific game state.
         
         # Tutorial & Features
@@ -678,7 +682,7 @@ class Player(Entity):
             Returns detailed player representation for debugging.
     """
 
-    def __init__(self, name="Adventurer", difficulty=GameMode()):
+    def __init__(self, name="Adventurer", difficulty=Difficulty()):
         """Initialise le joueur avec des stats de base et un équipement vide."""
         import uuid
         from engine.game_utility import get_or_create_user_id
@@ -688,24 +692,24 @@ class Player(Entity):
         self._playtime_start = time.time()  # Timestamp when playtime tracking starts
         self.playtime_seconds = 0  # Total accumulated playtime in seconds
 
-        from engine.difficulty import GameMode, NormalMode, RealisticMode, SoulsEnjoyerMode
+        from engine.difficulty import Difficulty, NormalDifficulty, RealisticDifficulty, SoulsDifficulty
 
-        if isinstance(difficulty, GameMode):
-            self.mode = difficulty
+        if isinstance(difficulty, Difficulty):
+            self.difficulty = difficulty
         elif isinstance(difficulty, str):
             diff_lower = difficulty.lower()
             if diff_lower == "normal":
-                self.mode = NormalMode()
+                self.difficulty = NormalDifficulty()
             elif diff_lower == "realistic":
-                self.mode = RealisticMode()
+                self.difficulty = RealisticDifficulty()
             elif diff_lower == "soul_enjoyer" or diff_lower == "souls_enjoyer":
-                self.mode = SoulsEnjoyerMode()
+                self.difficulty = SoulsDifficulty()
             else:
-                print(f"Unknown difficulty '{difficulty}', setting to NormalMode by default.")
-                self.mode = NormalMode()
+                print(f"Unknown difficulty '{difficulty}', setting to NormalDifficulty by default.")
+                self.difficulty = NormalDifficulty()
         else:
-            print(f"Invalid difficulty type '{type(difficulty)}', setting to NormalMode by default.")
-            self.mode = NormalMode()
+            print(f"Invalid difficulty type '{type(difficulty)}', setting to NormalDifficulty by default.")
+            self.difficulty = NormalDifficulty()
 
         self.difficulty_data = {}
 
@@ -741,7 +745,7 @@ class Player(Entity):
         self.stats = Stats(hp=100, max_hp=100, attack=5, defense=5,
                            magic_damage=1, magic_defense=1, agility=5, luck=5,
                            mana=20, max_mana=20, stamina=50, max_stamina=50,
-                           critical_chance=5)
+                           critical_chance=5, intelligence=1)
 
         self.set_bonuses = {}
         self.displayed_set_bonuses = set()
@@ -785,6 +789,7 @@ class Player(Entity):
         self.bosses_defeated = 0
         self.items_collected = 0
         self.gold_spent = 0
+        self.gold_collected = 0
         self.damage_dealt = 0
         self.damage_taken = 0
 
@@ -851,6 +856,10 @@ class Player(Entity):
         attr_strs = [f"{k}={v!r}" for k, v in attrs.items()]
         return f"<Player " + ", ".join(attr_strs) + ">"
     
+
+    def obtain(self, loot: Loot):
+        loot.apply_to(self)
+
     
     def get_playtime(self):
         """Return the total playtime in seconds including current session."""
@@ -971,6 +980,7 @@ class Player(Entity):
         """Get the quantity of a specific resource."""
         return self.resources.get(resource_id, 0)
     
+    
     def learn_recipe(self, recipe: 'Recipe') -> bool:
         """Learn a new recipe."""
         recipe_id = recipe.name.lower().replace(" ", "_")
@@ -1013,13 +1023,20 @@ class Player(Entity):
     
     def display_resources(self):
         """Display all collected resources."""
+        print() # Some space for cleaner ui
+        
+
         if not self.resources:
             print(f"{Colors.YELLOW}No resources collected yet.{Colors.RESET}")
-            return
+
+        else:
+            print(f"\n{Colors.BRIGHT_CYAN}Resources Inventory:{Colors.RESET}")
+            for resource_id, quantity in sorted(self.resources.items()):
+                resource = get_resource_by_key(resource_id)
+                resource_name = getattr(resource, "name", resource_id)
+                print(f"  • {resource_name}: {quantity}")
         
-        print(f"\n{Colors.BRIGHT_CYAN}Resources Inventory:{Colors.RESET}")
-        for resource_id, quantity in sorted(self.resources.items()):
-            print(f"  • {resource_id.replace('_', ' ').title()}: {quantity}")
+        input(f"{Colors.YELLOW}Press enter to continue...{Colors.RESET}")
     
     def display_recipes(self):
         """Display all known recipes with craft status and requirements."""
@@ -1047,7 +1064,7 @@ class Player(Entity):
             "dodging": 8,           # 
         }
 
-        if isinstance(self.mode, RealisticMode):
+        if isinstance(self.difficulty, RealisticDifficulty):
             return True  # tout débloqué
         else:
             required_lvl = unlock_requirements.get(feature, 0)
@@ -1056,7 +1073,7 @@ class Player(Entity):
 
     def save_difficulty_data(self):
         """Save current difficulty's inventory, gold, level, stats, and other relevant data."""
-        diff_name = self.mode.name
+        diff_name = self.difficulty.name
         self.difficulty_data[diff_name] = {
             "inventory": [item.to_dict() for item in self.inventory],
             "gold": self.gold,
@@ -1119,7 +1136,7 @@ class Player(Entity):
                 "agility": 5, "luck": 5,
                 "mana": 20, "max_mana": 20,
                 "stamina": 50, "max_stamina": 50,
-                "critical_chance": 5
+                "critical_chance": 5, "intelligence": 1
             }
             
             self.stats.update_total_stats()
@@ -1141,7 +1158,7 @@ class Player(Entity):
         data["achievements"] = [ach.to_dict() for ach in self.achievements]
         data["stats"] = {k: v for k, v in self.stats.__dict__.items() if k != "equipment"}
         data["seen_events"] = list(self.seen_events)
-        data["mode"] = self.mode.to_dict()
+        data["difficulty"] = self.difficulty.to_dict()
         data["displayed_set_bonuses"] = list(self.displayed_set_bonuses) if hasattr(self, "displayed_set_bonuses") else []
         data["status_effects"] = [effect.__dict__ for effect in self.status_effects] if self.status_effects else []
         data["masteries"] = {k: v.to_dict() for k, v in self.masteries.items()}
@@ -1169,12 +1186,13 @@ class Player(Entity):
         # Add analytics variables needed for analytics.html
         data["player_name"] = self.name
         data["level"] = self.level
-        data["difficulty"] = self.mode.name if hasattr(self.mode, "name") else str(self.mode)
+        data["difficulty"] = self.difficulty.name if hasattr(self.difficulty, "name") else str(self.difficulty)
         data["rooms_explored"] = self.total_rooms_explored
         data["combat_encounters"] = self.combat_encounters
         data["damage_dealt"] = self.damage_dealt
         data["damage_taken"] = self.damage_taken
         data["gold_spent"] = self.gold_spent
+        data["golt_collected"] = self.gold_collected
         data["deaths"] = self.total_deaths
 
         # Fix for JSON serialization: convert purchased_items keys to strings
@@ -1185,15 +1203,15 @@ class Player(Entity):
     @classmethod
     def from_dict(cls, data):
         from core.progression import Quest, Achievement
-        from engine.difficulty import GameMode
+        from engine.difficulty import Difficulty
         import time
         from core.player_class import PlayerClass
 
-        player = cls(data.get("name", "Adventurer"), GameMode.from_dict(data.get("mode", {})))
+        player = cls(data.get("name", "Adventurer"), Difficulty.from_dict(data.get("difficulty", {})))
 
         # Remplissage générique
         for key, value in data.items():
-            if key in ("equipment", "inventory", "skills", "quests", "completed_quests", "achievements", "stats", "mode", "seen_events", "displayed_set_bonuses", "playtime_seconds", "player_id", "deaths_per_room", "levels_completed", "total_deaths", "total_play_sessions", "player_class", "resources", "known_recipes"):
+            if key in ("equipment", "inventory", "skills", "quests", "completed_quests", "achievements", "stats", "difficulty", "seen_events", "displayed_set_bonuses", "playtime_seconds", "player_id", "deaths_per_room", "levels_completed", "total_deaths", "total_play_sessions", "player_class", "resources", "known_recipes"):
                 continue  # On gère ceux-là à part
             setattr(player, key, value)
 
@@ -1614,9 +1632,9 @@ class Player(Entity):
     def total_domage(self, base_damage=True):
         global debug
         
-        damage_main = getattr(self.equipment.main_hand, "damage", 0) or 0
-        damage_off = getattr(self.equipment.off_hand, "damage", 0) or 0
-        total_domage = 0
+        damage_main: int = getattr(self.equipment.main_hand, "damage", 0) or 0
+        damage_off: int = getattr(self.equipment.off_hand, "damage", 0) or 0
+        total_domage: int | float = 0
 
         if base_damage is True:
             base_damage = self.stats.attack
@@ -1635,11 +1653,12 @@ class Player(Entity):
 
         return total_domage
 
+
     def level_up(self):
         self.level += 1
 
-        # Obtenir les bonus selon le mode
-        bonus = self.mode.level_up_bonus()
+        # Obtenir les bonus selon le difficulty
+        bonus = self.difficulty.level_up_bonus()
 
         # Stocker les anciennes valeurs
         old_stats = {
@@ -1803,7 +1822,7 @@ class Player(Entity):
         """Displays player stats: kills, rooms explored, dungeon level, difficulty, and ng_plus in a nice box.""" 
         box_width = 40
         title = "PLAYER STATS SUMMARY"
-        ng = self.ng_plus.get(self.mode.name if hasattr(self.mode, "name") else str(self.mode), 0)
+        ng = self.ng_plus.get(self.difficulty.name if hasattr(self.difficulty, "name") else str(self.difficulty), 0)
 
         def print_box_template():
             print(f"\n{Colors.YELLOW}╔{'═' * (box_width)}╗{Colors.RESET}")
@@ -1825,7 +1844,7 @@ class Player(Entity):
         print(f"\r{Colors.YELLOW}║ Playtime:         {Colors.BRIGHT_YELLOW}{self.get_formatted_playtime().ljust(box_width - 20)}{Colors.RESET}")
         print()
         # Print the rest of the stats
-        print(f"\r{Colors.YELLOW}║ Difficulty:        {Colors.BRIGHT_MAGENTA}{self.mode.capitalize().ljust(box_width - 20)}{Colors.RESET}")
+        print(f"\r{Colors.YELLOW}║ Difficulty:        {Colors.BRIGHT_MAGENTA}{self.difficulty.name.capitalize().ljust(box_width - 20)}{Colors.RESET}")
         print(f"\r{Colors.YELLOW}║ NG+:               {Colors.BRIGHT_YELLOW}{str(ng).ljust(box_width - 20)}{Colors.RESET}")
         print(f"\r{Colors.YELLOW}║ Dungeon Level:     {Colors.BRIGHT_BLUE}{str(self.dungeon_level).ljust(box_width - 20)}{Colors.RESET}")
         print(f"\r{Colors.YELLOW}║ Rooms Number:      {Colors.BRIGHT_GREEN}{str(self.current_room_number).ljust(box_width - 20)}{Colors.RESET}")
@@ -1833,6 +1852,7 @@ class Player(Entity):
         print(f"\r{Colors.YELLOW}║ Bosses Defeated:   {Colors.BRIGHT_CYAN}{str(self.bosses_defeated).ljust(box_width - 20)}{Colors.RESET}")
         print()
         print(f"\r{Colors.YELLOW}║ Gold Spent:        {Colors.BRIGHT_YELLOW}{str(self.gold_spent).ljust(box_width - 20)}{Colors.RESET}")
+        print(f"\r{Colors.YELLOW}║ Gold Collected:    {Colors.BRIGHT_YELLOW}{str(self.gold_collected).ljust(box_width - 20)}{Colors.RESET}")
         print(f"\r{Colors.YELLOW}║ Items Collected:   {Colors.BRIGHT_MAGENTA}{str(self.items_collected).ljust(box_width - 20)}{Colors.RESET}")
         print(f"\r{Colors.YELLOW}║ Damage Dealt:      {Colors.BRIGHT_GREEN}{str(self.damage_dealt).ljust(box_width - 20)}{Colors.RESET}")
         print(f"\r{Colors.YELLOW}║ Damage Taken:      {Colors.BRIGHT_BLUE}{str(self.damage_taken).ljust(box_width - 20)}{Colors.RESET}")
@@ -1890,6 +1910,7 @@ class Player(Entity):
             "gold": Colors.BRIGHT_YELLOW,
             "souls": Colors.BRIGHT_BLACK,
             "critical_chance": Colors.BRIGHT_RED,
+            "intelligence": Colors.WHITE,
         }
 
 
@@ -1939,7 +1960,7 @@ class Player(Entity):
             print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")  # Souls Placeholder
             
             # Stats Placeholders
-            for _ in range(8):
+            for _ in range(9):
                 print(f"{Colors.YELLOW}║ {' ' * box_len}║{Colors.RESET}")
             
             print(f"{Colors.YELLOW}╠{'═' * (box_len + 1)}╣{Colors.RESET}")
@@ -1955,7 +1976,7 @@ class Player(Entity):
         print_box_template()
 
         # Move cursor back up to fill in the details (adding 1 for the initial newline)
-        print("\033[37A")  # Move up to start of box (number of lines + 1)
+        print("\033[38A")  # Move up to start of box 38 (number of lines + 1)
 
         # Create empty line list and add content
         content_lines = []
@@ -1967,7 +1988,7 @@ class Player(Entity):
         content_lines.append("")
         
         # Level and NG+
-        ng = self.mode.get_ng_plus(self)
+        ng = self.difficulty.get_ng_plus(self)
         ng_text = f"{Colors.RED}NG+{ng}{Colors.RESET}" if ng != 0 else f"{Colors.RED}{Colors.RESET}" # and not "" because idk why but it would make a hole in the box border right after it
         content_lines.append(f"{Colors.YELLOW}║ {Colors.GREEN}{Colors.UNDERLINE}Level: {self.level}{Colors.RESET}{' ' * (46 - len(ng_text))}{ng_text}".ljust(46))
         
@@ -2186,7 +2207,7 @@ class Player(Entity):
         content_lines.append("")
         
         # Level and NG+
-        ng = self.ng_plus.get(self.mode.name if hasattr(self.mode, "name") else str(self.mode), 0)
+        ng = self.ng_plus.get(self.difficulty.name if hasattr(self.difficulty, "name") else str(self.difficulty), 0)
         ng_text = f"{Colors.RED}NG+{ng}{Colors.RESET}" if ng != 0 else ""
         content_lines.append(f"{Colors.YELLOW}║ {Colors.GREEN}{Colors.UNDERLINE}{glitch_text('Level: ' + str(self.level))}{Colors.RESET}{' ' * (38 - len(ng_text))}{ng_text}".ljust(46))
 
@@ -2665,6 +2686,7 @@ class Player(Entity):
             },
             "economy": {
                 "totalGoldSpent": self.gold_spent,
+                "totalGoldCollected": self.gold_collected,
                 "itemsPurchased": len(self.purchased_items),  # Not tracked per player here
                 "avgGoldPerPlayer": self.gold_spent,  # For aggregation
                 "shopUtilization": 100.0 if self.gold_spent > 0 else 0.0
@@ -2672,7 +2694,7 @@ class Player(Entity):
             "progression": {
                 "avgLevel": self.level,
                 "tutorialCompletion": 1.0 if self.tutorial_completed else 0.0,
-                "ngPlusPlayers": self.ng_plus.get(self.mode.name if hasattr(self.mode, "name") else str(self.mode), 0),
+                "ngPlusPlayers": self.ng_plus.get(self.difficulty.name if hasattr(self.difficulty, "name") else str(self.difficulty), 0),
                 "achievementsEarned": len(self.achievements) if hasattr(self, "achievements") else 0
             },
             "deathsByRoomPerDifficulty": self.deaths_per_room,
@@ -2733,7 +2755,7 @@ class Player(Entity):
             "player_id": self.player_id,
             "levels_completed": self.levels_completed,
             "tutorial_completed": self.tutorial_completed,
-            "mode": self.mode,
+            "difficulty": self.difficulty.name if hasattr(self.difficulty, "name") else str(self.difficulty),
             "_playtime_start": time.time()
         }
 
@@ -2757,6 +2779,7 @@ class Player(Entity):
         self.bosses_defeated = 0
         self.items_collected = 0
         self.gold_spent = 0
+        self.gold_collected = 0
         self.damage_dealt = 0
         self.damage_taken = 0
 
@@ -2815,7 +2838,7 @@ class Player(Entity):
         self.player_id = persistent_data["player_id"]
         self.levels_completed = persistent_data["levels_completed"]
         self.tutorial_completed = persistent_data["tutorial_completed"]
-        self.mode = persistent_data["mode"]
+        self.difficulty = persistent_data["difficulty"]
         self._playtime_start = persistent_data["_playtime_start"]
 
         # Update stats after reset
@@ -2824,7 +2847,7 @@ class Player(Entity):
 
 
 
-def load_player(filename=None):
+def load_player(filename: str | None = None):
     """Loads the player's data from a JSON file and reconstructs objects."""
     global debug
 
@@ -2836,6 +2859,7 @@ def load_player(filename=None):
             data = json.load(file)
     except json.JSONDecodeError as e:
         print(f"{Colors.RED}Error while loading save file '{filename}': Invalid JSON format. {e}{Colors.RESET}")
+        print(f"{Colors.YELLOW}You can send your save file on the discord server: https://discord.gg/3V7xGCvxEP{Colors.RESET}")
         time.sleep(2)
         return None
     except FileNotFoundError:
@@ -2843,11 +2867,12 @@ def load_player(filename=None):
         return None
     except Exception as e:
         print(f"{Colors.RED}Unexpected error loading save file '{filename}': {e}{Colors.RESET}")
+        print(f"{Colors.YELLOW}If the error persists, you can send your save file on the discord server: https://discord.gg/3V7xGCvxEP{Colors.RESET}")
         return None
     
     return Player.from_dict(data)
 
-def continue_game(filename):
+def continue_game(filename: str | None = None):
     """Loads a saved game from a file."""
     try:
         player = load_player(filename)
@@ -2951,7 +2976,7 @@ def generate_enemy(level:int, is_boss:bool, player: Player):
     # Définition des stats de base
     base_hp = 20 + level * 10
     base_attack = 5 + level * 2
-    base_defense = 2 + level
+    base_defense = 2 + level * 2
 
     if debug >= 1:
         print(f"DEBUG: Base stats - HP: {base_hp}, Attack: {base_attack}, Defense: {base_defense}")
@@ -2974,7 +2999,7 @@ def generate_enemy(level:int, is_boss:bool, player: Player):
             print(f"DEBUG: Boss stats after multiplier - HP: {hp}, Attack: {attack}, Defense: {defense}")
 
     # Apply NG+ difficulty multiplier to enemy stats, starting at NG+0 (multiplier >= 1)
-    diff_mltp = max(1, player.mode.get_ng_plus(player) * 0.1) # 10% increase per NG+ level
+    diff_mltp = max(1, player.difficulty.get_ng_plus(player) * 0.1) # 10% increase per NG+ level
     hp = int(hp * diff_mltp)
     attack = int(attack * diff_mltp)
     defense = int(defense * diff_mltp)
