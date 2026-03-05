@@ -1,7 +1,7 @@
 # Du​n​g​e​o​n​ ​H​u​n​t​e​r​ ​-​ ​(​c​)​ ​Dr​ag​o​nd​ef​er​ ​2​025
 # L​ic​e​ns​ed​ ​un​de​r​ ​C​C ​B​Y​-​N​C​ 4​.​0
 
-from sys import path as sys_path
+from sys import exception, path as sys_path
 from sys import getwindowsversion
 from os.path import abspath, dirname
 
@@ -60,7 +60,7 @@ try:
             from ai.agent_wrapper import agent_is_enabled
             import ai.agent_wrapper as aw
             from ai.agent_wrapper import get_agent
-        except ImportError:
+        except Exception as e:
             print("Cannot import agent_wrapper")
             agent_is_enabled = lambda *args, **kwargs: None
             get_agent = lambda *args, **kwargs: None
