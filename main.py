@@ -2,25 +2,26 @@
 # L​ic​e​ns​ed​ ​un​de​r​ ​C​C ​B​Y​-​N​C​ 4​.​0
 
 from sys import path as sys_path
+from sys import getwindowsversion
 from os.path import abspath, dirname
+
+from engine.difficulty import RealisticDifficulty
 
 # Add the project root directory to sys.path to fix module import issues on Android/Termux
 project_root = abspath(dirname(__file__))
 if project_root not in sys_path:
     sys_path.insert(0, project_root)
 
-__version__ = "760.0"
+__version__ = "815.0"
 __creation__ = "09-03-2025"
 
 import random
 import time
 import os
 
-import config
-
 from interface.colors import Colors
 from engine.game_utility import (clear_screen, game_over, choose_difficulty,
-                                 handle_error, collect_feedback, interactive_bar,
+                                 handle_error, collect_feedback, interactive_bar, loading,
                                  move_cursor, maximize_terminal, get_input)
 from engine.dungeon import Room, Dungeon, generate_dungeon 
 from engine.logger import logger
@@ -28,7 +29,10 @@ from core.entity import Player, continue_game
 from core.story import display_title
 from data import get_random_names, quests_dict
 
-# Note: You need to be at least beta tester to get the dev tools (as it can easley break everything and also spoil), look at the game's discord for more info: https://discord.gg/3V7xGCvxEP
+from ai.agent_wrapper import get_agent
+
+# Note: You need to be at least beta tester to get the dev tools (as it can easley break everything and also spoil)
+# Look at the game's discord for more info: https://discord.gg/3V7xGCvxEP
 try:
     dev_mode = False
     if os.path.exists("./engine/dev_mod.py"):
@@ -36,36 +40,40 @@ try:
         dev_mode = True
 except Exception as e:
     logger.warning(f"Error when trying to import dev_mod.py: {e}")
+    dev_mode = False
+    debug_menu = lambda *args, **kwargs: None
 
 maximize_terminal()
 
 logger.info(f"dev_mode: {dev_mode}")
 debug = 0
 
-import engine.game_utility as gu
 from engine.game_utility import set_game_speed_multiplier
 
-
 # AI dev integration
-USE_AGENT = False
 try:
-    if os.path.exists("./ai/agent.py"):
-        print("AI agent detected. Would you like to enable AI agent to play? (y/n): ", end="")
+    if os.path.exists("./ai/agent.py") and os.path.exists("./ai/agent_wrapper.py"):
+        try:
+            from ai.agent_wrapper import agent_is_enabled
+            import ai.agent_wrapper as aw
+        except ImportError:
+            print("Cannot import agent_wrapper")
+            agent_is_enabled = lambda *args, **kwargs: None
+            aw = None
+        print("AI agent detected. Would you like to enable AI agent to play? (y/N): ", end="")
         choice = input().lower()
-        print(f"AI agent choice: {choice}")
-        if choice == "y":
-            set_game_speed_multiplier(0.1)
-            print(f"Enabling AI agent...")
-            gu.enable_agent()
-            USE_AGENT = True
-            logger.info("AI enabeled by user choice.")
+        if debug>=1: print(f"AI agent choice: {choice}")
+        if choice == "y" and aw:
+            set_game_speed_multiplier(0)
+            if debug>=1: print(f"Enabling AI agent...")
+            aw.enable_agent()
+            logger.info("AI enabled by user choice.")
         else:
-            print(f"Disabling AI agent...")
-            gu.disable_agent()
+            if debug>=1: print(f"Disabling AI agent...")
+            if aw: aw.disable_agent()
             logger.info("AI agent disabled by user choice.")
     else:
-        gu.disable_agent()
-        logger.info("AI agent disabled because ai/agent.py file not found.")
+        logger.info("AI agent disabled because ai file not found.")
 except Exception as e:
     logger.warning(f"Error while trying to import AI agent: {e}")
 
@@ -87,11 +95,18 @@ def main(continue_game=False, loaded_player=None):
     elif continue_game and loaded_player is not None:
         player:Player = loaded_player
     else:
-        get_input(f'{Colors.RED} hein? continue_game != False & continue_game and loaded_player IS None')
+        # Ensure player is always assigned to avoid unbound error
+        name = get_input(f"\n{Colors.CYAN}Enter your name, brave adventurer: {Colors.RESET}")
+        player = Player(name if name else get_random_names())
+        choose_difficulty(player)
+        starting_quest = quests_dict.get("Dungeon Explorer")
+        if starting_quest:
+            player.quests.append(starting_quest)
 
     # Main game loop
     game_running = True
     end = False
+    player_survived = True
     dungeon = Dungeon()
     dungeon.extend(generate_dungeon(player=player))
     
@@ -111,9 +126,9 @@ def main(continue_game=False, loaded_player=None):
         print(f"{Colors.MAGENTA}4. Information submenu{Colors.RESET}")
         print(f"{Colors.BRIGHT_YELLOW}5. Save game{Colors.RESET}")
         print(f"{Colors.BRIGHT_BLACK}6. Settings{Colors.RESET}\n")
-
+        
         # Use get_input instead of input to allow agent control if enabled
-        choice = get_input(f"{Colors.CYAN}Your choice: {Colors.RESET}", options=["1","2","3"], player=player, use_agent=USE_AGENT)
+        choice = get_input(f"{Colors.CYAN}Your choice: {Colors.RESET}", options=["1","2","3"], player=player, use_agent=agent_is_enabled())
         logger.info(f"Player choice: {choice}")
         
         if choice == "1":  # Explore a new room
@@ -138,7 +153,7 @@ def main(continue_game=False, loaded_player=None):
                     player.unlocked_difficulties["realistic"] = True
 
                     print(f"\n{Colors.BRIGHT_YELLOW}You can now change difficulty or start a new game + (NG+).{Colors.RESET}")
-                    choice = get_input(f"\n{Colors.YELLOW}Do you want to change difficulty ? (y/n): {Colors.RESET}", options=["y","n"], player=player, use_agent=USE_AGENT).lower()
+                    choice = get_input(f"\n{Colors.YELLOW}Do you want to change difficulty ? (y/n): {Colors.RESET}", options=["y","n"], player=player, use_agent=agent_is_enabled()).lower()
                     if choice == "y":
                         print(f"\n{Colors.YELLOW}You can now choose a new difficulty level.{Colors.RESET}")
                         player.mode = choose_difficulty(player)
@@ -208,6 +223,7 @@ def main(continue_game=False, loaded_player=None):
                 
                 if not player_survived or not player.is_alive() and end == False:
                     # Instead of game over and stopping the game, reset the player and dungeon to respawn
+                    game_over("died in battle")
                     print(f"\n{Colors.RED}You have died! Respawning...{Colors.RESET}")
                     player.reset_player()
                     dungeon = Dungeon()
@@ -222,17 +238,22 @@ def main(continue_game=False, loaded_player=None):
                 time.sleep(0.5)
                 get_input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
         
-        elif choice == "2":  # Check inventory
-            player.manage_inventory()
-        
-        
+        elif choice == "2":  # Check inventory / ressources
+            choice = get_input(f"\n{Colors.YELLOW}{Colors.GREEN}1. Manage Inventory\n{Colors.BRIGHT_BLUE}2. View Resources\n\n{Colors.CYAN}Your choice: {Colors.RESET}", options=["1","2"], player=player, use_agent=agent_is_enabled()) if isinstance(player.mode, RealisticDifficulty) else "1"
+
+            if choice == "1":
+                player.manage_inventory()
+            elif choice == "2":
+                player.display_resources()
+
         elif choice == "3":  # Rest
-            amount = interactive_bar(0, 100, 10, False, 10, Colors.GREEN, 50)
+            amount = interactive_bar(0, player.stats.permanent_stats["max_hp"] - player.stats.permanent_stats["hp"], 10, False, 10, Colors.GREEN, 50)
             if player.gold >= amount:
                 old_hp = player.stats.hp
                 old_stamina = player.stats.stamina
                 player.heal(amount)
                 player.rest_stamina(amount)
+                loading(amount // 10)
                 print(f"\n{Colors.GREEN}You rest for a while and recover:\n{player.stats.hp - old_hp} HP,\n{player.stats.stamina - old_stamina} Stamina.{Colors.RESET}")
                 time.sleep(0.1)
                 # Chance of being robbed by a goblin:
@@ -284,6 +305,10 @@ def main(continue_game=False, loaded_player=None):
             # Ask the save name:
             save_name = get_input(f"\n{Colors.YELLOW}Enter a save name: {Colors.RESET}")
             player.save_player(save_name)
+            # Save agent Q-table if agent is enabled
+            agent = get_agent()
+            if agent:
+                agent.save_q_table("ai/q_table.json")
             time.sleep(0.5)
 
             # Nicely formatted question to ask player for analytics consent
@@ -309,29 +334,35 @@ def main(continue_game=False, loaded_player=None):
             while True:
                 clear_screen()
                 print(f"\n{Colors.YELLOW}{Colors.UNDERLINE}Settings Submenu{Colors.RESET}")
-                print(f"{Colors.CYAN}1. Change game speed{Colors.RESET}")
+                print(f"{Colors.BRIGHT_RED}1. Continue{Colors.RESET}")
+                print(f"{Colors.CYAN}2. Change game speed{Colors.RESET}")
                 print(f"{Colors.RED}2. Quit game{Colors.RESET}")
-                print(f"{Colors.BRIGHT_RED}3. Back to Main Menu{Colors.RESET}")
 
                 setting_choice = get_input(f"\n{Colors.CYAN}Your choice: {Colors.RESET}")
 
                 if setting_choice == "1":
+                    break
+
+                elif setting_choice == "2":
                     print(f"{Colors.GREEN}Option 1 selected.{Colors.RESET}")
                     # Implement game speed change submenu
                     from engine.game_utility import game_speed_settings
+                    game_speed_settings()
                     
                 elif setting_choice == "2": # Quit game
                     confirm = get_input(f"{Colors.RED}Are you sure you want to quit? (y/n): {Colors.RESET}").lower()
                     if confirm == "y":
                         try:
                             player.save_player("auto_save")
+                            # Save agent Q-table if agent is enabled
+                            agent = get_agent()
+                            if agent:
+                                agent.save_q_table("ai/q_table.json")
                         except Exception as e:
                             handle_error()
                             print(f"{Colors.RED}Error saving auto-save: {e}{Colors.RESET}")
                         game_running = False
-
-                elif setting_choice == "3":
-                    break
+                        
                 else:
                     print(f"{Colors.RED}Invalid choice. Try again.{Colors.RESET}")
                     time.sleep(1)
@@ -365,6 +396,7 @@ def main(continue_game=False, loaded_player=None):
 # Lic​e​ns​ed​ ​un​der​ ​C​C ​B​Y​-​N​C​ 4​.​0
 
 if __name__ == '__main__':
+    input()
     player = None
     def main_menu():
         while True:
@@ -443,9 +475,9 @@ if __name__ == '__main__':
                                 if player:
                                     main(continue_game=True, loaded_player=player)
                                 else:
-                                    print(f"{Colors.YELLOW}Failed to load save. Starting new game...{Colors.RESET}")
+                                    print(f"{Colors.RED}Failed to load save.{Colors.RESET}")
                                     time.sleep(2)
-                                    main()
+                                    # main()
                             else:
                                 print(f"{Colors.RED}Invalid save selection.{Colors.RESET}")
                                 time.sleep(1)
