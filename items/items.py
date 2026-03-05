@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from core.entity import Player
 
-__version__ = "785.0"
+__version__ = "795.0"
 __creation__ = "09-03-2025"
 
 # Dungeon Hunter - (c) DragonDeFer 2025
@@ -16,6 +16,7 @@ from interface.colors import Colors
 from engine.game_utility import clear_screen
 from engine.logger import logger
 from core.spells import Spell
+from items.resources import Resource, generate_random_resource
 
 debug = 0
 
@@ -89,6 +90,9 @@ class Item:
     
         # Pour les autres types d'items (ex : consommables spéciaux)
         return item_type(data["name"], data["description"], data["value"], **extras)
+
+    def apply_to(self, player: Player):
+        player.inventory.append(self)
 
 #̶̼͝ B̵̕͜ë̵͕́ẅ̷̙́ä̷̪́r̷͍̈́ë̵͕́:̴̨͝ G̵̨̽ë̵͕́ä̷̪́r̷͍̈́ m̴̛̠ä̷̪́ÿ̸̡́ b̸̼̅i̴̊͜n̸̻̈́ď̶̙ ÿ̸̡́o̶͙͝ŭ̵͇ ẗ̴̗́o̶͙͝ ä̷̪́ f̷̠͑ä̷̪́ẗ̴̗́ë̵͕́ ẅ̷̙́o̶͙͝r̷͍̈́s̸̱̅ë̵͕́ ẗ̴̗́h̵̤͒ä̷̪́n̸̻̈́ ď̶̙ë̵͕́ä̷̪́ẗ̴̗́h̵̤͒.̵͇̆
 class Gear(Item):
@@ -877,20 +881,61 @@ def create_potion(level, rarity, prefix, item_name, value_base, rarity_data):
     return Potion(colored_name, effect_desc, value_base, potion["effect_type"], potion["effect_value"])
 
 
+def generate_random_resource_item(resource_type=None):
+    """
+    Generate a random resource item.
+    
+    Args:
+        resource_type (ResourceType | None): Specific resource type to generate, or None for any type.
+    
+    Returns:
+        Resource: A randomly generated resource object.
+    """
+    return generate_random_resource(resource_type)
+
+
+def generate_items_and_resources(player: Player, include_resources: bool = False, num_items: int = 1, num_resources: int = 1, **kwargs):
+    """
+    Generate multiple items and optionally resources at once.
+    
+    Args:
+        player (Player): The player instance.
+        include_resources (bool): Whether to include resources in the generation. Default False.
+        num_items (int): Number of items to generate. Default 1.
+        num_resources (int): Number of resources to generate (only if include_resources=True). Default 1.
+        **kwargs: Additional arguments to pass to generate_random_item.
+    
+    Returns:
+        list: A list of generated items and resources.
+    """
+    result = []
+    
+    # Generate items
+    for _ in range(num_items):
+        result.append(generate_random_item(player=player, **kwargs))
+    
+    # Generate resources if requested
+    if include_resources:
+        for _ in range(num_resources):
+            result.append(generate_random_resource_item())
+    
+    return result
+
+
 def generate_random_item(player:Player, enemy=None, item_type=None, rarity=None, item_name=None, rarity_boost=None, available_rarities=None, level_boost=0, enemy_type=None):
     """Generate a specific or random item with customizable attributes."""
     global debug
     debug = 0
 
     level = (player.dungeon_level + level_boost)
-    difficulty = player.mode
+    difficulty = player.difficulty
     
     # Determine enemy type
     if not enemy_type and enemy:
         enemy_type = enemy.type
     
     # Get difficulty-specific rarity boost if not provided
-    if rarity_boost is None:
+    if rarity_boost is None or rarity_boost <= 0:
         rarity_boost = difficulty.get_rarity_boost()
 
     # D​un​g​e​o​n​ ​Hu​n​t​e​r​ ​-​ ​(​c​)​ ​D​r​ag​o​nd​ef​e​r​ ​2​0​2​5
