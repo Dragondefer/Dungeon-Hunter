@@ -144,7 +144,7 @@ def main(continue_game=False, loaded_player=None):
                 player.dungeon_level += 1
 
                 # After finishing level 10 dungeon for the first time, 
-                if player.dungeon_level == 11 and player.ng_plus.get(str(player.mode), 0) == 0:
+                if player.dungeon_level == 11 and player.ng_plus.get(str(player.difficulty), 0) == 0:
                     print(f"\n{Colors.BRIGHT_YELLOW}You have finished level 10 dungeon!{Colors.RESET}")
                     
                     # Unlock the two difficulty:
@@ -156,13 +156,13 @@ def main(continue_game=False, loaded_player=None):
                     choice = get_input(f"\n{Colors.YELLOW}Do you want to change difficulty ? (y/n): {Colors.RESET}", options=["y","n"], player=player, use_agent=agent_is_enabled()).lower()
                     if choice == "y":
                         print(f"\n{Colors.YELLOW}You can now choose a new difficulty level.{Colors.RESET}")
-                        player.mode = choose_difficulty(player)
-                        print(f"\n{Colors.YELLOW}You have chosen {player.mode} difficulty.{Colors.RESET}")
+                        player.difficulty = choose_difficulty(player)
+                        print(f"\n{Colors.YELLOW}You have chosen {player.difficulty} difficulty.{Colors.RESET}")
                     else:
                         print(f"\n{Colors.YELLOW}You have chosen to make a new game +.{Colors.RESET}")
                         print(f"\n{Colors.YELLOW}Generating a new dungeon...{Colors.RESET}")
                         time.sleep(2)
-                        player.ng_plus[str(player.mode)] += 1
+                        player.ng_plus[str(player.difficulty)] += 1
                     player.dungeon_level = 1
                     player.current_room_number = 0
                 
@@ -178,7 +178,7 @@ def main(continue_game=False, loaded_player=None):
                             print(f"\n{Colors.BRIGHT_GREEN}{Colors.BOLD}Quest Completed: {quest.title}!{Colors.RESET}")
 
                 if debug >= 1:
-                    print(player.mode)
+                    print(player.difficulty)
                 
                 # Reward player for clearing a dungeon level
                 player.heal(player.stats.max_hp // 4)
@@ -239,7 +239,7 @@ def main(continue_game=False, loaded_player=None):
                 get_input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
         
         elif choice == "2":  # Check inventory / ressources
-            choice = get_input(f"\n{Colors.YELLOW}{Colors.GREEN}1. Manage Inventory\n{Colors.BRIGHT_BLUE}2. View Resources\n\n{Colors.CYAN}Your choice: {Colors.RESET}", options=["1","2"], player=player, use_agent=agent_is_enabled()) if isinstance(player.mode, RealisticDifficulty) else "1"
+            choice = get_input(f"\n{Colors.YELLOW}{Colors.GREEN}1. Manage Inventory\n{Colors.BRIGHT_BLUE}2. View Resources\n\n{Colors.CYAN}Your choice: {Colors.RESET}", options=["1","2"], player=player, use_agent=agent_is_enabled()) if isinstance(player.difficulty, RealisticDifficulty) else "1"
 
             if choice == "1":
                 player.manage_inventory()
@@ -257,7 +257,7 @@ def main(continue_game=False, loaded_player=None):
                 print(f"\n{Colors.GREEN}You rest for a while and recover:\n{player.stats.hp - old_hp} HP,\n{player.stats.stamina - old_stamina} Stamina.{Colors.RESET}")
                 time.sleep(0.1)
                 # Chance of being robbed by a goblin:
-                if player.mode == "Normal":
+                if player.difficulty == "Normal":
                     amount = random.randint(int(amount * 0.8), int(amount * 1.2))
                 else:
                     amount = random.randint(int(amount * 1), int(amount * 1.5))
