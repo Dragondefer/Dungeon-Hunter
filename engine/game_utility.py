@@ -703,25 +703,25 @@ def choose_difficulty(player: Player):
         choice = get_input("Please retry: ", options=list(difficulties.keys()), player=player)
 
     if choice == "1":
-        player.mode = NormalDifficulty()
-        player.load_difficulty_data(player.mode.name)
+        player.difficulty = NormalDifficulty()
+        player.load_difficulty_data(player.difficulty.name)
     elif choice == "2" and player.unlocked_difficulties["soul_enjoyer"]:
-        player.mode = SoulsDifficulty()
-        player.load_difficulty_data(player.mode.name)
+        player.difficulty = SoulsDifficulty()
+        player.load_difficulty_data(player.difficulty.name)
     elif choice == "3" and player.unlocked_difficulties["realistic"]:
-        player.mode = RealisticDifficulty()
-        player.load_difficulty_data(player.mode.name)
+        player.difficulty = RealisticDifficulty()
+        player.load_difficulty_data(player.difficulty.name)
     else:
         print(f"{Colors.RED}Difficulty locked or invalid choice! Defaulting to Normal.{Colors.RESET}")
-        player.mode = NormalDifficulty()
+        player.difficulty = NormalDifficulty()
         print(Colors.BLUE, 'Press enter to continue...', Colors.RESET, end="")
         get_input()
 
-    logger.debug(f"Difficulty chosed: {player.mode}")  
+    logger.debug(f"Difficulty chosed: {player.difficulty}")  
 
     loading()
 
-    return player.mode
+    return player.difficulty
 
 
 def display_game_over():

@@ -554,27 +554,27 @@ class Room:
         
         player.combat_encounters += 1
 
-        player.mode._prepare_tutorial_enemy(player, self, is_boss_room, tutorial)
+        player.difficulty._prepare_tutorial_enemy(player, self, is_boss_room, tutorial)
         if not self.enemies and tutorial is False:
             print(f"{Colors.GREEN}The room is empty.{Colors.RESET}")
             return True
 
-        if tutorial is True: player.mode._show_tutorial_intro(is_boss_room)
+        if tutorial is True: player.difficulty._show_tutorial_intro(is_boss_room)
 
         enemy = self.enemies[0]
         get_input(f'\n{Colors.BOLD}{Colors.RED}Press enter to begin the combat{Colors.RESET}', player=player)
         sleep(0.3)
         clear_screen()
 
-        player.mode._intro_message(enemy, is_boss_room)
+        player.difficulty._intro_message(enemy, is_boss_room)
         
         one_time_message = True
 
         while enemy.is_alive() and player.is_alive():
-            player.mode._display_combat_status(player, enemy)
+            player.difficulty._display_combat_status(player, enemy)
 
             if tutorial is True and one_time_message is True:
-                player.mode._show_action_tutorial(is_boss_room)
+                player.difficulty._show_action_tutorial(is_boss_room)
                 one_time_message = False
                 sleep(1)
 
@@ -589,7 +589,7 @@ class Room:
                 print(f"{Colors.BRIGHT_YELLOW}4. Try to Run{Colors.RESET}")
 
             if tutorial is True:
-                player.mode._auto_heal_rest(player) # Heal/Rest the player if his hp/stamina is under 50% 
+                player.difficulty._auto_heal_rest(player) # Heal/Rest the player if his hp/stamina is under 50% 
 
             options = ["1", "3", "4"]
             if player.skills:
@@ -748,7 +748,7 @@ class Room:
                     sleep(0.5)
                 else:
                     if not player.is_alive():
-                        player.increment_deaths_in_room(player.mode.name, player.current_room_number)
+                        player.increment_deaths_in_room(player.difficulty.name, player.current_room_number)
                     return True
 
             # Enemy turn
@@ -761,7 +761,7 @@ class Room:
                     enemy.attack_player(player)
                 sleep(1.5)
         if not player.is_alive():
-            player.increment_deaths_in_room(player.mode.name, player.current_room_number)
+            player.increment_deaths_in_room(player.difficulty.name, player.current_room_number)
         return player.is_alive()
 
     
@@ -854,7 +854,7 @@ class Room:
 
         # Generate shop inventory
         shop_inventory: list[Item] = []
-        for _ in range(player.mode.get_shop_item_num()):
+        for _ in range(player.difficulty.get_shop_item_num()):
             generated_item = generate_random_item(player=player)
             if generated_item: # To make Pylance happy
                 shop_inventory.append(generated_item)
@@ -1615,17 +1615,17 @@ def generate_random_room(player: Player, room_type: str|None = None, is_boss_roo
     # Generate items for treasure rooms
     if room_type == "treasure":
         possible_items = ["scroll", "ressource", "equipment"]
-        num_items = player.mode.get_treasure_item_num()
+        num_items = player.difficulty.get_treasure_item_num()
 
         for _ in range(num_items):
             item_type = random.choices(
                 possible_items,
-                weights=[0.3, 0.4 if isinstance(player.mode, RealisticDifficulty) else 0.1, 0.3]
+                weights=[0.3, 0.4 if isinstance(player.difficulty, RealisticDifficulty) else 0.1, 0.3]
             )[0]
             if item_type == "scroll":
                 items.append(get_random_scroll())
             elif item_type == "ressource":
-                if isinstance(player.mode, RealisticDifficulty):
+                if isinstance(player.difficulty, RealisticDifficulty):
                     items.append(generate_random_resource_item())
             elif item_type == "equipment":
                     items.append(generate_random_item(player=player))
@@ -1635,7 +1635,7 @@ def generate_random_room(player: Player, room_type: str|None = None, is_boss_roo
 
     
     # In realistic mode, add resources to combat rooms as well
-    if room_type == "combat" and isinstance(player.mode, RealisticDifficulty):
+    if room_type == "combat" and isinstance(player.difficulty, RealisticDifficulty):
         num_resources = random.randint(1, 2)
         for _ in range(num_resources):
             items.append(generate_random_resource_item())
@@ -1672,13 +1672,13 @@ def generate_dungeon(player:Player) -> list[Room]:
     """Generates a dungeon with rooms based on the level and difficulty."""
     global debug
     dungeon_level = player.dungeon_level
-    difficulty = player.mode
+    difficulty = player.difficulty
     rooms: list[Room] = []
     if debug >= 1:
         print(f"{Colors.YELLOW}DEBUG: Generating dungeon level {dungeon_level} with difficulty {difficulty}{Colors.RESET}")
     logger.info(f"Starting dungeon generation for level {dungeon_level} with difficulty {difficulty}")
 
-    num_rooms = player.mode.get_room_count()
+    num_rooms = player.difficulty.get_room_count()
     logger.debug(f"Number of rooms to generate: {num_rooms}")
 
     if debug >= 1:
