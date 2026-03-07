@@ -6,6 +6,7 @@ __creation__ = "08-03-2026"
 # Licensed under CC BY-NC 4.0
 
 from abc import ABC, abstractmethod
+from typing import Optional, cast
 import random
 import time
 from interface.colors import Colors
@@ -26,7 +27,7 @@ class BaseGameMode(ABC):
     Provides a common interface and initialization pattern for different gameplay modes.
     """
     
-    def __init__(self, player=None, dev_mode=False, debug=0):
+    def __init__(self, player: Optional[Player], dev_mode: bool = False, debug: int = 0) -> None:
         """
         Initialize a game mode.
         
@@ -35,10 +36,10 @@ class BaseGameMode(ABC):
             dev_mode: Developer mode flag
             debug: Debug level
         """
-        self.player = player
-        self.dev_mode = dev_mode
-        self.debug = debug
-        self.mode_running = True
+        self.player: Optional[Player] = player
+        self.dev_mode: bool = dev_mode
+        self.debug: int = debug
+        self.mode_running: bool = True
     
     @abstractmethod
     def run(self):
@@ -57,7 +58,7 @@ class DungeonMode(BaseGameMode):
     Contains all logic for exploration, inventory, resting, combat, and dungeon progression.
     """
     
-    def __init__(self, continue_game=False, loaded_player=None, dev_mode=False, debug=0):
+    def __init__(self, continue_game: bool = False, loaded_player: Optional[Player] = None, dev_mode: bool = False, debug: int = 0) -> None:
         """
         Initialize the DungeonMode.
         
@@ -67,8 +68,11 @@ class DungeonMode(BaseGameMode):
             dev_mode: Developer mode flag
             debug: Debug level
         """
-        # Initialize player
-        if continue_game == False:
+        # Initialize player - ensure it's always a Player instance
+        if continue_game and loaded_player is not None:
+            player: Player = loaded_player
+        else:
+            # New game
             name = get_input(f"\n{Colors.CYAN}Enter your name, brave adventurer: {Colors.RESET}")
             player = Player(name if name else get_random_names())
             choose_difficulty(player)
@@ -77,40 +81,37 @@ class DungeonMode(BaseGameMode):
             starting_quest = quests_dict.get("Dungeon Explorer")
             if starting_quest:
                 player.quests.append(starting_quest)
-                
-        elif continue_game and loaded_player is not None:
-            player = loaded_player
-        else:
-            # Ensure player is always assigned to avoid unbound error
-            name = get_input(f"\n{Colors.CYAN}Enter your name, brave adventurer: {Colors.RESET}")
-            player = Player(name if name else get_random_names())
-            choose_difficulty(player)
-            starting_quest = quests_dict.get("Dungeon Explorer")
-            if starting_quest:
-                player.quests.append(starting_quest)
         
         # Call parent constructor
         super().__init__(player=player, dev_mode=dev_mode, debug=debug)
         
+        # Type guard: ensure player is not None and cast to Player
+        assert self.player is not None, "Player must be initialized"
+        # For type checking: DungeonMode always has a player, cast here once
+        self.player: Player = cast(Player, self.player)  # type: ignore[assignment]
+        
         # Game state variables
-        self.game_running = True
-        self.end = False
-        self.player_survived = True
+        self.game_running: bool = True
+        self.end: bool = False
+        self.player_survived: bool = True
         
         # Initialize dungeon
-        self.dungeon = Dungeon()
+        self.dungeon: Dungeon = Dungeon()
         self.dungeon.extend(generate_dungeon(player=self.player))
     
     def run(self):
         """Main gameplay loop for DungeonMode."""
-        while self.game_running and self.player.is_alive():
+        # Type narrowing for mypy/pylance
+        player: Player = cast(Player, self.player)
+        
+        while self.game_running and player.is_alive():
             if self.debug >= 1:
                 get_input()
             clear_screen()
 
-            self.player.display_dungeon_level(self.player.current_room_number)
+            player.display_dungeon_level(player.current_room_number)
             move_cursor(0, 0)
-            self.player.display_status()
+            player.display_status()
             
             print(f"\n{Colors.YELLOW}What would you like to do?{Colors.RESET}")
             print(f"{Colors.CYAN}1. Explore a new room{Colors.RESET}")
@@ -214,7 +215,9 @@ class DungeonMode(BaseGameMode):
             if self.debug >= 1:
                 print(Colors.BLUE, 'DEBUG: No dungeon, generating a new dungeon...', Colors.RESET)
 
-            self.dungeon = generate_dungeon(player=self.player)
+            dungeon_rooms = generate_dungeon(player=self.player)
+            self.dungeon = Dungeon()
+            self.dungeon.extend(dungeon_rooms)
             
             # Update quest progress for complete_dungeon_levels
             for quest in self.player.quests:
@@ -420,3 +423,324 @@ class DungeonMode(BaseGameMode):
         debug_dungeon = Dungeon(self.dungeon) if isinstance(self.dungeon, list) else self.dungeon
         from engine.dev_mod import debug_menu
         debug_menu(self.player, debug_dungeon)
+
+
+# ==============================================
+# ADDITIONAL GAME MODE TEMPLATES
+# ==============================================
+
+class ShopMode(BaseGameMode):
+    """
+    GameMode for shopping and item trading.
+    Players can buy and sell items, manage inventory, and interact with merchants.
+    
+    TODO: Implement shop inventory system
+    TODO: Implement merchant dialogue
+    TODO: Implement item pricing and trading logic
+    """
+    
+    def __init__(self, player: Player, dev_mode: bool = False, debug: int = 0) -> None:
+        """Initialize ShopMode with player reference."""
+        super().__init__(player=player, dev_mode=dev_mode, debug=debug)
+        self.shop_inventory: list = []  # Items available for purchase
+        self.merchant_name: str = "Merchant"
+    
+    def run(self) -> None:
+        """Main loop for ShopMode."""
+        self.mode_running = True
+        while self.mode_running and self.player and self.player.is_alive():
+            clear_screen()
+            print(f"\n{Colors.BRIGHT_YELLOW}{Colors.BOLD}Welcome to the {self.merchant_name}'s Shop!{Colors.RESET}")
+            print(f"{Colors.CYAN}1. Browse Items{Colors.RESET}")
+            print(f"{Colors.GREEN}2. Sell Items{Colors.RESET}")
+            print(f"{Colors.RED}3. Leave Shop{Colors.RESET}")
+            
+            choice = get_input(f"\n{Colors.CYAN}Your choice: {Colors.RESET}")
+            
+            if choice == "1":
+                self._browse_items()
+            elif choice == "2":
+                self._sell_items()
+            elif choice == "3":
+                self.mode_running = False
+            else:
+                print(f"{Colors.RED}Invalid choice.{Colors.RESET}")
+                time.sleep(1)
+    
+    def _browse_items(self) -> None:
+        """Display and allow purchase of items."""
+        print(f"\n{Colors.YELLOW}Available items:{Colors.RESET}")
+        # TODO: Implement shop item browsing
+        get_input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
+    
+    def _sell_items(self) -> None:
+        """Display player inventory and allow selling items."""
+        print(f"\n{Colors.YELLOW}Your items for sale:{Colors.RESET}")
+        # TODO: Implement item selling
+        get_input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
+    
+    def cleanup(self):
+        """Cleanup when exiting ShopMode."""
+        logger.info("ShopMode cleanup completed.")
+
+
+class ArenaMode(BaseGameMode):
+    """
+    GameMode for combat arena/training.
+    Players can engage in optional combat with selected enemies for rewards.
+    
+    TODO: Implement arena enemy selection
+    TODO: Implement arena combat system
+    TODO: Implement arena reward system
+    """
+    
+    def __init__(self, player: Player, dev_mode: bool = False, debug: int = 0) -> None:
+        """Initialize ArenaMode with player reference."""
+        super().__init__(player=player, dev_mode=dev_mode, debug=debug)
+        self.arena_difficulty: str = "Normal"
+        self.selected_enemy: Optional[object] = None
+    
+    def run(self) -> None:
+        """Main loop for ArenaMode."""
+        self.mode_running = True
+        while self.mode_running and self.player and self.player.is_alive():
+            clear_screen()
+            print(f"\n{Colors.BRIGHT_RED}{Colors.BOLD}Welcome to the Arena!{Colors.RESET}")
+            print(f"{Colors.CYAN}1. Fight an Enemy{Colors.RESET}")
+            print(f"{Colors.GREEN}2. View Arena Rules{Colors.RESET}")
+            print(f"{Colors.YELLOW}3. Check Leaderboard{Colors.RESET}")
+            print(f"{Colors.RED}4. Leave Arena{Colors.RESET}")
+            
+            choice = get_input(f"\n{Colors.CYAN}Your choice: {Colors.RESET}")
+            
+            if choice == "1":
+                self._start_combat()
+            elif choice == "2":
+                self._show_rules()
+            elif choice == "3":
+                self._show_leaderboard()
+            elif choice == "4":
+                self.mode_running = False
+            else:
+                print(f"{Colors.RED}Invalid choice.{Colors.RESET}")
+                time.sleep(1)
+    
+    def _start_combat(self):
+        """Initiate arena combat."""
+        print(f"\n{Colors.YELLOW}Preparing for combat...{Colors.RESET}")
+        # TODO: Implement arena combat
+        time.sleep(1)
+        get_input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
+    
+    def _show_rules(self):
+        """Display arena rules."""
+        print(f"\n{Colors.CYAN}{Colors.BOLD}Arena Rules:{Colors.RESET}")
+        print(f"{Colors.YELLOW}1. All combats are voluntary{Colors.RESET}")
+        print(f"{Colors.YELLOW}2. Victory grants additional rewards{Colors.RESET}")
+        print(f"{Colors.YELLOW}3. Defeat does not result in character death{Colors.RESET}")
+        # TODO: Add more rules
+        get_input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
+    
+    def _show_leaderboard(self):
+        """Display arena leaderboard."""
+        print(f"\n{Colors.BRIGHT_YELLOW}{Colors.BOLD}Arena Leaderboard{Colors.RESET}")
+        # TODO: Implement leaderboard system
+        get_input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
+    
+    def cleanup(self):
+        """Cleanup when exiting ArenaMode."""
+        logger.info("ArenaMode cleanup completed.")
+
+
+class RestingMode(BaseGameMode):
+    """
+    GameMode for peaceful resting and meditation between dungeons.
+    Players can fully recover, meditate, and prepare for challenges ahead.
+    
+    TODO: Implement extended resting mechanics
+    TODO: Implement meditation system with XP gains
+    TODO: Implement dream sequences or story elements
+    """
+    
+    def __init__(self, player: Player, dev_mode: bool = False, debug: int = 0) -> None:
+        """Initialize RestingMode with player reference."""
+        super().__init__(player=player, dev_mode=dev_mode, debug=debug)
+        self.rest_duration: int = 0
+    
+    def run(self) -> None:
+        """Main loop for RestingMode."""
+        self.mode_running = True
+        while self.mode_running and self.player and self.player.is_alive():
+            clear_screen()
+            print(f"\n{Colors.BRIGHT_GREEN}{Colors.BOLD}Peaceful Sanctuary{Colors.RESET}")
+            print(f"{Colors.CYAN}1. Rest and Recovery{Colors.RESET}")
+            print(f"{Colors.MAGENTA}2. Meditate{Colors.RESET}")
+            print(f"{Colors.YELLOW}3. Prepare Supplies{Colors.RESET}")
+            print(f"{Colors.RED}4. Leave Sanctuary{Colors.RESET}")
+            
+            choice = get_input(f"\n{Colors.CYAN}Your choice: {Colors.RESET}")
+            
+            if choice == "1":
+                self._full_recovery()
+            elif choice == "2":
+                self._meditate()
+            elif choice == "3":
+                self._prepare_supplies()
+            elif choice == "4":
+                self.mode_running = False
+            else:
+                print(f"{Colors.RED}Invalid choice.{Colors.RESET}")
+                time.sleep(1)
+    
+    def _full_recovery(self):
+        """Fully recover all player stats."""
+        print(f"\n{Colors.GREEN}You rest deeply and recover completely...{Colors.RESET}")
+        # TODO: Implement full recovery
+        time.sleep(1)
+        get_input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
+    
+    def _meditate(self):
+        """Meditate for bonus XP and mental clarity."""
+        print(f"\n{Colors.MAGENTA}You enter a meditative state...{Colors.RESET}")
+        # TODO: Implement meditation with XP gains
+        time.sleep(1)
+        get_input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
+    
+    def _prepare_supplies(self):
+        """Prepare supplies for upcoming challenges."""
+        print(f"\n{Colors.YELLOW}Preparing supplies for the journey ahead...{Colors.RESET}")
+        # TODO: Implement supply crafting/preparation
+        time.sleep(1)
+        get_input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
+    
+    def cleanup(self):
+        """Cleanup when exiting RestingMode."""
+        logger.info("RestingMode cleanup completed.")
+
+
+class StoryMode(BaseGameMode):
+    """
+    GameMode for story sequences and narrative cutscenes.
+    Players experience story progression, dialogue, and character interactions.
+    
+    TODO: Implement dialogue system
+    TODO: Implement choice trees
+    TODO: Implement story progression tracking
+    """
+    
+    def __init__(self, player: Player, story_id: str = "default", dev_mode: bool = False, debug: int = 0) -> None:
+        """Initialize StoryMode with player reference and story identifier."""
+        super().__init__(player=player, dev_mode=dev_mode, debug=debug)
+        self.story_id: str = story_id
+        self.current_scene: int = 0
+        self.story_scenes: list = []  # List of story scenes
+    
+    def run(self):
+        """Main loop for StoryMode."""
+        self.mode_running = True
+        print(f"\n{Colors.BRIGHT_CYAN}{Colors.BOLD}Story Sequence{Colors.RESET}")
+        # TODO: Implement story scene progression
+        print(f"{Colors.YELLOW}Story mode loading...[Not yet implemented]{Colors.RESET}")
+        time.sleep(1)
+        self.mode_running = False
+    
+    def _load_story(self):
+        """Load story scenes from story data."""
+        # TODO: Implement story loading from data files
+        pass
+    
+    def _display_scene(self):
+        """Display current story scene."""
+        # TODO: Implement scene display with dialogue and choices
+        pass
+    
+    def _handle_choice(self, choice):
+        """Handle player choice in story."""
+        # TODO: Implement choice handling and branching
+        pass
+    
+    def cleanup(self):
+        """Cleanup when exiting StoryMode."""
+        logger.info("StoryMode cleanup completed.")
+
+
+class GameModeManager:
+    """
+    Manager for switching between different game modes.
+    Handles state preservation and transitions between modes.
+    
+    Usage:
+        manager = GameModeManager(player, dev_mode, debug)
+        manager.switch_to_mode("dungeon")
+        manager.switch_to_mode("shop")
+    """
+    
+    def __init__(self, player: Player, dev_mode: bool = False, debug: int = 0) -> None:
+        """Initialize GameModeManager."""
+        self.player: Player = player
+        self.dev_mode: bool = dev_mode
+        self.debug: int = debug
+        self.current_mode: Optional[BaseGameMode] = None
+        self.mode_history: list = []
+        
+        # Registry of available modes
+        self.modes: dict = {
+            "dungeon": DungeonMode,
+            "shop": ShopMode,
+            "arena": ArenaMode,
+            "resting": RestingMode,
+            "story": StoryMode,
+        }
+    
+    def switch_to_mode(self, mode_name: str, **kwargs) -> bool:
+        """
+        Switch to a different game mode.
+        
+        Args:
+            mode_name: Name of the mode to switch to (must be in self.modes)
+            **kwargs: Additional arguments to pass to the mode constructor
+        """
+        if self.current_mode:
+            # Cleanup previous mode
+            self.current_mode.cleanup()
+            self.mode_history.append(self.current_mode)
+        
+        if mode_name not in self.modes:
+            logger.warning(f"Mode '{mode_name}' not found in registry.")
+            return False
+        
+        try:
+            mode_class = self.modes[mode_name]
+            if mode_name == "dungeon":
+                # DungeonMode has special initialization
+                self.current_mode = mode_class(
+                    continue_game=False,
+                    loaded_player=self.player,
+                    dev_mode=self.dev_mode,
+                    debug=self.debug
+                )
+            else:
+                self.current_mode = mode_class(
+                    player=self.player,
+                    dev_mode=self.dev_mode,
+                    debug=self.debug,
+                    **kwargs
+                )
+            logger.info(f"Switched to mode: {mode_name}")
+            return True
+        except Exception as e:
+            logger.error(f"Error switching to mode '{mode_name}': {e}")
+            return False
+    
+    def run_current_mode(self) -> None:
+        """Run the current game mode."""
+        if self.current_mode:
+            self.current_mode.run()
+        else:
+            logger.warning("No mode is currently active.")
+    
+    def get_current_mode_name(self) -> Optional[str]:
+        """Get the name of the current mode."""
+        if self.current_mode:
+            return type(self.current_mode).__name__
+        return None
