@@ -1,17 +1,26 @@
+# Dungeon Hunter - (c) Dragondefer 2025
+# Licensed under CC BY-NC 4.0
+
 import random
 from interface.colors import Colors
 from core.player_class import PlayerClass
 
-def can_send_analytics():
-    from main import send_analytics
+send_analytics:bool = False
+
+def change_analytics(state:bool) -> bool:
+    global send_analytics
+    send_analytics = state
+    return send_analytics
+
+def can_send_analytics() -> bool:
     return send_analytics
 
 # Random names for player
 def get_random_names():
     player_name_list = [
         "Adventurer",
-        f"{Colors.BRIGHT_BLACK}Grim{Colors.RESET}",
         f"{Colors.BRIGHT_BLACK}Dragondefer{Colors.RESET}",
+        f"{Colors.BRIGHT_BLACK}Grim{Colors.RESET}",
     ]
     # Add weights
     player_name_weights = [0.9, 0.05, 0.05]
@@ -32,3 +41,4 @@ unlockable_classes = {
         PlayerClass("Knight", {"max_hp": 25, "attack": 3, "defense": 10, "agility": 5}, "Divine Shield")
     ]
 }
+
