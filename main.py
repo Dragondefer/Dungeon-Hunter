@@ -1,38 +1,31 @@
 # Du​n​g​e​o​n​ ​H​u​n​t​e​r​ ​-​ ​(​c​)​ ​Dr​ag​o​nd​ef​er​ ​2​025
 # L​ic​e​ns​ed​ ​un​de​r​ ​C​C ​B​Y​-​N​C​ 4​.​0
 
-from sys import exception, path as sys_path
-from sys import getwindowsversion
+from sys import path as sys_path
 from os.path import abspath, dirname
-
-from engine.difficulty import RealisticDifficulty
 
 # Add the project root directory to sys.path to fix module import issues on Android/Termux
 project_root = abspath(dirname(__file__))
 if project_root not in sys_path:
     sys_path.insert(0, project_root)
 
-__version__ = "816.0"
+__version__ = "856.0"
 __creation__ = "09-03-2025"
 
-import random
-import time
 import os
+import time
 
 from interface.colors import Colors
-from engine.game_utility import (clear_screen, game_over, choose_difficulty,
-                                 handle_error, collect_feedback, interactive_bar, loading,
-                                 move_cursor, maximize_terminal, get_input)
-from engine.dungeon import Room, Dungeon, generate_dungeon 
+from engine.game_utility import (clear_screen, collect_feedback, maximize_terminal, get_input, strip_ansi)
 from engine.logger import logger
-from core.entity import Player, continue_game
+from core.entity import continue_game
 from core.story import display_title
-from data import get_random_names, quests_dict
+from engine.save_system import SaveManager
 
 
 # Note: You need to be at least beta tester to get the dev tools (as it can easley break everything and also spoil)
 # Look at the game's discord for more info: https://discord.gg/3V7xGCvxEP
-from config import set_dev_mode, is_dev_mode
+from config import set_dev_mode, is_dev_mode, setup_ai, agent_is_enabled, get_agent, aw
 try:
     if os.path.exists("./engine/dev_mod.py"):
         from engine.dev_mod import debug_menu
@@ -56,26 +49,16 @@ from engine.game_utility import set_game_speed_multiplier
 # AI dev integration
 try:
     if os.path.exists("./ai/agent.py") and os.path.exists("./ai/agent_wrapper.py"):
-        try:
-            from ai.agent_wrapper import agent_is_enabled
-            import ai.agent_wrapper as aw
-            from ai.agent_wrapper import get_agent
-        except Exception as e:
-            print("Cannot import agent_wrapper")
-            agent_is_enabled = lambda *args, **kwargs: None
-            get_agent = lambda *args, **kwargs: None
-            aw = None
         print("AI agent detected. Would you like to enable AI agent to play? (y/N): ", end="")
         choice = input().lower()
         if debug>=1: print(f"AI agent choice: {choice}")
-        if choice == "y" and aw:
+        setup_ai(choice)
+        if choice == "y":
             set_game_speed_multiplier(0)
             if debug>=1: print(f"Enabling AI agent...")
-            aw.enable_agent()
             logger.info("AI enabled by user choice.")
         else:
             if debug>=1: print(f"Disabling AI agent...")
-            if aw: aw.disable_agent()
             logger.info("AI agent disabled by user choice.")
     else:
         logger.info("AI agent disabled because ai file not found.")
@@ -83,319 +66,12 @@ except Exception as e:
     logger.warning(f"Error while trying to import AI agent: {e}")
 
 def main(continue_game=False, loaded_player=None):
-    global debug
+    """Main entry point for the game. Instantiates and runs DungeonMode."""
+    from engine.gamemodes import DungeonMode
+    
     clear_screen()
-
-    if continue_game == False:
-        # Ask player for their name
-        name = get_input(f"\n{Colors.CYAN}Enter your name, brave adventurer: {Colors.RESET}")
-        player = Player(name if name else get_random_names())
-        choose_difficulty(player)
-
-        # Give player a starting quest
-        starting_quest = quests_dict.get("Dungeon Explorer")
-        if starting_quest:
-            player.quests.append(starting_quest)
-            
-    elif continue_game and loaded_player is not None:
-        player:Player = loaded_player
-    else:
-        # Ensure player is always assigned to avoid unbound error
-        name = get_input(f"\n{Colors.CYAN}Enter your name, brave adventurer: {Colors.RESET}")
-        player = Player(name if name else get_random_names())
-        choose_difficulty(player)
-        starting_quest = quests_dict.get("Dungeon Explorer")
-        if starting_quest:
-            player.quests.append(starting_quest)
-
-    # Main game loop
-    game_running = True
-    end = False
-    player_survived = True
-    dungeon = Dungeon()
-    dungeon.extend(generate_dungeon(player=player))
-    
-    while game_running and player.is_alive():
-        if debug >= 1:
-            get_input()
-        clear_screen()
-
-        player.display_dungeon_level(player.current_room_number)
-        move_cursor(0, 0)
-        player.display_status()
-        
-        print(f"\n{Colors.YELLOW}What would you like to do?{Colors.RESET}")
-        print(f"{Colors.CYAN}1. Explore a new room{Colors.RESET}")
-        print(f"{Colors.GREEN}2. Check inventory{Colors.RESET}")
-        print(f"{Colors.RED}3. Rest{Colors.RESET}")
-        print(f"{Colors.MAGENTA}4. Information submenu{Colors.RESET}")
-        print(f"{Colors.BRIGHT_YELLOW}5. Save game{Colors.RESET}")
-        print(f"{Colors.BRIGHT_BLACK}6. Settings{Colors.RESET}\n")
-        
-        # Use get_input instead of input to allow agent control if enabled
-        choice = get_input(f"{Colors.CYAN}Your choice: {Colors.RESET}", options=["1","2","3"], player=player, use_agent=agent_is_enabled())
-        logger.info(f"Player choice: {choice}")
-        
-        if choice == "1":  # Explore a new room
-            if not dungeon:
-                if not player_survived or not player.is_alive():
-                    game_over("died in battle")
-                    game_running = False
-                    end = True
-                    continue
-                
-                print(f"\n{Colors.GREEN}{Colors.BOLD}Congratulations! You've cleared dungeon level {player.dungeon_level}!{Colors.RESET}")
-                logger.info(f"Player cleared dungeon level {player.dungeon_level}")
-                player.dungeon_level += 1
-
-                # After finishing level 10 dungeon for the first time, 
-                if player.dungeon_level == 11 and player.ng_plus.get(str(player.difficulty), 0) == 0:
-                    print(f"\n{Colors.BRIGHT_YELLOW}You have finished level 10 dungeon!{Colors.RESET}")
-                    
-                    # Unlock the two difficulty:
-                    player.finished_difficulties["normal"] = True
-                    player.unlocked_difficulties["soul_enjoyer"] = True
-                    player.unlocked_difficulties["realistic"] = True
-
-                    print(f"\n{Colors.BRIGHT_YELLOW}You can now change difficulty or start a new game + (NG+).{Colors.RESET}")
-                    choice = get_input(f"\n{Colors.YELLOW}Do you want to change difficulty ? (y/n): {Colors.RESET}", options=["y","n"], player=player, use_agent=agent_is_enabled()).lower()
-                    if choice == "y":
-                        print(f"\n{Colors.YELLOW}You can now choose a new difficulty level.{Colors.RESET}")
-                        player.difficulty = choose_difficulty(player)
-                        print(f"\n{Colors.YELLOW}You have chosen {player.difficulty} difficulty.{Colors.RESET}")
-                    else:
-                        print(f"\n{Colors.YELLOW}You have chosen to make a new game +.{Colors.RESET}")
-                        print(f"\n{Colors.YELLOW}Generating a new dungeon...{Colors.RESET}")
-                        time.sleep(2)
-                        player.ng_plus[str(player.difficulty)] += 1
-                    player.dungeon_level = 1
-                    player.current_room_number = 0
-                
-                if debug >= 1:
-                    print(Colors.BLUE, 'DEBUG: No dungeon, generating a new dungeon...', Colors.RESET)
-
-                dungeon = generate_dungeon(player=player)
-                
-                # Update quest progress for complete_dungeon_levels
-                for quest in player.quests:
-                    if quest.objective_type == "complete_dungeon_levels" and not quest.completed:
-                        if quest.update_progress():
-                            print(f"\n{Colors.BRIGHT_GREEN}{Colors.BOLD}Quest Completed: {quest.title}!{Colors.RESET}")
-
-                if debug >= 1:
-                    print(player.difficulty)
-                
-                # Reward player for clearing a dungeon level
-                player.heal(player.stats.max_hp // 4)
-                player.rest_stamina(100)
-                player.regen_mana(25)
-                level_reward = player.dungeon_level * 50
-                print(f"{Colors.YELLOW}You receive {level_reward} gold for clearing the dungeon!{Colors.RESET}")
-                player.gold += level_reward
-                player.gain_xp(player.dungeon_level * 50)
-
-                player.current_room_number = 0
-                
-                time.sleep(0.5)
-                get_input(f"\n{Colors.YELLOW}Press Enter to continue to dungeon level {player.dungeon_level}...{Colors.RESET}")
-            else:
-                if debug >= 1:
-                    print(f"{Colors.CYAN}DEBUG: Dungeon size before exploration: {len(dungeon)}{Colors.RESET}")
-                room:Room = dungeon.pop(0)
-                player_survived = room.enter(player)
-                player.current_room_number += 1
-                player.total_rooms_explored += 1
-                
-                # Update quest progress if applicable
-                for quest in player.quests:
-                    if quest.objective_type == "explore_rooms" and not quest.completed:
-                        if quest.update_progress():
-                            print(f"\n{Colors.BRIGHT_GREEN}{Colors.BOLD}Quest Completed: {quest.title}!{Colors.RESET}")
-                    elif quest.objective_type == "collect_gold" and not quest.completed:
-                        if player.gold >= quest.objective_amount:
-                            quest.completed = True
-                            print(f"\n{Colors.BRIGHT_GREEN}{Colors.BOLD}Quest Completed: {quest.title}!{Colors.RESET}")
-                            print(f"{Colors.YELLOW}Rewards: {quest.reward_gold} gold, {quest.reward_xp} XP{Colors.RESET}")
-                            player.gold += quest.reward_gold
-                            player.gain_xp(quest.reward_xp)
-                            
-                            if quest.reward_item:
-                                player.inventory.append(quest.reward_item)
-                                print(f"{Colors.GREEN}You received: {quest.reward_item.name}{Colors.RESET}")
-                            
-                            player.quests.remove(quest)
-                            player.completed_quests.append(quest)
-                
-                if not player_survived or not player.is_alive() and end == False:
-                    # Instead of game over and stopping the game, reset the player and dungeon to respawn
-                    game_over("died in battle")
-                    print(f"\n{Colors.RED}You have died! Respawning...{Colors.RESET}")
-                    player.reset_player()
-                    dungeon = Dungeon()
-                    dungeon.extend(generate_dungeon(player=player))
-                    game_running = True
-                    end = False
-                    player.current_room_number = 0
-                    player.total_rooms_explored = 0
-                    time.sleep(2)
-                    continue
-                
-                time.sleep(0.5)
-                get_input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
-        
-        elif choice == "2":  # Check inventory / ressources
-            choice = get_input(f"\n{Colors.YELLOW}{Colors.GREEN}1. Manage Inventory\n{Colors.BRIGHT_BLUE}2. View Resources\n\n{Colors.CYAN}Your choice: {Colors.RESET}", options=["1","2"], player=player, use_agent=agent_is_enabled()) if isinstance(player.difficulty, RealisticDifficulty) else "1"
-
-            if choice == "1":
-                player.manage_inventory()
-            elif choice == "2":
-                player.display_resources()
-
-        elif choice == "3":  # Rest
-            amount = interactive_bar(0, player.stats.permanent_stats["max_hp"] - player.stats.permanent_stats["hp"], 10, False, 10, Colors.GREEN, 50)
-            if player.gold >= amount:
-                old_hp = player.stats.hp
-                old_stamina = player.stats.stamina
-                player.heal(amount)
-                player.rest_stamina(amount)
-                loading(amount // 10)
-                print(f"\n{Colors.GREEN}You rest for a while and recover:\n{player.stats.hp - old_hp} HP,\n{player.stats.stamina - old_stamina} Stamina.{Colors.RESET}")
-                time.sleep(0.1)
-                # Chance of being robbed by a goblin:
-                if player.difficulty == "Normal":
-                    amount = random.randint(int(amount * 0.8), int(amount * 1.2))
-                else:
-                    amount = random.randint(int(amount * 1), int(amount * 1.5))
-                
-                player.gold = max(0, player.gold - amount)
-                if amount > 0:
-                    print(f"\n{Colors.RED}A goblin stole {amount} gold while you were resting!{Colors.RESET}")
-                # print(f"{Colors.YELLOW}You spent {amount} gold.{Colors.RESET}")
-            else:
-                print(f"\n{Colors.RED}You don't have enough gold to rest.{Colors.RESET}")
-            time.sleep(0.1)
-
-            get_input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
-        
-
-        elif choice == "4":  # Information submenu
-            while True:
-                clear_screen()
-                print(f"\n{Colors.YELLOW}{Colors.UNDERLINE}Information Submenu{Colors.RESET}")
-                print(f"{Colors.CYAN}1. View Player Stats{Colors.RESET}")
-                print(f"{Colors.MAGENTA}2. View Logbook{Colors.RESET}")
-                print(f"{Colors.GREEN}3. View Quests{Colors.RESET}")
-                print(f"{Colors.BRIGHT_YELLOW}4. View Achievements{Colors.RESET}")
-                print(f"{Colors.RED}5. Back to Main Menu{Colors.RESET}")
-
-                choice = get_input(f"\n{Colors.CYAN}Your choice: {Colors.RESET}")
-
-                if choice == "1":  # View Player Stats
-                    player.display_stats_summary()
-
-                elif choice == "2":  # View Logbook
-                    player.display_logbook()
-                
-                elif choice == "3":  # View Quests
-                    player.view_quests()
-
-                elif choice == "4":  # View Achievements
-                    player.display_achievements()
-
-                elif choice == "5":  # Back to Main Menu
-                    break
-
-        elif choice == "5":  # Save game
-            # Save does not work for now
-            # Ask the save name:
-            save_name = get_input(f"\n{Colors.YELLOW}Enter a save name: {Colors.RESET}")
-            player.save_player(save_name)
-            # Save agent Q-table if agent is enabled
-            agent = get_agent()
-            if agent:
-                agent.save_q_table("ai/q_table.json")
-            time.sleep(0.5)
-
-            # Nicely formatted question to ask player for analytics consent
-            print(f"\n{Colors.BRIGHT_CYAN}Would you like to send anonymous analytics to help improve the game?{Colors.RESET}")
-            print(f"{Colors.CYAN}This data includes your playtime, levels completed, rooms explored, and more.")
-            print(f"It is completely anonymous and cannot be traced back to you.")
-            print(f"Your contribution helps us make Dungeon Hunter better for everyone!")
-            print(f"See global analytics here: https://dragondefer.github.io/Dungeon-Hunter/analytics/analytics.html\n{Colors.RESET}")
-
-            # Not implemented yet
-            # consent = get_input(f"{Colors.BRIGHT_YELLOW}Send analytics? (y/n): {Colors.RESET}").lower()
-            consent = "n"
-            if consent == 'y':
-                from data.player_data import change_analytics
-                change_analytics(True)
-                print(f"{Colors.GREEN}Thank you for contributing to the analytics!{Colors.RESET}")
-            else:
-                print(f"{Colors.YELLOW}Analytics not sent. You can send them later from the main menu.{Colors.RESET}")
-
-            get_input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
-        
-        elif choice == "6":  # Settings submenu
-            while True:
-                clear_screen()
-                print(f"\n{Colors.YELLOW}{Colors.UNDERLINE}Settings Submenu{Colors.RESET}")
-                print(f"{Colors.BRIGHT_RED}1. Continue{Colors.RESET}")
-                print(f"{Colors.CYAN}2. Change game speed{Colors.RESET}")
-                print(f"{Colors.RED}2. Quit game{Colors.RESET}")
-
-                setting_choice = get_input(f"\n{Colors.CYAN}Your choice: {Colors.RESET}")
-
-                if setting_choice == "1":
-                    break
-
-                elif setting_choice == "2":
-                    print(f"{Colors.GREEN}Option 1 selected.{Colors.RESET}")
-                    # Implement game speed change submenu
-                    from engine.game_utility import game_speed_settings
-                    game_speed_settings()
-                    
-                elif setting_choice == "2": # Quit game
-                    confirm = get_input(f"{Colors.RED}Are you sure you want to quit? (y/n): {Colors.RESET}").lower()
-                    if confirm == "y":
-                        try:
-                            player.save_player("auto_save")
-                            # Save agent Q-table if agent is enabled
-                            agent = get_agent()
-                            if agent:
-                                agent.save_q_table("ai/q_table.json")
-                        except Exception as e:
-                            handle_error()
-                            print(f"{Colors.RED}Error saving auto-save: {e}{Colors.RESET}")
-                        game_running = False
-                        
-                else:
-                    print(f"{Colors.RED}Invalid choice. Try again.{Colors.RESET}")
-                    time.sleep(1)
-        
-        elif choice == "dev" and dev_mode == True: # activate dev debug test
-            print(Colors.gradient_text('dev mode activated', (0, 0, 255), (0, 255, 0)))
-            debug_dungeon = Dungeon(dungeon) if isinstance(dungeon, list) else dungeon
-            debug_menu(player, debug_dungeon)
-
-
-        else:
-            # Mode développeur : exécute une commande Python
-            if dev_mode and choice.startswith("!"):
-                try:
-                    result = eval(choice[1:], globals(), locals())
-                    if result is not None:
-                        print(result)
-                        get_input()
-                except Exception as e:
-                    print(f"[ERROR] {e}")
-                    get_input()
-                continue
-            print(f"{Colors.RED}Invalid choice. Try again.{Colors.RESET}")
-            time.sleep(1)
-    
-    if not player.is_alive() and end == False:
-        game_over("died in battle")
-        end = True
+    game_mode = DungeonMode(continue_game=continue_game, loaded_player=loaded_player, dev_mode=dev_mode, debug=debug)
+    game_mode.run()
 
 # Du​ng​e​o​n​ ​H​u​n​t​e​r​ ​-​ ​(​c​)​ ​Drag​o​nd​efer​ 2​025
 # Lic​e​ns​ed​ ​un​der​ ​C​C ​B​Y​-​N​C​ 4​.​0
@@ -404,11 +80,11 @@ if __name__ == '__main__':
     input()
     player = None
     def main_menu():
+        manager = SaveManager()
         while True:
             clear_screen()
             display_title()
-            os.makedirs('./saves', exist_ok=True)
-            saves = [f for f in os.listdir('./saves') if f.endswith('.json')]
+            saves = manager.list_saves()
             options = []
             if saves:
                 options.append((f"{Colors.BRIGHT_CYAN}Continue{Colors.RESET}", "continue"))
@@ -467,28 +143,91 @@ if __name__ == '__main__':
                 if 1 <= choice_num <= len(options):
                     action = options[choice_num - 1][1]
                     if action == "continue":
-                        print(f"\n{Colors.BRIGHT_MAGENTA}Saved games found:{Colors.RESET}\n")
-                        for idx, save_file in enumerate(saves, 1):
-                            print(f"{Colors.CYAN}{idx}. {save_file}{Colors.RESET}")
-                        save_choice = get_input(f"\n{Colors.BRIGHT_YELLOW}Choose a save file number to load or 'b' to go back: {Colors.RESET}")
-                        if save_choice.lower() == 'b':
-                            continue
                         try:
-                            save_index = int(save_choice) - 1
-                            if 0 <= save_index < len(saves):
-                                player = continue_game(saves[save_index])
-                                if player:
-                                    main(continue_game=True, loaded_player=player)
-                                else:
-                                    print(f"{Colors.RED}Failed to load save.{Colors.RESET}")
-                                    time.sleep(2)
-                                    # main()
+                            if not saves:
+                                print(f"\n{Colors.BRIGHT_RED}No saved games found.{Colors.RESET}")
+                                time.sleep(2)
                             else:
-                                print(f"{Colors.RED}Invalid save selection.{Colors.RESET}")
-                                time.sleep(1)
-                        except ValueError:
-                            print(f"{Colors.RED}Invalid input.{Colors.RESET}")
-                            time.sleep(1)
+                                print(f"\n{Colors.BRIGHT_MAGENTA}Saved Games{Colors.RESET}\n")
+                                # column width configuration
+                                COL_FILE = 6
+                                COL_NAME = 10
+                                COL_LVL = 5
+                                COL_FLOOR = 8
+                                COL_DIFF = 10
+                                COL_TIME = 6
+                                COL_TYPE = 6
+
+                                # print header with adjustable widths
+                                header = (
+                                    f"{'ID':>2} "
+                                    f"{Colors.CYAN}{'File':<{COL_FILE}}{Colors.RESET} | "
+                                    f"{Colors.CYAN}{'Name':<{COL_NAME}}{Colors.RESET} | "
+                                    f"{Colors.GREEN}{'Lvl':<{COL_LVL}}{Colors.RESET} | "
+                                    f"{Colors.YELLOW}{'Floor':<{COL_FLOOR}}{Colors.RESET} | "
+                                    f"{Colors.MAGENTA}{'Diff':<{COL_DIFF}}{Colors.RESET} | "
+                                    f"{Colors.BLUE}{'Time':<{COL_TIME}}{Colors.RESET} | "
+                                    f"{Colors.RED}{'Type':<{COL_TYPE}}{Colors.RESET}"
+                                )
+                                print(header)
+                                for idx, meta in enumerate(saves, 1):
+                                    try:
+                                        fname = meta.get('filename', '')[:COL_FILE]
+                                        name = strip_ansi(meta.get('player_name', 'Unknown'))[:COL_NAME]
+                                        level = f"Lv{meta.get('level', 1)}"[:COL_LVL]
+                                        floor = meta.get('location', 'Dungeon Floor 1').replace('Dungeon Floor ', 'Floor ')[:COL_FLOOR]
+                                        difficulty = str(meta.get('difficulty', 'Normal'))[:COL_DIFF]
+                                        playtime_seconds = int(meta.get('playtime', 0))
+                                        hours = playtime_seconds // 3600
+                                        minutes = (playtime_seconds % 3600) // 60
+                                        time_str = f"{hours}h{minutes:02d}" if hours > 0 else f"{minutes}m"
+                                        time_str = time_str[:COL_TIME]
+                                        save_type = meta.get('save_type', 'manual').upper()[:COL_TYPE]
+                                        print(
+                                            f"{idx:>2} "
+                                            f"{fname:<{COL_FILE}} | "
+                                            f"{name:<{COL_NAME}} | "
+                                            f"{level:<{COL_LVL}} | "
+                                            f"{floor:<{COL_FLOOR}} | "
+                                            f"{difficulty:<{COL_DIFF}} | "
+                                            f"{time_str:<{COL_TIME}} | "
+                                            f"{save_type:<{COL_TYPE}}"
+                                        )
+                                    except Exception as e:
+                                        logger.error(f"Error displaying save {idx}: {e}")
+                                        # fallback show filename prefix if available
+                                        fname = meta.get('filename', '')[:COL_FILE]
+                                        print(f"{idx:>2} {fname:<{COL_FILE}} | <corrupt save>")
+                                
+                                save_choice = get_input(f"\n{Colors.BRIGHT_YELLOW}Choose a save file number to load or 'b' to go back: {Colors.RESET}")
+                                if save_choice.lower() == 'b':
+                                    continue
+                                try:
+                                    save_index = int(save_choice) - 1
+                                    if 0 <= save_index < len(saves):
+                                        filename = saves[save_index]['filename']
+                                        save_data = manager.load_save(filename)
+                                        if save_data and 'player_data' in save_data:
+                                            from core.entity import Player
+                                            player = Player.from_dict(save_data['player_data'])
+                                            if player:
+                                                main(continue_game=True, loaded_player=player)
+                                            else:
+                                                print(f"{Colors.RED}Failed to load save.{Colors.RESET}")
+                                                time.sleep(2)
+                                        else:
+                                            print(f"{Colors.RED}Invalid save data.{Colors.RESET}")
+                                            time.sleep(2)
+                                    else:
+                                        print(f"{Colors.RED}Invalid save selection. Please enter a number between 1 and {len(saves)}.{Colors.RESET}")
+                                        time.sleep(2)
+                                except ValueError:
+                                    print(f"{Colors.RED}Invalid input. Please enter a number.{Colors.RESET}")
+                                    time.sleep(2)
+                        except Exception as e:
+                            logger.error(f"Error in continue action: {e}")
+                            print(f"{Colors.RED}An error occurred while loading saves.{Colors.RESET}")
+                            time.sleep(2)
                     elif action == "new_game":
                         main()
                     elif action == "quit":
