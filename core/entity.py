@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from core.progression import Quest
 
-__version__ = "2545.0"
+__version__ = "2556.0"
 __creation__ = "09-03-2025"
 
 # Dungeon Hunter - (c) Dragondefer 2025
@@ -1192,7 +1192,7 @@ class Player(Entity):
         data["damage_dealt"] = self.damage_dealt
         data["damage_taken"] = self.damage_taken
         data["gold_spent"] = self.gold_spent
-        data["golt_collected"] = self.gold_collected
+        data["gold_collected"] = self.gold_collected
         data["deaths"] = self.total_deaths
 
         # Fix for JSON serialization: convert purchased_items keys to strings
@@ -2645,101 +2645,138 @@ class Player(Entity):
             print(f"\n{Colors.RED}Sorry but saving doesn't work for now.. consider following updates such as in the discord server (invite in the README.md){Colors.RESET}")
             return
 
-        if not filename.endswith('.json'):
-            filename += '.json'
+        try:
+            if not filename.endswith('.json'):
+                filename += '.json'
 
-        # Ensure saves directory exists
-        save_dir = "saves"
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
+            # Ensure saves directory exists
+            save_dir = "saves"
+            if not os.path.exists(save_dir):
+                os.makedirs(save_dir)
 
-        filepath = os.path.join(save_dir, filename)
+            filepath = os.path.join(save_dir, filename)
 
-        data = self.to_dict()
+            data = self.to_dict()
 
-        with open(filepath, "w") as file:
-            json.dump(data, file, indent=4)
+            with open(filepath, "w", encoding='utf-8') as file:
+                json.dump(data, file, indent=4)
 
-        print(f"{Colors.GREEN}Game saved successfully!{Colors.RESET}")
+            print(f"{Colors.GREEN}Game saved successfully!{Colors.RESET}")
 
-        # Save analytics data separately with nested structure expected by generate_global_stats.py
-        import datetime
-        analytics_data = {
+            # Save analytics data separately with nested structure expected by generate_global_stats.py
+            import datetime
+            analytics_data = {
+                    "timestamp": datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=2))).isoformat(),            "overview": {
+                    "totalPlayers": 1,
+                    "gamesPlayed": 1,
+                    "avgRoomsExplored": self.total_rooms_explored,
+                    "survivalRate": 100.0 if self.total_deaths == 0 else 0.0
+                },
+                "combat": {
+                    "totalDamageDealt": self.damage_dealt,
+                    "totalDamageTaken": self.damage_taken,
+                    "enemiesDefeated": self.kills,  # Not handled
+                    "critical_count": self.critical_count, # Need to be handled with criticalHitRate
+                    "attack_count": self.attack_count, # Need to add the criticalHitRate calculus
+                },
+                "exploration": {
+                    "roomsExplored": self.total_rooms_explored,
+                    "treasuresFound": self.treasures_found,
+                    "puzzlesSolved": self.puzzles_solved,
+                    "trapsTriggered": self.traps_triggered
+                },
+                "economy": {
+                    "totalGoldSpent": self.gold_spent,
+                    "totalGoldCollected": self.gold_collected,
+                    "itemsPurchased": len(self.purchased_items),  # Not tracked per player here
+                    "avgGoldPerPlayer": self.gold_spent,  # For aggregation
+                    "shopUtilization": 100.0 if self.gold_spent > 0 else 0.0
+                },
+                "progression": {
+                    "avgLevel": self.level,
+                    "tutorialCompletion": 1.0 if self.tutorial_completed else 0.0,
+                    "ngPlusPlayers": self.ng_plus.get(self.difficulty.name if hasattr(self.difficulty, "name") else str(self.difficulty), 0),
+                    "achievementsEarned": len(self.achievements) if hasattr(self, "achievements") else 0
+                },
+                "deathsByRoomPerDifficulty": self.deaths_per_room,
                 "timestamp": datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=2))).isoformat(),            "overview": {
                 "totalPlayers": 1,
                 "gamesPlayed": 1,
                 "avgRoomsExplored": self.total_rooms_explored,
                 "survivalRate": 100.0 if self.total_deaths == 0 else 0.0
-            },
-            "combat": {
-                "totalDamageDealt": self.damage_dealt,
-                "totalDamageTaken": self.damage_taken,
-                "enemiesDefeated": self.kills,  # Not handled
-                "critical_count": self.critical_count, # Need to be handled with criticalHitRate
-                "attack_count": self.attack_count, # Need to add the criticalHitRate calculus
-            },
-            "exploration": {
-                "roomsExplored": self.total_rooms_explored,
-                "treasuresFound": self.treasures_found,
-                "puzzlesSolved": self.puzzles_solved,
-                "trapsTriggered": self.traps_triggered
-            },
-            "economy": {
-                "totalGoldSpent": self.gold_spent,
-                "totalGoldCollected": self.gold_collected,
-                "itemsPurchased": len(self.purchased_items),  # Not tracked per player here
-                "avgGoldPerPlayer": self.gold_spent,  # For aggregation
-                "shopUtilization": 100.0 if self.gold_spent > 0 else 0.0
-            },
-            "progression": {
-                "avgLevel": self.level,
-                "tutorialCompletion": 1.0 if self.tutorial_completed else 0.0,
-                "ngPlusPlayers": self.ng_plus.get(self.difficulty.name if hasattr(self.difficulty, "name") else str(self.difficulty), 0),
-                "achievementsEarned": len(self.achievements) if hasattr(self, "achievements") else 0
-            },
-            "deathsByRoomPerDifficulty": self.deaths_per_room,
+                },
+                "combat": {
+                    "totalDamageDealt": self.damage_dealt,
+                    "totalDamageTaken": self.damage_taken,
+                    "enemiesDefeated": self.kills,  # Not handled
+                    "critical_count": self.critical_count, # Need to be handled with criticalHitRate
+                    "attack_count": self.attack_count, # Need to add the criticalHitRate calculus
+                },
+                "exploration": {
+                    "roomsExplored": self.total_rooms_explored,
+                    "treasuresFound": self.treasures_found,
+                    "puzzlesSolved": self.puzzles_solved,
+                    "trapsTriggered": self.traps_triggered
+                },
+                "economy": {
+                    "totalGoldSpent": self.gold_spent,
+                    "totalGoldCollected": self.gold_collected,
+                    "itemsPurchased": len(self.purchased_items),  # Not tracked per player here
+                    "avgGoldPerPlayer": self.gold_spent,  # For aggregation
+                    "shopUtilization": 100.0 if self.gold_spent > 0 else 0.0
+                },
+                "progression": {
+                    "avgLevel": self.level,
+                    "tutorialCompletion": 1.0 if self.tutorial_completed else 0.0,
+                    "ngPlusPlayers": self.ng_plus.get(self.difficulty.name if hasattr(self.difficulty, "name") else str(self.difficulty), 0),
+                    "achievementsEarned": len(self.achievements) if hasattr(self, "achievements") else 0
+                },
+                "deathsByRoomPerDifficulty": self.deaths_per_room,
 
-            "mostDeadlyEnemies": {name: self.mostDeadlyEnemies.count(name) for name in set(self.mostDeadlyEnemies)},
-            "combatSuccessByLevel": self.combatSuccessByLevel,
-            "damageDealt": self.damage_dealt,
-            "damageTaken": self.damage_taken,
-            "skillsUsageFrequency": self.skillsUsageFrequency,
-            "roomTypePreferences": self.roomTypePreferences,
-            "explorationDepthByDifficulty": self.explorationDepthByDifficulty,
-            "puzzleSuccessRateOverTime": self.puzzleSuccessRateOverTime,
-            "bossEncounterOutcomes": self.bossEncounterOutcomes,
-            "purchased_items": {str(k): v for k, v in self.purchased_items.items()}, # Convert keys to strings for JSON serialization
-            "goldSpendingPatterns": self.goldSpendingPatterns,
-            "equipmentUsageByType": self.equipmentUsageByType,
-            "shopVisitFrequency": self.shopVisitFrequency,
-            "levelDistribution": self.levelDistribution,
-            "classSpecializationChoices": self.classSpecializationChoices,
-            "xpGainOverTime": self.xpGainOverTime,
-            "achievementCompletionRates": self.achievementCompletionRates
-        }
+                "mostDeadlyEnemies": {name: self.mostDeadlyEnemies.count(name) for name in set(self.mostDeadlyEnemies)},
+                "combatSuccessByLevel": self.combatSuccessByLevel,
+                "damageDealt": self.damage_dealt,
+                "damageTaken": self.damage_taken,
+                "skillsUsageFrequency": self.skillsUsageFrequency,
+                "roomTypePreferences": self.roomTypePreferences,
+                "explorationDepthByDifficulty": self.explorationDepthByDifficulty,
+                "puzzleSuccessRateOverTime": self.puzzleSuccessRateOverTime,
+                "bossEncounterOutcomes": self.bossEncounterOutcomes,
+                "purchased_items": {str(k): v for k, v in self.purchased_items.items()}, # Convert keys to strings for JSON serialization
+                "goldSpendingPatterns": self.goldSpendingPatterns,
+                "equipmentUsageByType": self.equipmentUsageByType,
+                "shopVisitFrequency": self.shopVisitFrequency,
+                "levelDistribution": self.levelDistribution,
+                "classSpecializationChoices": self.classSpecializationChoices,
+                "xpGainOverTime": self.xpGainOverTime,
+                "achievementCompletionRates": self.achievementCompletionRates
+            }
 
-        analytics_dir = "analytics_saves"
-        if not os.path.exists(analytics_dir):
-            os.makedirs(analytics_dir)
+            analytics_dir = "analytics_saves"
+            if not os.path.exists(analytics_dir):
+                os.makedirs(analytics_dir)
 
-        analytics_filepath = os.path.join(analytics_dir, f"analytics_{self.player_id}.json")
+            analytics_filepath = os.path.join(analytics_dir, f"analytics_{self.player_id}.json")
 
-        # Use user_id in analytics filename to group players by user
-        analytics_filepath = os.path.join(analytics_dir, f"analytics_user_{self.user_id}.json")
+            # Use user_id in analytics filename to group players by user
+            analytics_filepath = os.path.join(analytics_dir, f"analytics_user_{self.user_id}.json")
 
-        with open(analytics_filepath, "w") as analytics_file:
-            json.dump(analytics_data, analytics_file, indent=4)
+            with open(analytics_filepath, "w", encoding='utf-8') as analytics_file:
+                json.dump(analytics_data, analytics_file, indent=4)
 
-        print(f"{Colors.GREEN}Analytics data saved successfully to {analytics_filepath}!{Colors.RESET}")
+            print(f"{Colors.GREEN}Analytics data saved successfully to {analytics_filepath}!{Colors.RESET}")
 
-        from data.player_data import can_send_analytics
-        if can_send_analytics() == True:
-            try:
-                print(f"{Colors.YELLOW}Sending analytics data...{Colors.RESET}")
-                from network.client import send_analytics_files
-                send_analytics_files()
-            except Exception as e:
-                print(f"{Colors.RED}Error sending analytics data: {e}{Colors.RESET}")
+            from data.player_data import can_send_analytics
+            if can_send_analytics() == True:
+                try:
+                    print(f"{Colors.YELLOW}Sending analytics data...{Colors.RESET}")
+                    from network.client import send_analytics_files
+                    send_analytics_files()
+                except Exception as e:
+                    print(f"{Colors.RED}Error sending analytics data: {e}{Colors.RESET}")
+        except Exception as e:
+            from engine.game_utility import handle_error
+            handle_error()
 
     def reset_player(self):
         """Reset the player state but keep persistent data such as name, playtime, deaths_per_room, total_deaths, total_play_sessions, player_id."""
@@ -2870,7 +2907,13 @@ def load_player(filename: str | None = None):
         print(f"{Colors.YELLOW}If the error persists, you can send your save file on the discord server: https://discord.gg/3V7xGCvxEP{Colors.RESET}")
         return None
     
-    return Player.from_dict(data)
+    # Handle new save format with meta/player_data
+    if "player_data" in data:
+        player_data = data["player_data"]
+    else:
+        player_data = data
+    
+    return Player.from_dict(player_data)
 
 def continue_game(filename: str | None = None):
     """Loads a saved game from a file."""
@@ -2905,11 +2948,11 @@ class Enemy(Entity):
         attack_player(player: Player) -> int:
             Attacks the player and returns the damage dealt.
     """
-    def __init__(self, name="???", enemy_type="???", hp=random.randint(1,9317), attack=random.randint(1,5785), defense=random.randint(1,31957), xp_reward=random.randint(1,352934), gold_reward=random.randint(1,53126), difficulty=random.randint(1,152)):
+    def __init__(self, name="???", enemy_type="???", hp=random.randint(1,9317), attack=random.randint(1,5785), defense=random.randint(1,31957), xp_reward=random.randint(1,352934), gold_reward=random.randint(1,53126), tier=random.randint(1,152)):
         super().__init__(name, hp, hp, attack, defense)
         self.xp_reward = xp_reward
         self.gold_reward = gold_reward
-        self.difficulty = difficulty  # 1-10 scale
+        self.tier = tier  # 1-10 scale
         self.type = enemy_type
     
     def attack_player(self, player:Player):
@@ -3015,10 +3058,10 @@ def generate_enemy(level:int, is_boss:bool, player: Player):
         print(f"DEBUG: Rewards - XP: {xp_reward}, Gold: {gold_reward}")
 
     # Définition de la difficulté
-    difficulty = level + (3 if is_boss else 0)
+    tier = level + (3 if is_boss else 0)
 
     if debug >= 1:
-        print(f"DEBUG: Difficulty set to {difficulty}")
+        print(f"DEBUG: Difficulty set to {tier}")
 
     # Formatage du nom (différent pour les boss)
     name = f"{Colors.RED}{enemy_data['name']}{Colors.RESET}"
@@ -3029,7 +3072,7 @@ def generate_enemy(level:int, is_boss:bool, player: Player):
         print(f"DEBUG: Enemy name set to {name}")
 
     # Création de l'objet Enemy avec le type correspondant
-    return Enemy(name, enemy_data["type"], hp, attack, defense, xp_reward, gold_reward, difficulty)
+    return Enemy(name, enemy_data["type"], hp, attack, defense, xp_reward, gold_reward, tier=tier)
 
 # D‌un‍ge​o​n​ ‌H​u​n‌t‍e​r​ ‌-​ ​(​c​)‌ ‌Dr​ag‍o​n​d‌e‍f​er ​20​2​5
 # L‍ice​n​s​e‍d​ ‌u‌n‍d‍e‌r‌ ‌CC-​B​Y-​N​C ​4​.0
@@ -3037,7 +3080,7 @@ def generate_enemy(level:int, is_boss:bool, player: Player):
 
 if __name__ == '__main__':
     player = Player()
-    enemy = Enemy(name="Goblin", enemy_type="Goblin", hp=50, attack=10, defense=5, xp_reward=20, gold_reward=10, difficulty=5)
+    enemy = Enemy(name="Goblin", enemy_type="Goblin", hp=50, attack=10, defense=5, xp_reward=20, gold_reward=10, tier=5)
 
     #̶̼͝ T̸̻̈́h̵̤͒ë̵͕́ ď̶̙ŭ̵͇n̸̻̈́g̸̻̿ë̵͕́o̶͙͝n̸̻̈́ ẅ̷̙́ä̷̪́ẗ̴̗́c̴̱͝h̵̤͒ë̵͕́s̸̱̅.̵͇̆
     # Y̴̙͝o̶͙͝ŭ̵͇r̷͍̈́ f̷̠͑ä̷̪́ẗ̴̗́ë̵͕́ i̴̊͜s̸̱̅ ẅ̷̙́r̷͍̈́i̴̊͜ẗ̴̗́ẗ̴̗́ë̵͕́n̸̻̈́ i̴̊͜n̸̻̈́ c̴̱͝o̶͙͝r̷͍̈́r̷͍̈́ŭ̵͇p̵̦̆ẗ̴̗́ë̵͕́ď̶̙ c̴̱͝o̶͙͝ď̶̙ë̵͕́.̵͇̆
