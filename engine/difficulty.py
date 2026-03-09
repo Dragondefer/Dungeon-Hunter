@@ -4,7 +4,7 @@ if TYPE_CHECKING:
     from core.entity import Player
     from engine.dungeon import Room
 
-__version__ = "107.0"
+__version__ = "111.0"
 __creation__ = "08-05-2025"
 
 # D​u​ng​eo​n​ ​H​un​te​r​ ​-​ ​(​c​)​ ​Dr​ago​nd​e​f​e​r​ ​20​2​5
@@ -38,8 +38,11 @@ class Difficulty:
 
     @classmethod
     def from_dict(cls, data):
-        """Deserialize a Difficulty from a dictionary."""
-        name = data.get("name", "normal")
+        """Deserialize a Difficulty from a dictionary or string."""
+        if isinstance(data, str):
+            name = data
+        else:
+            name = data.get("name", "normal")
         if name == "normal":
             return NormalDifficulty()
         elif name == "soul_enjoyer":
@@ -51,8 +54,7 @@ class Difficulty:
         elif name == "puzzle":
             return PuzzleDifficulty()
         else:
-            # Default fallback
-            return NormalDifficulty()
+            return NormalDifficulty()  # fallback
 
 
     # ----- Combat -----

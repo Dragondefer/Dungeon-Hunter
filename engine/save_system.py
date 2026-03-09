@@ -6,7 +6,7 @@ if TYPE_CHECKING:
     from engine.dungeon import Dungeon
 
 
-__version__ = "10.0"
+__version__ = "34.0"
 __creation__ = "08-03-2026"
 
 
@@ -135,30 +135,36 @@ class SaveManager:
         """Creates a new save with the current player and dungeon state."""
         from core.entity import Player  # Import here to avoid circular import
 
-        meta = {
-            "player_name": player.name,
-            "level": player.level,
-            "difficulty": str(player.difficulty),
-            "location": f"Dungeon Floor {player.dungeon_level}",
-            "playtime": int(player.get_playtime()),
-            "last_save": datetime.now().strftime("%Y-%m-%d %H:%M"),
-            "save_type": save_type
-        }
+        try:
+            meta = {
+                "player_name": player.name,
+                "level": player.level,
+                "difficulty": str(player.difficulty),
+                "location": f"Dungeon Floor {player.dungeon_level}",
+                "playtime": int(player.get_playtime()),
+                "last_save": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                "save_type": save_type
+            }
 
-        save_data = {
-            "meta": meta,
-            "player_data": player.to_dict(),
-            "dungeon_state": {},  # TODO: implement dungeon serialization
-            "inventory": {}  # Inventory is part of player_data
-        }
+            save_data = {
+                "meta": meta,
+                "player_data": player.to_dict(),
+                "dungeon_state": {},  # TODO: implement dungeon serialization
+                "inventory": {}  # Inventory is part of player_data
+            }
 
-        filename = f"{save_type}-{player.name}(lv{player.level})-{player.player_id}.json"
-        filepath = os.path.join(self.save_dir, filename)
+            filename = f"{save_type}-{player.name}(lv{player.level})-{player.player_id}.json"
+            filepath = os.path.join(self.save_dir, filename)
 
-        with open(filepath, 'w') as f:
-            json.dump(save_data, f, indent=4, ensure_ascii=False)
+            with open(filepath, 'w', encoding='utf-8') as f:
+                json.dump(save_data, f, indent=4, ensure_ascii=False)
 
-        return filename
+            return filename
+        except Exception as e:
+            from engine.game_utility import handle_error
+            handle_error()
+            # Return a dummy filename or raise
+            raise
 
     def delete_save(self, save_id: str) -> bool:
         """Deletes a save by its ID."""
@@ -170,30 +176,34 @@ class SaveManager:
 
     def autosave(self, player: 'Player', dungeon: Optional['Dungeon'] = None):
         """Automatically saves the current state at regular intervals."""
-        # Rotate autosaves
-        autosave_files = [f for f in os.listdir(self.save_dir) if f.startswith('autosave_') and f.endswith('.json')]
-        autosave_files.sort(reverse=True)
+        try:
+            # Rotate autosaves
+            autosave_files = [f for f in os.listdir(self.save_dir) if f.startswith('autosave_') and f.endswith('.json')]
+            autosave_files.sort(reverse=True)
 
-        # Delete autosave_3 if exists
-        for f in autosave_files:
-            if 'autosave_3' in f:
-                os.remove(os.path.join(self.save_dir, f))
-                break
+            # Delete autosave_3 if exists
+            for f in autosave_files:
+                if 'autosave_3' in f:
+                    os.remove(os.path.join(self.save_dir, f))
+                    break
 
-        # Rename autosave_2 to autosave_3
-        for f in autosave_files:
-            if 'autosave_2' in f:
-                os.rename(os.path.join(self.save_dir, f), os.path.join(self.save_dir, f.replace('autosave_2', 'autosave_3')))
-                break
+            # Rename autosave_2 to autosave_3
+            for f in autosave_files:
+                if 'autosave_2' in f:
+                    os.rename(os.path.join(self.save_dir, f), os.path.join(self.save_dir, f.replace('autosave_2', 'autosave_3')))
+                    break
 
-        # Rename autosave_1 to autosave_2
-        for f in autosave_files:
-            if 'autosave_1' in f:
-                os.rename(os.path.join(self.save_dir, f), os.path.join(self.save_dir, f.replace('autosave_1', 'autosave_2')))
-                break
+            # Rename autosave_1 to autosave_2
+            for f in autosave_files:
+                if 'autosave_1' in f:
+                    os.rename(os.path.join(self.save_dir, f), os.path.join(self.save_dir, f.replace('autosave_1', 'autosave_2')))
+                    break
 
-        # Create new autosave_1
-        filename = self.create_save(player, dungeon, "auto")
-        new_path = os.path.join(self.save_dir, filename)
-        autosave_1_path = os.path.join(self.save_dir, filename.replace('auto-', 'autosave_1-'))
-        os.rename(new_path, autosave_1_path)
+            # Create new autosave_1
+            filename = self.create_save(player, dungeon, "auto")
+            new_path = os.path.join(self.save_dir, filename)
+            autosave_1_path = os.path.join(self.save_dir, filename.replace('auto-', 'autosave_1-'))
+            os.rename(new_path, autosave_1_path)
+        except Exception as e:
+            from engine.game_utility import handle_error
+            handle_error()

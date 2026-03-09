@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from core.entity import Player # For type hint only, else it would do an import error :/
 
-__version__ = "631.0"
+__version__ = "645.0"
 __creation__ = "09-03-2025"
 
 # D​u​n​ge​o​n​ ​H​u​n​t​e​r​ ​-​ ​(​c​)​ ​D​r​a​go​n​de​f​er​ ​2​02​5
@@ -24,16 +24,10 @@ path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from interface.colors import Colors
 from engine.logger import logger
 
-try:
-    dev_mode = False
-    if os.path.exists("./engine/dev_mod.py"):
-        from engine.dev_mod import debug_menu
-        dev_mode = True
-except Exception as e:
-    logger.warning(f"Error when trying to import dev_mod.py: {e}")
-    dev_mode = False
-    debug_menu = lambda *args, **kwargs: None
+from config import is_dev_mode
+# Removed the try/except import of debug_menu to avoid circular import
 
+dev_mode = is_dev_mode()
 
 # For Windows non-blocking key detection
 if os.name == 'nt':
@@ -130,18 +124,23 @@ def get_input(prompt: str = "",
               use_agent: bool | None = None) -> str:
     """Wrapper around input/agent choice with optional debug and dev menu."""
 
-    global dev_mode
+    # global dev_mode
+    dev_mode = is_dev_mode()
     debug = 0
     options = options or []
     agent_instance = get_agent()
 
     def get_user_input():
         user_input = input(prompt)
-        if user_input.lower() == "dev" and dev_mode and player:
-            debug_menu(player=player)
-            input("debug menu closed, press enter to continue...")
         if debug >= 1:
             print("User input:", user_input, "\ndev_mode:", dev_mode, "\nplayer:", player is not None)
+        if user_input.lower() == "dev" and dev_mode and player:
+            try:
+                from engine.dev_mod import debug_menu
+                debug_menu(player=player)
+            except ImportError:
+                pass
+            input("debug menu closed, press enter to continue...")
         return user_input
 
 
@@ -749,11 +748,12 @@ def game_over(describtion=None):
     input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
 
 def handle_error():
-    print(f"\n{Colors.RED}{Colors.BOLD}ERROR OCCURRED:\n{traceback.print_exc()}{Colors.RESET}")    
-    logger.warning("Error Occurred")
+    tb = traceback.format_exc()
+    print(f"\n{Colors.RED}{Colors.BOLD}ERROR OCCURRED:\n{tb}{Colors.RESET}")    
+    logger.error(f"Error Occurred: {tb}")
     # save error debug into a log file (create a new file):
     with open("error.log", "a") as f:
-        f.write(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n{traceback.format_exc()}\n\n")
+        f.write(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n{tb}\n\n")
     input(f"\n{Colors.YELLOW}Press Enter to continue...{Colors.RESET}")
 
 def collect_feedback(ask=True):

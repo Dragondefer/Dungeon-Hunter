@@ -26,7 +26,7 @@ log_filename = datetime.now().strftime("logs/session_%Y-%m-%d_%H-%M-%S.log")
 logging.basicConfig(
     filename=log_filename,
     level=logging.DEBUG,
-    format="%(asctime)s - %(levelname)s - %(message)s"
+    format="%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(funcName)s - %(message)s"
 )
 
 logger = logging.getLogger()
