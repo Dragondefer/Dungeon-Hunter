@@ -70,7 +70,7 @@ class SaveManager:
             if filename.endswith('.json'):
                 filepath = os.path.join(self.save_dir, filename)
                 try:
-                    with open(filepath, 'r') as f:
+                    with open(filepath, 'r', encoding='utf-8') as f:
                         data = json.load(f)
                     if 'meta' in data:
                         meta = data['meta']
@@ -103,7 +103,7 @@ class SaveManager:
         if not os.path.exists(filepath):
             return None
         try:
-            with open(filepath, 'r') as f:
+            with open(filepath, 'r', encoding='utf-8') as f:
                 data = json.load(f)
             # Handle old saves that are just player dict
             if 'meta' not in data:
