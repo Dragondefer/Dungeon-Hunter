@@ -6,22 +6,25 @@ if TYPE_CHECKING:
     from core.entity import Enemy
 
 
-from attr import dataclass
-from sympy import im
-
-
-__version__ = "8.0"
+__version__ = "22.0"
 __creation__ = "16-01-2026"
 
-from typing import Protocol
+
+from typing import Protocol, runtime_checkable
+from attr import dataclass
 import random
 
 
-from items.items import (generate_random_item, generate_random_resource)
+from items.items import (generate_random_item, generate_random_resource, Item)
+from items.resources import Resource
 
 
+@runtime_checkable
 class Loot(Protocol):
     def apply_to(self, player: Player) -> None:
+        ...
+    
+    def describe(self) -> str:
         ...
 
 
@@ -72,6 +75,44 @@ class LootFactory:
 
         return loot
 
+    @staticmethod
+    def give_loot(player: Player, loot_item):
+        """
+        Centralized function to give loot to player.
+        Handles Item, Resource, gold (int), or resource tuples (resource_id, amount).
+        
+        Usage:
+        - give_loot(player, item)  # Item instance
+        - give_loot(player, ("iron_ore", 5))  # Resource with amount
+        - give_loot(player, 100)  # Gold amount
+        """
+        if isinstance(loot_item, Loot):
+            player.obtain(loot_item)
+            return
+
+        if isinstance(loot_item, Item):
+            player.obtain(ItemLoot(loot_item))
+            return
+
+        if isinstance(loot_item, Resource):
+            player.obtain(ResourceLoot(loot_item.type, 1))
+            return
+
+        if isinstance(loot_item, int):
+            player.obtain(GoldLoot(loot_item))
+            return
+
+        if (
+            isinstance(loot_item, tuple)
+            and len(loot_item) == 2
+            and isinstance(loot_item[0], str)
+            and isinstance(loot_item[1], int)
+        ):
+            player.obtain(ResourceLoot(*loot_item))
+            return
+
+        raise TypeError(f"Unsupported loot type: {type(loot_item)}")
+
 
 
 class ItemLoot:
@@ -80,6 +121,9 @@ class ItemLoot:
 
     def apply_to(self, player: Player):
         player.inventory.append(self.item)
+    
+    def describe(self):
+        raise NotImplementedError
 
 
 class ResourceLoot:
@@ -90,6 +134,9 @@ class ResourceLoot:
     def apply_to(self, player: Player):
         player.add_resource(self.resource_id, self.amount)
 
+    def describe(self):
+        raise NotImplementedError
+    
 
 class GoldLoot:
     def __init__(self, amount: int):
@@ -98,3 +145,7 @@ class GoldLoot:
     def apply_to(self, player: Player):
         player.gold += self.amount
         player.gold_collected += self.amount  # stats
+
+    def describe(self):
+        raise NotImplementedError
+    
